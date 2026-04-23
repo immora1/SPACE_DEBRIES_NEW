@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import useAppStore from '../../store/useAppStore'
-import { generateOpeningStory } from '../../services/ai'
+import { generateStoryOutline, generateOpeningStory } from '../../services/ai'
 
 async function fetchSatellite(city) {
   try {
@@ -157,8 +157,9 @@ function ResultPhase({ sat, story, onComplete }) {
 
 // ── 主组件 ────────────────────────────────────────────────────────────────────
 export default function Entrance({ onComplete }) {
-  const setUser      = useAppStore((s) => s.setUser)
-  const setSatellite = useAppStore((s) => s.setSatellite)
+  const setUser         = useAppStore((s) => s.setUser)
+  const setSatellite    = useAppStore((s) => s.setSatellite)
+  const setStoryOutline = useAppStore((s) => s.setStoryOutline)
   const setStoryChapter = useAppStore((s) => s.setStoryChapter)
 
   const [phase,  setPhase]  = useState('form')   // form | matching | result
@@ -176,12 +177,22 @@ export default function Entrance({ onComplete }) {
       setSatellite(satellite)
       setSat(satellite)
 
+      setStatus('BUILDING NARRATIVE')
+      const outline = await generateStoryOutline({
+        name: form.name,
+        city: form.city,
+        importantEvent: form.importantEvent,
+        satellite,
+      })
+      setStoryOutline(outline)
+
       setStatus('WRITING STORY')
       const result = await generateOpeningStory({
         name: form.name,
         city: form.city,
         importantEvent: form.importantEvent,
         satellite,
+        storyOutline: outline,
       })
       const storyText = result.story ?? ''
       setStory(storyText)

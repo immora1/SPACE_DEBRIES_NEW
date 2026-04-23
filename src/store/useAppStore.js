@@ -16,6 +16,10 @@ const useAppStore = create(
       material: null,
       setMaterial: (m) => set({ material: m }),
 
+      // 故事大纲（Entrance 生成后全程不变，所有模块 AI 调用时传入作为约束）
+      storyOutline: null,
+      setStoryOutline: (outline) => set({ storyOutline: outline }),
+
       // 故事章节（AI 生成）
       storyChapters: { opening: '' },
       setStoryChapter: (key, val) =>
@@ -41,6 +45,7 @@ const useAppStore = create(
         user: { name: '', city: '', importantEvent: '' },
         satellite: null,
         material: null,
+        storyOutline: null,
         storyChapters: { opening: '' },
         unlockedModules: ['entrance'],
         completedModules: [],
