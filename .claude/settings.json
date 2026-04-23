@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create *)",
+      "Bash(npx create-vite@latest . --template react --overwrite)",
+      "Bash(npm install *)",
+      "Bash(powershell -Command \"Stop-Process -Id 28392 -Force\")",
+      "Bash(netstat -ano)",
+      "Bash(node server/index.js)",
+      "Bash(curl -s -X POST http://localhost:3001/api/test-gpt)",
+      "Bash(npm run *)",
+      "Bash(curl -s http://localhost:5173)"
+    ]
+  }
+}
