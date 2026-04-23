@@ -9,7 +9,10 @@
       "Bash(node server/index.js)",
       "Bash(curl -s -X POST http://localhost:3001/api/test-gpt)",
       "Bash(npm run *)",
-      "Bash(curl -s http://localhost:5173)"
+      "Bash(curl -s http://localhost:5173)",
+      "WebFetch(domain:www.thisisstudiox.com)",
+      "Bash(curl -s \"http://localhost:3001/api/satellite?city=beijing\")",
+      "Bash(git restore *)"
     ]
   }
 }

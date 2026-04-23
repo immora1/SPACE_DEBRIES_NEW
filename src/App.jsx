@@ -1,5 +1,9 @@
-import ApiTest from './pages/ApiTest'
+import Entrance from './modules/Entrance'
 
 export default function App() {
-  return <ApiTest />
+  return (
+    <div style={{ background: '#0a0a0a', minHeight: '100svh' }}>
+      <Entrance onComplete={() => console.log('entrance complete')} />
+    </div>
+  )
 }
