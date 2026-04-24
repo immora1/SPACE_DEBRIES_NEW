@@ -98,17 +98,18 @@ export async function generateOpeningStory({ name, city, importantEvent, satelli
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// M1 · 材料选择反馈
-// 输入: material, satellite, user, storyOutline
-// 输出: { feedback: string }
+// M1 · 四部位材料全部选定后的综合反馈
+// 输入: materials = { frame, solar, insulation, propulsion }, satellite, user, storyOutline
+// 输出: { feedback: string }  ← 100字以内，基于四部位组合描述再入特性和轨道碎片贡献
 // ─────────────────────────────────────────────────────────────────────────────
-export async function generateMaterialFeedback({ material, satellite, user, storyOutline }) {
+export async function generateMaterialFeedback({ materials, satellite, user, storyOutline }) {
   // TODO: 替换为完整 prompt
-  const system = `你是航天材料专家，语气简洁克制。输出纯 JSON，格式：{"feedback": "..."}${outlineContext(storyOutline)}`
-  const user_ = `用户${user.name}为卫星${satellite.name}选择了主要材料：${material}。
-写一句话（40字以内）：说明该材料在真实卫星上的使用案例，以及再入大气层时的特性。`
+  const system = `你是航天材料专家，语气简洁克制，数据驱动，不煽情。输出纯 JSON，格式：{"feedback": "..."}${outlineContext(storyOutline)}`
+  const matDesc = `主框架：${materials.frame}；太阳能电池板：${materials.solar}；隔热毯：${materials.insulation}；推进贮箱：${materials.propulsion}`
+  const user_ = `用户${user.name}为卫星${satellite?.name ?? '未知卫星'}选择了以下材料组合：${matDesc}。
+写100字以内综合评价：基于这四个部位的材料特性，描述该卫星在轨碎片产生风险和最终再入大气层时的命运。引用至少一个真实历史卫星案例作为对比。`
 
-  const raw = await chat(system, user_, 0.7, 150)
+  const raw = await chat(system, user_, 0.7, 350)
   return extractJSON(raw)
 }
 

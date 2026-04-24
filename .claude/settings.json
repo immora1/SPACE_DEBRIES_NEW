@@ -13,7 +13,9 @@
       "WebFetch(domain:www.thisisstudiox.com)",
       "Bash(curl -s \"http://localhost:3001/api/satellite?city=beijing\")",
       "Bash(git restore *)",
-      "Read(//e/Agent//**)"
+      "Read(//e/Agent//**)",
+      "Bash(node -e \"require\\('@react-three/fiber'\\); require\\('@react-three/drei'\\); require\\('three'\\); console.log\\('3D packages OK'\\)\")",
+      "Bash(npx vite *)"
     ]
   }
 }

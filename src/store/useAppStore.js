@@ -12,9 +12,10 @@ const useAppStore = create(
       satellite: null,
       setSatellite: (s) => set({ satellite: s }),
 
-      // M1 材料选择
-      material: null,
-      setMaterial: (m) => set({ material: m }),
+      // M1 材料选择（四个部位独立选择）
+      materials: { frame: null, solar: null, insulation: null, propulsion: null },
+      setMaterialPart: (key, val) =>
+        set((s) => ({ materials: { ...s.materials, [key]: val } })),
 
       // M2 任务选择
       mission: null,
@@ -82,7 +83,7 @@ const useAppStore = create(
       reset: () => set({
         user: { name: '', city: '', importantEvent: '' },
         satellite: null,
-        material: null,
+        materials: { frame: null, solar: null, insulation: null, propulsion: null },
         mission: null,
         clickedHistoryEvents: [],
         damageLevel: 0,
