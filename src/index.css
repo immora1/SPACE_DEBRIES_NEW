@@ -14,6 +14,10 @@
   --color-paper:   #f5f4f0;
   --color-accent:  #c8b89a;
   --color-story:   #8b7355;
+  --color-sci:     #4a6741;
+  --color-inter:   #3d5a7a;
+  --color-ai:      #6b4a7a;
+  --color-link:    #7a4a3d;
 }
 
 @layer base {
@@ -119,4 +123,9 @@
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(20px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 0.25; }
+  50%       { opacity: 1; }
 }

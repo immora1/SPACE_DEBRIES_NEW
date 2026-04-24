@@ -12,7 +12,8 @@
       "Bash(curl -s http://localhost:5173)",
       "WebFetch(domain:www.thisisstudiox.com)",
       "Bash(curl -s \"http://localhost:3001/api/satellite?city=beijing\")",
-      "Bash(git restore *)"
+      "Bash(git restore *)",
+      "Read(//e/Agent//**)"
     ]
   }
 }
