@@ -6,7 +6,6 @@ import * as THREE from 'three'
 const IDLE = '#242422'
 const DIM  = '#181820'
 
-// Per-part active colors（与 index.jsx 的 PART_ACCENT 保持一致）
 const C = {
   frame:      { sel: '#c8b89a', emissive: '#1a1205' },
   solar:      { sel: '#4e88bf', emissive: '#05101e' },
@@ -14,16 +13,18 @@ const C = {
   propulsion: { sel: '#45b8c2', emissive: '#051a1c' },
 }
 
-// 统一哑光材质属性（无反光，无金属感）
 const MATTE = { roughness: 0.92, metalness: 0 }
 
-// ── 主框架 ────────────────────────────────────────────────────────────────────
 function Frame({ active }) {
   const ref = useRef()
+  const tc  = useRef(new THREE.Color())
+  const te  = useRef(new THREE.Color())
   useFrame(() => {
     if (!ref.current) return
-    ref.current.material.color.lerp(new THREE.Color(active ? C.frame.sel : IDLE), 0.08)
-    ref.current.material.emissive.lerp(new THREE.Color(active ? C.frame.emissive : '#000'), 0.08)
+    tc.current.set(active ? C.frame.sel : IDLE)
+    te.current.set(active ? C.frame.emissive : '#000')
+    ref.current.material.color.lerp(tc.current, 0.08)
+    ref.current.material.emissive.lerp(te.current, 0.08)
   })
   return (
     <mesh ref={ref}>
@@ -33,13 +34,14 @@ function Frame({ active }) {
   )
 }
 
-// ── 隔热毯（半透明外壳）────────────────────────────────────────────────────────
 function Insulation({ active }) {
   const ref = useRef()
+  const tc  = useRef(new THREE.Color())
   useFrame(() => {
     if (!ref.current) return
     const mat = ref.current.material
-    mat.color.lerp(new THREE.Color(active ? C.insulation.sel : '#1a1a18'), 0.08)
+    tc.current.set(active ? C.insulation.sel : '#1a1a18')
+    mat.color.lerp(tc.current, 0.08)
     mat.opacity += ((active ? 0.45 : 0.04) - mat.opacity) * 0.08
   })
   return (
@@ -57,14 +59,17 @@ function Insulation({ active }) {
   )
 }
 
-// ── 太阳能电池板（蓝色）──────────────────────────────────────────────────────
 function SolarPanels({ active }) {
   const refs = [useRef(), useRef()]
+  const tc   = useRef(new THREE.Color())
+  const te   = useRef(new THREE.Color())
   useFrame(() => {
+    tc.current.set(active ? C.solar.sel : DIM)
+    te.current.set(active ? C.solar.emissive : '#000')
     refs.forEach((r) => {
       if (!r.current) return
-      r.current.material.color.lerp(new THREE.Color(active ? C.solar.sel : DIM), 0.08)
-      r.current.material.emissive.lerp(new THREE.Color(active ? C.solar.emissive : '#000'), 0.08)
+      r.current.material.color.lerp(tc.current, 0.08)
+      r.current.material.emissive.lerp(te.current, 0.08)
     })
   })
   return (
@@ -89,13 +94,16 @@ function SolarPanels({ active }) {
   )
 }
 
-// ── 推进系统贮箱（青蓝色）────────────────────────────────────────────────────
 function PropulsionTank({ active }) {
   const ref = useRef()
+  const tc  = useRef(new THREE.Color())
+  const te  = useRef(new THREE.Color())
   useFrame(() => {
     if (!ref.current) return
-    ref.current.material.color.lerp(new THREE.Color(active ? C.propulsion.sel : IDLE), 0.08)
-    ref.current.material.emissive.lerp(new THREE.Color(active ? C.propulsion.emissive : '#000'), 0.08)
+    tc.current.set(active ? C.propulsion.sel : IDLE)
+    te.current.set(active ? C.propulsion.emissive : '#000')
+    ref.current.material.color.lerp(tc.current, 0.08)
+    ref.current.material.emissive.lerp(te.current, 0.08)
   })
   return (
     <group>
@@ -115,7 +123,6 @@ function PropulsionTank({ active }) {
   )
 }
 
-// ── 整体卫星（自转）─────────────────────────────────────────────────────────
 function Satellite({ selections }) {
   const groupRef = useRef()
   useFrame((_, delta) => {
@@ -135,16 +142,22 @@ function Satellite({ selections }) {
   )
 }
 
-// ── 导出 ─────────────────────────────────────────────────────────────────────
-export default function SatelliteModel({ selections = {}, height = 480 }) {
+export default function SatelliteModel({ selections = {}, height = 480, fill = false }) {
+  const containerStyle = fill
+    ? { width: '100%', height: '100%' }
+    : { height, background: 'transparent' }
+
   return (
-    <div style={{ height, background: 'transparent' }}>
+    <div style={containerStyle}>
       <Canvas
-        camera={{ position: [0, 0.4, 4.0], fov: 34 }}
+        camera={fill
+          ? { position: [0, 0.2, 2.6], fov: 38 }
+          : { position: [0, 0.4, 4.0], fov: 34 }
+        }
+        dpr={[1, 1.5]}
         gl={{ antialias: true, alpha: true }}
         style={{ background: 'transparent', width: '100%', height: '100%' }}
       >
-        {/* 哑光光照：足够亮但无高光反射 */}
         <ambientLight intensity={0.65} />
         <directionalLight position={[2, 4, 3]} intensity={0.9} color="#f0eeea" />
         <directionalLight position={[-3, 1, -2]} intensity={0.25} color="#c8d0e0" />

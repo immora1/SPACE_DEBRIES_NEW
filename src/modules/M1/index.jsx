@@ -141,147 +141,6 @@ function TrendChart() {
   )
 }
 
-function ColorLegend() {
-  const items = [
-    { id: 'frame',      label: '主框架' },
-    { id: 'solar',      label: '太阳能板' },
-    { id: 'insulation', label: '隔热毯' },
-    { id: 'propulsion', label: '推进贮箱' },
-  ]
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 20px', padding: '16px 0' }}>
-      {items.map(({ id, label }) => (
-        <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 7, height: 7, borderRadius: '50%', background: PART_ACCENT[id], flexShrink: 0 }} />
-          <span style={{ fontFamily: 'monospace', fontSize: 8, color: '#4a4a48', letterSpacing: '0.08em' }}>{label}</span>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-// 折叠面板
-function PartPanel({ part, value, onSelect, isOpen, onToggle }) {
-  const accent = PART_ACCENT[part.id]
-  const selectedOpt = part.options.find((o) => o.id === value)
-
-  return (
-    <div style={{ borderBottom: '1px solid #1a1a18' }}>
-      {/* 标题行 */}
-      <div
-        onClick={onToggle}
-        style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '20px 0', cursor: 'pointer', userSelect: 'none' }}
-      >
-        <div style={{
-          width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-          background: value ? accent : '#2a2a28',
-          boxShadow: value ? `0 0 8px ${accent}80` : 'none',
-          transition: 'all 0.3s ease',
-        }} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{
-            fontFamily: 'monospace', fontSize: 8, color: value ? accent : '#4a4a48',
-            letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 5,
-            transition: 'color 0.3s',
-          }}>
-            {part.labelEn}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <span style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 15, color: '#f5f4f0' }}>
-              {part.label}
-            </span>
-            {selectedOpt && !isOpen && (
-              <motion.span
-                initial={{ opacity: 0, x: -4 }}
-                animate={{ opacity: 1, x: 0 }}
-                style={{
-                  fontFamily: 'monospace', fontSize: 8, color: accent,
-                  letterSpacing: '0.07em', padding: '2px 8px',
-                  border: `1px solid ${accent}40`, background: `${accent}14`,
-                }}
-              >
-                {selectedOpt.label}
-              </motion.span>
-            )}
-          </div>
-        </div>
-        <svg
-          width="12" height="12" viewBox="0 0 12 12" fill="none"
-          style={{ flexShrink: 0, color: '#3a3a38', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.25s ease' }}
-        >
-          <polyline points="2,4 6,8 10,4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </div>
-
-      {/* 展开内容 */}
-      <AnimatePresence initial={false}>
-        {isOpen && (
-          <motion.div
-            key="body"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.28, ease: EASE }}
-            style={{ overflow: 'hidden' }}
-          >
-            <div style={{ paddingBottom: 24 }}>
-              <p style={{ fontSize: 12, color: '#4a4a48', lineHeight: 1.8, marginBottom: 18 }}>
-                {part.desc}
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {part.options.map((opt) => {
-                  const isSel = value === opt.id
-                  return (
-                    <div
-                      key={opt.id}
-                      onClick={() => onSelect(part.id, opt.id)}
-                      style={{
-                        padding: '16px 20px', userSelect: 'none', cursor: 'pointer',
-                        border: isSel ? `1px solid ${accent}70` : '1px solid #222220',
-                        borderLeft: isSel ? `3px solid ${accent}` : '3px solid transparent',
-                        background: isSel ? `${accent}12` : '#0e0e0d',
-                        transition: 'all 0.18s ease',
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14 }}>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 7 }}>
-                            <div style={{
-                              width: 5, height: 5, borderRadius: '50%', flexShrink: 0,
-                              border: `1px solid ${isSel ? accent : '#3a3a38'}`,
-                              background: isSel ? accent : 'transparent',
-                              transition: 'all 0.18s',
-                            }} />
-                            <span style={{ fontFamily: 'monospace', fontSize: 8, color: isSel ? accent : '#3a3a38', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                              {opt.en}
-                            </span>
-                          </div>
-                          <div style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 15, color: isSel ? accent : '#e0e0dc', marginBottom: 8, transition: 'color 0.18s' }}>
-                            {opt.label}
-                          </div>
-                          <div style={{ fontSize: 11, color: '#555552', lineHeight: 1.8 }}>
-                            {opt.feature}
-                          </div>
-                        </div>
-                        <div style={{ flexShrink: 0, textAlign: 'right', paddingTop: 2 }}>
-                          <div style={{ width: 32, height: 3, marginBottom: 5, background: RISK_COLOR[opt.risk], opacity: isSel ? 1 : 0.4, transition: 'opacity 0.18s' }} />
-                          <div style={{ fontFamily: 'monospace', fontSize: 8, color: RISK_COLOR[opt.risk], letterSpacing: '0.06em', opacity: isSel ? 1 : 0.3 }}>
-                            RISK · {RISK_TEXT[opt.risk]}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  )
-}
-
 // ── 主组件 ────────────────────────────────────────────────────────────────────
 
 export default function M1({ onComplete }) {
@@ -291,7 +150,6 @@ export default function M1({ onComplete }) {
   const materials       = useAppStore((s) => s.materials)
   const setMaterialPart = useAppStore((s) => s.setMaterialPart)
 
-  // 始终保持一个面板展开，不允许全部收起
   const [activePartId, setActivePartId] = useState(PARTS[0].id)
   const [aiState,      setAiState]      = useState('idle')
   const [feedback,     setFeedback]     = useState('')
@@ -303,16 +161,8 @@ export default function M1({ onComplete }) {
     setMaterialPart(partId, optionId)
     const idx = PARTS.findIndex((p) => p.id === partId)
     if (idx < PARTS.length - 1) {
-      // 自动推进到下一个面板
-      setTimeout(() => setActivePartId(PARTS[idx + 1].id), 380)
+      setTimeout(() => setActivePartId(PARTS[idx + 1].id), 350)
     }
-    // 最后一项选完后保持当前面板展开，生成按钮出现在下方
-  }
-
-  function handleToggle(partId) {
-    // 点击已展开的面板不关闭（始终保持至少一个展开）
-    if (activePartId === partId) return
-    setActivePartId(partId)
   }
 
   async function handleGenerateFeedback() {
@@ -328,6 +178,7 @@ export default function M1({ onComplete }) {
   }
 
   const maxCount = Math.max(...COUNTRIES.map((c) => c.count))
+  const activePart = PARTS.find((p) => p.id === activePartId)
 
   return (
     <div style={{ background: '#0a0a0a', color: '#f5f4f0', minHeight: '100vh' }}>
@@ -430,139 +281,248 @@ export default function M1({ onComplete }) {
 
       </div>
 
-      {/* ── 05 材料选择（无分隔线，直接衔接，宽布局）── */}
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 32px 80px' }}>
+      {/* ── 05 材料选择：3D 卫星全屏背景 + 固定尺寸 HUD ── */}
+      <div style={{ position: 'relative', minHeight: '100vh', overflow: 'hidden' }}>
 
-        <SectionLabel>05 · 为你的卫星选择各部位材料</SectionLabel>
+        {/* 3D 卫星作为全屏背景，无任何边框 */}
+        <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
+          <SatelliteModel selections={materials} fill />
+        </div>
 
-        <div style={{ display: 'flex', gap: 56, alignItems: 'flex-start' }}>
+        {/* 从左至右渐变遮罩：左侧文字可读，右侧卫星透出 */}
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 1,
+          background: 'linear-gradient(100deg, rgba(10,10,10,0.97) 0%, rgba(10,10,10,0.88) 32%, rgba(10,10,10,0.50) 58%, rgba(10,10,10,0.08) 80%, rgba(10,10,10,0) 100%)',
+        }} />
 
-          {/* 左：3D 模型（无边框，flex:1，sticky） */}
-          <div style={{ flex: 1, minWidth: 0, position: 'sticky', top: 60 }}>
+        {/* HUD 内容层，尺寸完全固定，不随任何交互变化 */}
+        <div style={{
+          position: 'relative', zIndex: 2,
+          maxWidth: 1100, margin: '0 auto',
+          padding: '72px 48px 80px',
+          minHeight: '100vh',
+          display: 'flex', flexDirection: 'column', justifyContent: 'center',
+        }}>
 
-            {/* 卫星名称标签 */}
-            <div style={{ fontFamily: 'monospace', fontSize: 8, color: '#3a3a38', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 4 }}>
-              {satellite?.name ?? 'SATELLITE'} · 3D PREVIEW · DRAG TO ROTATE
-            </div>
-
-            {/* 3D 画布，无边框 */}
-            <SatelliteModel selections={materials} height={480} />
-
-            {/* 颜色图例（无边框） */}
-            <ColorLegend />
-
-            {/* 选择进度 */}
-            <div style={{ borderTop: '1px solid #1a1a18', paddingTop: 14 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                <span style={{ fontFamily: 'monospace', fontSize: 8, color: '#3a3a38', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-                  SELECTION PROGRESS
-                </span>
-                <span style={{ fontFamily: 'monospace', fontSize: 10, color: allDone ? '#c8b89a' : '#4a4a48', transition: 'color 0.3s' }}>
-                  {selectedCount} / 4
-                </span>
-              </div>
-              <div style={{ height: 2, background: '#1a1a18' }}>
-                <div style={{ height: '100%', background: '#c8b89a', width: `${(selectedCount / 4) * 100}%`, transition: 'width 0.4s ease' }} />
-              </div>
-            </div>
+          {/* 节标题 */}
+          <div style={{
+            fontFamily: 'monospace', fontSize: 9, letterSpacing: '0.14em',
+            textTransform: 'uppercase', color: '#6b6b66',
+            marginBottom: 20, paddingBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.06)',
+            width: 520,
+          }}>
+            05 · 为你的卫星选择各部位材料
           </div>
 
-          {/* 右：折叠选择面板（flex:1） */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ fontSize: 13, color: '#6b6b66', lineHeight: 1.9, marginBottom: 36 }}>
-              {satellite?.name ?? '你的卫星'} 正在装配。逐一为四个关键部位选择材料。<br />
-              这些选择会影响卫星的未来——但现在，你还不知道这些。选错了随时可以重新展开修改。
+          {/* 左列固定宽度，UI 全部在此 */}
+          <div style={{ width: 520 }}>
+
+            {/* 介绍文字（固定高度，不换行） */}
+            <p style={{ fontSize: 12, color: '#6b6b66', lineHeight: 1.8, marginBottom: 24 }}>
+              {satellite?.name ?? '你的卫星'} 正在装配。这些选择会影响卫星的未来。
             </p>
 
-            {/* 四个折叠面板 */}
-            <div style={{ borderTop: '1px solid #1a1a18', marginBottom: 24 }}>
-              {PARTS.map((part) => (
-                <div key={part.id} style={{ padding: '0 4px' }}>
-                  <PartPanel
-                    part={part}
-                    value={materials[part.id]}
-                    onSelect={handleSelect}
-                    isOpen={activePartId === part.id}
-                    onToggle={() => handleToggle(part.id)}
-                  />
-                </div>
-              ))}
-            </div>
-
-            {/* 全选后：生成报告按钮 */}
-            <AnimatePresence>
-              {allDone && aiState === 'idle' && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.4, ease: EASE }}
-                >
-                  <button
-                    onClick={handleGenerateFeedback}
+            {/* 部位标签页（固定高度，横向排列） */}
+            <div style={{ display: 'flex', gap: 6, marginBottom: 18, flexWrap: 'nowrap' }}>
+              {PARTS.map((part) => {
+                const isActive = activePartId === part.id
+                const isDone   = !!materials[part.id]
+                const accent   = PART_ACCENT[part.id]
+                return (
+                  <div
+                    key={part.id}
+                    onClick={() => aiState === 'idle' && setActivePartId(part.id)}
                     style={{
-                      width: '100%', fontFamily: 'monospace', fontSize: 11,
-                      letterSpacing: '0.14em', textTransform: 'uppercase',
-                      padding: '16px 28px', background: 'transparent',
-                      border: '1px solid rgba(200,184,154,0.45)', color: '#c8b89a',
-                      cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: 7,
+                      padding: '7px 13px',
+                      border: `1px solid ${isActive ? accent : 'rgba(255,255,255,0.08)'}`,
+                      background: isActive ? `${accent}18` : 'rgba(10,10,10,0.6)',
+                      cursor: aiState === 'idle' ? 'pointer' : 'default',
+                      transition: 'all 0.18s ease',
+                      userSelect: 'none',
+                      flexShrink: 0,
                     }}
                   >
-                    生成材料分析报告 →
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                    <div style={{
+                      width: 5, height: 5, borderRadius: '50%', flexShrink: 0,
+                      background: isDone ? accent : 'transparent',
+                      border: `1px solid ${isDone ? accent : 'rgba(255,255,255,0.2)'}`,
+                      transition: 'all 0.2s',
+                    }} />
+                    <span style={{
+                      fontFamily: 'monospace', fontSize: 8,
+                      color: isActive ? accent : '#4a4a48',
+                      letterSpacing: '0.10em', textTransform: 'uppercase',
+                      transition: 'color 0.18s',
+                    }}>
+                      {part.id === 'frame' ? 'FRAME' : part.id === 'solar' ? 'SOLAR' : part.id === 'insulation' ? 'MLI' : 'PROP'}
+                    </span>
+                  </div>
+                )
+              })}
 
-            {/* AI 反馈 */}
-            <AnimatePresence>
-              {(aiState === 'loading' || aiState === 'done' || aiState === 'error') && (
-                <motion.div
-                  initial={{ opacity: 0, y: 14 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.55, ease: EASE }}
+              {/* 进度 */}
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+                {PARTS.map((p) => (
+                  <div key={p.id} style={{
+                    width: 5, height: 5, borderRadius: '50%',
+                    background: materials[p.id] ? PART_ACCENT[p.id] : 'rgba(255,255,255,0.1)',
+                    transition: 'background 0.3s',
+                  }} />
+                ))}
+                <span style={{ fontFamily: 'monospace', fontSize: 8, color: '#4a4a48', letterSpacing: '0.08em', marginLeft: 4 }}>
+                  {selectedCount}/4
+                </span>
+              </div>
+            </div>
+
+            {/* ── 固定高度内容区（316px），切换时仅淡入淡出 ── */}
+            <div style={{ height: 316, position: 'relative' }}>
+
+              {/* [idle] 三个选项卡 */}
+              <AnimatePresence mode="wait">
+                {aiState === 'idle' && (
+                  <motion.div
+                    key={activePartId}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.16 }}
+                    style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', gap: 8 }}
+                  >
+                    {activePart?.options.map((opt) => {
+                      const isSel  = materials[activePartId] === opt.id
+                      const accent = PART_ACCENT[activePartId]
+                      return (
+                        <div
+                          key={opt.id}
+                          onClick={() => handleSelect(activePartId, opt.id)}
+                          style={{
+                            flex: 1,
+                            padding: '14px 18px',
+                            background: isSel ? `rgba(10,10,10,0.90)` : 'rgba(10,10,10,0.72)',
+                            border: isSel ? `1px solid ${accent}80` : '1px solid rgba(255,255,255,0.06)',
+                            borderLeft: isSel ? `3px solid ${accent}` : '3px solid transparent',
+                            cursor: 'pointer',
+                            transition: 'all 0.16s ease',
+                            userSelect: 'none',
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14,
+                            overflow: 'hidden',
+                          }}
+                        >
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 6 }}>
+                              <div style={{
+                                width: 4, height: 4, borderRadius: '50%', flexShrink: 0,
+                                background: isSel ? accent : 'transparent',
+                                border: `1px solid ${isSel ? accent : 'rgba(255,255,255,0.2)'}`,
+                                transition: 'all 0.16s',
+                              }} />
+                              <span style={{ fontFamily: 'monospace', fontSize: 8, color: isSel ? accent : '#3a3a38', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                                {opt.en}
+                              </span>
+                            </div>
+                            <div style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 14, color: isSel ? accent : '#d0d0cc', marginBottom: 5, transition: 'color 0.16s' }}>
+                              {opt.label}
+                            </div>
+                            <div style={{ fontSize: 11, color: '#484846', lineHeight: 1.7, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {opt.feature}
+                            </div>
+                          </div>
+                          <div style={{ flexShrink: 0 }}>
+                            <div style={{ width: 28, height: 2, background: RISK_COLOR[opt.risk], opacity: isSel ? 1 : 0.35, marginBottom: 4 }} />
+                            <div style={{ fontFamily: 'monospace', fontSize: 8, color: RISK_COLOR[opt.risk], opacity: isSel ? 1 : 0.3 }}>
+                              {RISK_TEXT[opt.risk]}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </motion.div>
+                )}
+
+                {/* [loading] */}
+                {aiState === 'loading' && (
+                  <motion.div
+                    key="loading"
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    style={{
+                      position: 'absolute', inset: 0,
+                      background: 'rgba(10,10,10,0.82)',
+                      display: 'flex', alignItems: 'center', gap: 12,
+                      padding: '0 24px',
+                    }}
+                  >
+                    <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#c8b89a', animation: 'blink 1.2s ease infinite', flexShrink: 0 }} />
+                    <span style={{ fontFamily: 'monospace', fontSize: 9, color: '#4a4a48', letterSpacing: '0.14em' }}>
+                      ANALYZING MATERIAL CONFIGURATION...
+                    </span>
+                  </motion.div>
+                )}
+
+                {/* [done / error] 反馈文字 */}
+                {(aiState === 'done' || aiState === 'error') && (
+                  <motion.div
+                    key="feedback"
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                    transition={{ duration: 0.4 }}
+                    style={{
+                      position: 'absolute', inset: 0,
+                      background: 'rgba(10,10,10,0.88)',
+                      borderLeft: '3px solid rgba(200,184,154,0.35)',
+                      padding: '24px 22px',
+                      overflow: 'auto',
+                    }}
+                  >
+                    <div style={{ fontFamily: 'monospace', fontSize: 8, color: '#c8b89a', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 14 }}>
+                      材料档案 · {satellite?.name ?? '卫星'}
+                    </div>
+                    <p style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 13, color: 'rgba(245,244,240,0.78)', lineHeight: 2.0 }}>
+                      {aiState === 'done' ? feedback : '材料分析服务暂时不可用，材料组合已记录。'}
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* ── 底部操作行（固定高度，始终占位）── */}
+            <div style={{ height: 60, display: 'flex', alignItems: 'center', marginTop: 12 }}>
+              {aiState === 'idle' && (
+                <button
+                  onClick={allDone ? handleGenerateFeedback : undefined}
                   style={{
-                    border: '1px solid #1a1a18',
-                    borderLeft: '3px solid rgba(200,184,154,0.35)',
-                    background: '#0d0d0c',
-                    padding: '28px',
-                    marginTop: 8,
+                    fontFamily: 'monospace', fontSize: 10,
+                    letterSpacing: '0.14em', textTransform: 'uppercase',
+                    padding: '13px 28px', background: 'transparent',
+                    border: `1px solid ${allDone ? 'rgba(200,184,154,0.5)' : 'rgba(255,255,255,0.08)'}`,
+                    color: allDone ? '#c8b89a' : '#3a3a38',
+                    cursor: allDone ? 'pointer' : 'not-allowed',
+                    transition: 'all 0.25s ease',
                   }}
                 >
-                  {aiState === 'loading' && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#c8b89a', animation: 'blink 1.2s ease infinite' }} />
-                      <span style={{ fontFamily: 'monospace', fontSize: 9, color: '#4a4a48', letterSpacing: '0.14em' }}>
-                        ANALYZING MATERIAL CONFIGURATION...
-                      </span>
-                    </div>
-                  )}
-                  {(aiState === 'done' || aiState === 'error') && (
-                    <>
-                      <div style={{ fontFamily: 'monospace', fontSize: 8, color: '#c8b89a', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 18 }}>
-                        材料档案 · {satellite?.name ?? '卫星'}
-                      </div>
-                      <p style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 14, color: 'rgba(245,244,240,0.75)', lineHeight: 2.1, marginBottom: 36 }}>
-                        {aiState === 'done' ? feedback : '材料分析服务暂时不可用，材料组合已记录。'}
-                      </p>
-                      <div
-                        onClick={onComplete}
-                        style={{
-                          display: 'inline-block', fontFamily: 'monospace', fontSize: 11,
-                          letterSpacing: '0.12em', textTransform: 'uppercase',
-                          padding: '14px 28px', cursor: 'pointer',
-                          border: '1px solid rgba(200,184,154,0.4)', color: '#c8b89a',
-                        }}
-                      >
-                        进入下一章：轨道是什么 →
-                      </div>
-                    </>
-                  )}
+                  {allDone ? '生成材料分析报告 →' : `还需选择 ${4 - selectedCount} 个部位`}
+                </button>
+              )}
+              {(aiState === 'done' || aiState === 'error') && (
+                <motion.div
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.4, delay: 0.3 }}
+                  onClick={onComplete}
+                  style={{
+                    fontFamily: 'monospace', fontSize: 10,
+                    letterSpacing: '0.12em', textTransform: 'uppercase',
+                    padding: '13px 28px', cursor: 'pointer',
+                    border: '1px solid rgba(200,184,154,0.45)', color: '#c8b89a',
+                  }}
+                >
+                  进入下一章：轨道是什么 →
                 </motion.div>
               )}
-            </AnimatePresence>
-          </div>
+            </div>
 
+          </div>
         </div>
       </div>
 
