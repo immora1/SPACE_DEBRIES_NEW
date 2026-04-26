@@ -155,9 +155,14 @@ app.get('/api/satellite', (req, res) => {
   const absLat = Math.abs(lat)
 
   // 轨道倾角 >= 城市纬度的卫星才能飞越该城市
-  const candidates = ALL_SATS.filter(
-    s => s.INCLINATION != null && Number(s.INCLINATION) >= absLat
-  )
+  // Starlink 占总量 77%，每 10 颗只保留 1 颗（按 NORAD_CAT_ID 取模，保证确定性）
+  const candidates = ALL_SATS.filter(s => {
+    if (s.INCLINATION == null || Number(s.INCLINATION) < absLat) return false
+    if (s.OBJECT_NAME?.toUpperCase().includes('STARLINK')) {
+      return Number(s.NORAD_CAT_ID) % 10 === 0
+    }
+    return true
+  })
   const pool = candidates.length >= 10 ? candidates : ALL_SATS
 
   const seed = strHash(city + name + story)

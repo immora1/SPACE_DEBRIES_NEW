@@ -58,17 +58,17 @@ function TestCard({ title, description, onRun, status, data }) {
 }
 
 export default function ApiTest() {
-  const [celestrak, setCelestrak] = useState({ status: STATUS.idle, data: null })
+  const [satellite, setSatellite] = useState({ status: STATUS.idle, data: null })
   const [gpt, setGpt] = useState({ status: STATUS.idle, data: null })
 
-  async function testCelestrak() {
-    setCelestrak({ status: STATUS.loading, data: null })
+  async function testSatellite() {
+    setSatellite({ status: STATUS.loading, data: null })
     try {
-      const res = await fetch('/api/test-celestrak')
+      const res = await fetch('/api/satellite?city=北京&name=test&story=test')
       const data = await res.json()
-      setCelestrak({ status: data.ok ? STATUS.ok : STATUS.error, data })
+      setSatellite({ status: data.ok ? STATUS.ok : STATUS.error, data })
     } catch (err) {
-      setCelestrak({ status: STATUS.error, data: { error: err.message } })
+      setSatellite({ status: STATUS.error, data: { error: err.message } })
     }
   }
 
@@ -93,11 +93,11 @@ export default function ApiTest() {
 
         <div className="flex flex-col gap-4">
           <TestCard
-            title="CelesTrak · 卫星数据"
-            description="拉取 ISS（国际空间站）轨道目录数据，验证代理与网络连通"
-            onRun={testCelestrak}
-            status={celestrak.status}
-            data={celestrak.data}
+            title="本地卫星数据库"
+            description="从 satellites.json 按城市纬度匹配卫星，验证本地数据加载正常"
+            onRun={testSatellite}
+            status={satellite.status}
+            data={satellite.data}
           />
 
           <TestCard
