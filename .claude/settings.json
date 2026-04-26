@@ -19,7 +19,8 @@
       "Bash(node --input-type=module --eval ' *)",
       "WebFetch(domain:www.space-track.org)",
       "WebSearch",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(git checkout *)"
     ]
   }
 }
