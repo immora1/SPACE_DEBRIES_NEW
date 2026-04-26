@@ -15,7 +15,8 @@
       "Bash(git restore *)",
       "Read(//e/Agent//**)",
       "Bash(node -e \"require\\('@react-three/fiber'\\); require\\('@react-three/drei'\\); require\\('three'\\); console.log\\('3D packages OK'\\)\")",
-      "Bash(npx vite *)"
+      "Bash(npx vite *)",
+      "Bash(node --input-type=module --eval ' *)"
     ]
   }
 }
