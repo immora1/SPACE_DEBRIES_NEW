@@ -9,12 +9,14 @@
 **每次修改任何文件后，必须立即测试 API 是否仍然可用。如果 API 无法接通，立即用 `git restore` 恢复修改前的状态，不得继续后续工作。**
 
 ```bash
-curl http://localhost:3001/api/health          # 后端在线
-curl http://localhost:3001/api/test-celestrak  # CelesTrak 连通
-curl -X POST http://localhost:3001/api/test-gpt  # GPT 连通
+curl http://localhost:3001/api/health             # 后端在线
+curl -X POST http://localhost:3001/api/test-gpt   # GPT 连通
+curl "http://localhost:3001/api/satellite?city=北京&name=test&story=test"  # 本地卫星数据加载正常
 ```
 
 三条全部返回 `"ok": true` 才算通过。任意失败 → `git restore <文件>` 立即回滚。
+
+> 卫星数据现在来自本地 `satellites.json`（4976 颗，LEO/MEO/GEO），不再调用 CelesTrak 或 Space-Track。唯一的外部依赖是 OpenAI GPT API。
 
 ---
 
