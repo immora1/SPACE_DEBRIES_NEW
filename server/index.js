@@ -125,129 +125,33 @@ app.post('/api/gpt', async (req, res) => {
   }
 })
 
-// ── Space-Track 卫星数据 ──────────────────────────────────────────────────
-const ST_BASE  = 'https://www.space-track.org'
-const ST_USER  = process.env.SPACETRACK_USER
-const ST_PASS  = process.env.SPACETRACK_PASS
-
-// 离线兜底：Space-Track 不可用时使用
+// ── CelesTrak：按城市匹配卫星 ────────────────────────────────────────────
 const FALLBACK_SATS = [
-  { OBJECT_NAME: 'FENGYUN 3D',  NORAD_CAT_ID: 43010, APOGEE: 851, PERIGEE: 820, INCLINATION: 98.7, PERIOD: 101.4, LAUNCH_DATE: '2017-11-15', COUNTRY: 'PRC' },
-  { OBJECT_NAME: 'TERRA',       NORAD_CAT_ID: 25994, APOGEE: 705, PERIGEE: 694, INCLINATION: 98.2, PERIOD:  98.9, LAUNCH_DATE: '1999-12-18', COUNTRY: 'US'  },
-  { OBJECT_NAME: 'AQUA',        NORAD_CAT_ID: 27424, APOGEE: 710, PERIGEE: 697, INCLINATION: 98.2, PERIOD:  98.9, LAUNCH_DATE: '2002-05-04', COUNTRY: 'US'  },
-  { OBJECT_NAME: 'SENTINEL-2A', NORAD_CAT_ID: 40697, APOGEE: 790, PERIGEE: 783, INCLINATION: 98.6, PERIOD: 100.6, LAUNCH_DATE: '2015-06-23', COUNTRY: 'ESA' },
-  { OBJECT_NAME: 'LANDSAT 8',   NORAD_CAT_ID: 39084, APOGEE: 708, PERIGEE: 703, INCLINATION: 98.2, PERIOD:  99.0, LAUNCH_DATE: '2013-02-11', COUNTRY: 'US'  },
-  { OBJECT_NAME: 'SUOMI NPP',   NORAD_CAT_ID: 37849, APOGEE: 833, PERIGEE: 826, INCLINATION: 98.7, PERIOD: 101.4, LAUNCH_DATE: '2011-10-28', COUNTRY: 'US'  },
+  { OBJECT_NAME: 'FENGYUN 3D',  NORAD_CAT_ID: 43010, APOGEE: 851, PERIGEE: 820, INCLINATION: 98.7,  PERIOD: 101.4, LAUNCH_DATE: '2017-11-15', OBJECT_TYPE: 'PAY' },
+  { OBJECT_NAME: 'TERRA',       NORAD_CAT_ID: 25994, APOGEE: 705, PERIGEE: 694, INCLINATION: 98.2,  PERIOD:  98.9, LAUNCH_DATE: '1999-12-18', OBJECT_TYPE: 'PAY' },
+  { OBJECT_NAME: 'AQUA',        NORAD_CAT_ID: 27424, APOGEE: 710, PERIGEE: 697, INCLINATION: 98.2,  PERIOD:  98.9, LAUNCH_DATE: '2002-05-04', OBJECT_TYPE: 'PAY' },
+  { OBJECT_NAME: 'SENTINEL-2A', NORAD_CAT_ID: 40697, APOGEE: 790, PERIGEE: 783, INCLINATION: 98.6,  PERIOD: 100.6, LAUNCH_DATE: '2015-06-23', OBJECT_TYPE: 'PAY' },
+  { OBJECT_NAME: 'LANDSAT 8',   NORAD_CAT_ID: 39084, APOGEE: 708, PERIGEE: 703, INCLINATION: 98.2,  PERIOD:  99.0, LAUNCH_DATE: '2013-02-11', OBJECT_TYPE: 'PAY' },
+  { OBJECT_NAME: 'SUOMI NPP',   NORAD_CAT_ID: 37849, APOGEE: 833, PERIGEE: 826, INCLINATION: 98.7,  PERIOD: 101.4, LAUNCH_DATE: '2011-10-28', OBJECT_TYPE: 'PAY' },
 ]
 
-// 内存缓存：24 小时有效，服务器整个生命周期只刷新一次
-let satCache     = []
-let satCacheTime = 0
-const CACHE_TTL  = 24 * 60 * 60 * 1000
-
-// 登录 Space-Track，返回 Cookie 字符串
-async function spaceTrackLogin() {
-  if (!ST_USER || ST_USER.includes('邮箱')) throw new Error('SPACETRACK_USER not configured')
-  const res = await proxiedFetch(`${ST_BASE}/ajaxauth/login`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    body: `identity=${encodeURIComponent(ST_USER)}&password=${encodeURIComponent(ST_PASS)}`,
-  })
-  if (!res.ok) throw new Error(`Space-Track login HTTP ${res.status}`)
-  // 拼接所有 Set-Cookie 值（只取 name=value 部分，丢弃 path/expires 等）
-  const raw = res.headers.raw()['set-cookie'] ?? []
-  const cookie = raw.map(c => c.split(';')[0]).join('; ')
-  if (!cookie) throw new Error('Space-Track login returned no cookie')
-  return cookie
-}
-
-// 从 Space-Track 拉取 LEO 在轨卫星列表，返回标准化数组
-async function fetchFromSpaceTrack() {
-  const cookie = await spaceTrackLogin()
-
-  // 简化查询：CURRENT=Y（在轨）+ PAY（有效载荷）+ 限 500 条
-  // APOGEE 过滤放到 JS 侧做，避免 URL 编码问题
-  const url = `${ST_BASE}/basicspacedata/query/class/satcat`
-    + `/CURRENT/Y/OBJECT_TYPE/PAY`
-    + `/FORMAT/JSON/orderby/LAUNCH%20desc/limit/500`
-
-  const res = await proxiedFetch(url, { headers: { Cookie: cookie } })
-  if (!res.ok) throw new Error(`Space-Track query HTTP ${res.status}`)
-
-  const text = await res.text()
-  console.log('[satellite] Space-Track raw response (first 200):', text.slice(0, 200))
-
-  let raw
-  try { raw = JSON.parse(text) } catch { throw new Error('Space-Track response is not JSON') }
-  if (!Array.isArray(raw)) throw new Error(`Space-Track unexpected format: ${text.slice(0, 100)}`)
-  if (raw.length === 0) throw new Error('Space-Track returned 0 records')
-
-  // 只保留 LEO（远地点 < 2000 km），在 JS 侧过滤
-  const leo = raw.filter(s => Number(s.APOGEE) < 2000 && Number(s.APOGEE) > 0)
-  console.log(`[satellite] total=${raw.length}, LEO=${leo.length}`)
-
-  return leo
-    .filter(s => (s.OBJECT_NAME || s.SATNAME || '').trim())
-    .map(s => ({
-      OBJECT_NAME:  (s.OBJECT_NAME || s.SATNAME || '').trim(),
-      NORAD_CAT_ID: s.NORAD_CAT_ID,
-      APOGEE:       Number(s.APOGEE),
-      PERIGEE:      Number(s.PERIGEE),
-      INCLINATION:  Number(s.INCLINATION),
-      PERIOD:       Number(s.PERIOD),
-      LAUNCH_DATE:  s.LAUNCH,
-      COUNTRY:      s.COUNTRY,
-      LAUNCH_YEAR:  s.LAUNCH_YEAR,
-      SITE:         s.SITE,
-      RCS_SIZE:     s.RCS_SIZE,
-    }))
-}
-
-// 获取缓存，过期或为空时自动刷新
-async function getSatList() {
-  if (satCache.length > 0 && Date.now() - satCacheTime < CACHE_TTL) return satCache
-  try {
-    console.log('[satellite] fetching from Space-Track...')
-    satCache = await fetchFromSpaceTrack()
-    satCacheTime = Date.now()
-    console.log(`[satellite] cached ${satCache.length} LEO satellites from Space-Track`)
-  } catch (err) {
-    console.warn('[satellite] Space-Track unavailable, using fallback:', err.message)
-    if (satCache.length === 0) satCache = FALLBACK_SATS
-  }
-  return satCache
-}
-
-// 城市名哈希 → 固定选一颗卫星
-function cityHash(city) {
-  return city.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
-}
-
-// 服务启动时预热缓存（异步，不阻塞启动）
-getSatList().catch(() => {})
-
-// ── 卫星查询端点 ──────────────────────────────────────────────────────────
 app.get('/api/satellite', async (req, res) => {
   const { city = '' } = req.query
-  const sats = await getSatList()
-  const hash = cityHash(city)
-  const sat  = sats[hash % sats.length] ?? sats[0]
-  const source = sats === FALLBACK_SATS ? 'fallback' : 'spacetrack'
-  res.json({ ok: true, satellite: sat, source })
-})
-
-// ── Space-Track 连通性测试端点 ────────────────────────────────────────────
-app.get('/api/test-spacetrack', async (req, res) => {
   try {
-    const cookie = await spaceTrackLogin()
-    // 只查一颗（ISS）验证查询是否通
-    const url = `${ST_BASE}/basicspacedata/query/class/satcat/NORAD_CAT_ID/25544/FORMAT/JSON`
-    const r   = await proxiedFetch(url, { headers: { Cookie: cookie } })
-    if (!r.ok) throw new Error(`query HTTP ${r.status}`)
-    const data = await r.json()
-    res.json({ ok: true, sample: data[0] ?? null, cacheSize: satCache.length })
-  } catch (err) {
-    res.status(500).json({ ok: false, error: err.message })
+    // 尝试 CelesTrak satcat 获取活跃 LEO 卫星列表
+    const url = 'https://celestrak.org/SPACETRACK/query/class/satcat/CURRENT/Y/OBJECT_TYPE/PAY/ORBIT_CENTER/EA/FORMAT/JSON/orderby/LAUNCH_DATE%20desc/limit/100'
+    const response = await proxiedFetch(url)
+    if (!response.ok) throw new Error(`CelesTrak ${response.status}`)
+    const data = await response.json()
+    // 用城市名哈希选一颗，保证同城市同卫星
+    const hash = city.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
+    const sat = data[hash % data.length] ?? data[0]
+    res.json({ ok: true, satellite: sat, source: 'celestrak' })
+  } catch {
+    // CelesTrak 不可用时用离线备用卫星
+    const hash = city.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
+    const sat = FALLBACK_SATS[hash % FALLBACK_SATS.length]
+    res.json({ ok: true, satellite: sat, source: 'fallback' })
   }
 })
 
