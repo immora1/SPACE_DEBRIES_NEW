@@ -1,3 +1,6 @@
+# Claude Code 本地配置（不提交）
+.claude/
+
 # Logs
 logs
 *.log
