@@ -179,7 +179,7 @@ export async function generateGameDecisionFeedback({
   const user_ = `卫星${satellite.name}遭遇威胁：${threat}，用户选择：${decision}，结果：${outcome}。
 ${progress}。用户最重要的事：${user.importantEvent}。
 feedback（60字以内）：${outcome === 'correct' ? '任务日志+真实历史数据支撑' : '故障报告+历史先例'}。
-storyUpdate（25字以内）：平行时空那件事同步变化一句话，随决策编号推进紧张感。`
+storyUpdate（70字以内）：基于本次决策结果（${outcome}），写平行时空中那件最重要的事此刻发生了什么具体变化，要有细节感，随决策编号逐渐加重叙事张力，让用户感受到每一步选择的重量。`
 
   const raw = await chat(system, user_, 0.75, 300)
   return extractJSON(raw)

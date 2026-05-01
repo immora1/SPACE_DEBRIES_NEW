@@ -1,67 +1,144 @@
-// HUD：护甲值 / 燃料值 / 任务进度 + 当前轮次
+// HUD 状态栏 — 左上角半透明面板，SPACE GAME 风格
 export default function HUD({ armor, fuel, missionProgress, round, totalRounds, satelliteName }) {
   function barColor(val) {
-    if (val > 60) return '#4a6741'   // sci绿：良好
-    if (val > 30) return '#c8a040'   // 金：警告
-    return '#c8503a'                  // 红：危险
+    if (val > 60) return '#10b981'
+    if (val > 30) return '#f59e0b'
+    return '#ef4444'
+  }
+  function glowColor(val) {
+    if (val > 60) return 'rgba(16,185,129,0.5)'
+    if (val > 30) return 'rgba(245,158,11,0.5)'
+    return 'rgba(239,68,68,0.5)'
   }
 
   return (
     <div style={{
       position: 'absolute',
-      top: 0, left: 0, right: 0,
-      padding: '16px 24px',
-      background: 'linear-gradient(to bottom, rgba(10,10,10,0.95) 0%, rgba(10,10,10,0) 100%)',
+      top: 20, left: 20,
       pointerEvents: 'none',
       zIndex: 10,
     }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '32px', flexWrap: 'wrap' }}>
+      <div style={{
+        background: 'rgba(4, 4, 14, 0.82)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        border: '1px solid rgba(80, 70, 229, 0.18)',
+        borderRadius: 8,
+        padding: '14px 18px',
+        minWidth: 220,
+        boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+      }}>
+        {/* Top accent */}
+        <div style={{
+          height: 1,
+          background: 'linear-gradient(to right, rgba(80,70,229,0.6), transparent)',
+          marginBottom: 12,
+          marginLeft: -18, marginRight: -18,
+          paddingLeft: 18,
+        }} />
 
-        {/* 卫星名 + 轮次 */}
-        <div style={{ minWidth: 160 }}>
-          <div style={{ fontFamily: 'Space Mono, monospace', fontSize: '10px', color: '#6b6b66', letterSpacing: '0.1em', marginBottom: 4 }}>
-            ACTIVE SATELLITE
-          </div>
-          <div style={{ fontFamily: 'Space Mono, monospace', fontSize: '13px', color: '#c8b89a', fontWeight: 'bold' }}>
-            {satelliteName || 'UNKNOWN-SAT'}
-          </div>
-          <div style={{ fontFamily: 'Space Mono, monospace', fontSize: '10px', color: '#6b6b66', marginTop: 4 }}>
-            EVENT {round} / {totalRounds}
-          </div>
+        {/* Satellite name */}
+        <div style={{
+          fontFamily: 'Space Mono, monospace',
+          fontSize: 9, letterSpacing: '0.12em',
+          color: 'rgba(80,70,229,0.6)',
+          marginBottom: 3,
+        }}>
+          ACTIVE SAT
+        </div>
+        <div style={{
+          fontFamily: 'Space Mono, monospace',
+          fontSize: 12,
+          color: '#c8b89a',
+          fontWeight: 'bold',
+          letterSpacing: '0.05em',
+          marginBottom: 12,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          maxWidth: 200,
+        }}>
+          {satelliteName || 'UNKNOWN-SAT'}
         </div>
 
-        {/* 护甲值 */}
-        <StatBar label="ARMOR" value={armor} color={barColor(armor)} unit="%" />
+        {/* Stats */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <StatBar label="ARMOR"   value={armor}           color={barColor(armor)}           glow={glowColor(armor)} />
+          <StatBar label="FUEL"    value={fuel}            color={barColor(fuel)}            glow={glowColor(fuel)} />
+          <StatBar label="MISSION" value={missionProgress} color="rgba(80,130,200,0.9)"     glow="rgba(80,130,200,0.4)" />
+        </div>
 
-        {/* 燃料值 */}
-        <StatBar label="FUEL" value={fuel} color={barColor(fuel)} unit="%" />
-
-        {/* 任务进度 */}
-        <StatBar label="MISSION" value={missionProgress} color="#3d5a7a" unit="%" />
+        {/* Round counter */}
+        <div style={{
+          marginTop: 12,
+          paddingTop: 10,
+          borderTop: '1px solid rgba(255,255,255,0.05)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}>
+          <span style={{
+            fontFamily: 'Space Mono, monospace',
+            fontSize: 9, letterSpacing: '0.1em',
+            color: '#2a2a40',
+          }}>
+            ROUND
+          </span>
+          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+            {Array.from({ length: totalRounds }).map((_, i) => (
+              <div key={i} style={{
+                width: 6, height: 6,
+                borderRadius: '50%',
+                background: i < round
+                  ? 'rgba(80,70,229,0.8)'
+                  : i === round - 1
+                    ? 'rgba(80,70,229,1)'
+                    : 'rgba(255,255,255,0.08)',
+                boxShadow: i === round - 1 ? '0 0 6px rgba(80,70,229,0.8)' : 'none',
+                transition: 'all 0.3s',
+              }} />
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   )
 }
 
-function StatBar({ label, value, color, unit }) {
+function StatBar({ label, value, color, glow }) {
   const clamped = Math.max(0, Math.min(100, value))
   return (
-    <div style={{ minWidth: 120 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-        <span style={{ fontFamily: 'Space Mono, monospace', fontSize: '10px', color: '#6b6b66', letterSpacing: '0.08em' }}>
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+        <span style={{
+          fontFamily: 'Space Mono, monospace',
+          fontSize: 9, letterSpacing: '0.1em',
+          color: '#28283e',
+        }}>
           {label}
         </span>
-        <span style={{ fontFamily: 'Space Mono, monospace', fontSize: '11px', color }}>
-          {Math.round(clamped)}{unit}
+        <span style={{
+          fontFamily: 'Space Mono, monospace',
+          fontSize: 10,
+          color,
+        }}>
+          {Math.round(clamped)}%
         </span>
       </div>
-      <div style={{ height: 3, background: '#2a2a28', borderRadius: 2, overflow: 'hidden' }}>
+      <div style={{
+        height: 4,
+        background: 'rgba(255,255,255,0.05)',
+        borderRadius: 2,
+        overflow: 'hidden',
+        position: 'relative',
+      }}>
         <div style={{
           height: '100%',
           width: `${clamped}%`,
           background: color,
           borderRadius: 2,
-          transition: 'width 0.6s ease, background 0.3s ease',
+          boxShadow: `0 0 6px ${glow}`,
+          transition: 'width 0.7s cubic-bezier(0.4,0,0.2,1), background 0.4s ease',
         }} />
       </div>
     </div>

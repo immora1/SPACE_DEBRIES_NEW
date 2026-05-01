@@ -1,26 +1,14 @@
 {
-  "permissions": {
-    "allow": [
-      "Bash(npm create *)",
-      "Bash(npx create-vite@latest . --template react --overwrite)",
-      "Bash(npm install *)",
-      "Bash(powershell -Command \"Stop-Process -Id 28392 -Force\")",
-      "Bash(netstat -ano)",
-      "Bash(node server/index.js)",
-      "Bash(curl -s -X POST http://localhost:3001/api/test-gpt)",
-      "Bash(npm run *)",
-      "Bash(curl -s http://localhost:5173)",
-      "WebFetch(domain:www.thisisstudiox.com)",
-      "Bash(curl -s \"http://localhost:3001/api/satellite?city=beijing\")",
-      "Bash(git restore *)",
-      "Read(//e/Agent//**)",
-      "Bash(node -e \"require\\('@react-three/fiber'\\); require\\('@react-three/drei'\\); require\\('three'\\); console.log\\('3D packages OK'\\)\")",
-      "Bash(npx vite *)",
-      "Bash(node --input-type=module --eval ' *)",
-      "WebFetch(domain:www.space-track.org)",
-      "WebSearch",
-      "WebFetch(domain:github.com)",
-      "Bash(git checkout *)"
-    ]
-  }
+  "enabledPlugins": {
+    "design@knowledge-work-plugins": true
+  },
+  "extraKnownMarketplaces": {
+    "knowledge-work-plugins": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/anthropics/knowledge-work-plugins.git"
+      }
+    }
+  },
+  "effortLevel": "high"
 }
