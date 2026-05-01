@@ -226,11 +226,16 @@ export async function generateReentryEnding({ gameResult, material, satellite, u
 // 输入: debris, technology, isCorrect
 // 输出: { feedback: string }
 // ─────────────────────────────────────────────────────────────────────────────
-export async function generateCleanupFeedback({ debris, technology, isCorrect }) {
+export async function generateCleanupFeedback({ debris, debrisDetail = '', debrisSource = '', debrisContext = '', technology, isCorrect }) {
   // TODO: 替换为完整 prompt
   const system = `你是太空垃圾清理技术专家，语气简洁。输出纯 JSON，格式：{"feedback": "..."}`
-  const user_ = `碎片类型：${debris}，选择清理技术：${technology}，${isCorrect ? '匹配正确' : '匹配错误'}。
-写40字以内反馈：说明匹配${isCorrect ? '正确' : '错误'}的原因。`
+  const user_ = `碎片类型：${debris}
+碎片细节：${debrisDetail}
+来源：${debrisSource}
+个性化依据：${debrisContext}
+选择清理技术：${technology}
+匹配结果：${isCorrect ? '匹配正确' : '匹配错误'}
+写55字以内反馈：必须点到材料或事件来源，说明匹配${isCorrect ? '正确' : '错误'}的原因。`
 
   const raw = await chat(system, user_, 0.7, 150)
   return extractJSON(raw)

@@ -7,6 +7,7 @@ const MONO  = 'Space Mono, monospace'
 const SERIF = 'Noto Serif SC, serif'
 const SANS  = 'Noto Sans SC, sans-serif'
 const EASE  = [0.16, 1, 0.3, 1]
+const CONTENT_MAX = 1080
 
 const BARRIERS = [
   {
@@ -32,59 +33,129 @@ const ALL_METHODS = [
     id: 'laser', img: '/cleanup/1.png',
     title: '激光烧蚀', titleEn: 'LASER ABLATION', status: '研究阶段',
     desc: '高能激光照射碎片表面，产生的等离子体喷射提供微推力，改变轨道使其加速再入大气层。对 1–10 cm 高速小碎片效率最高。',
+    details: [
+      ['原理', '地面或轨道平台用高能激光加热碎片表面，烧蚀喷流形成反冲力。'],
+      ['目标', '适合厘米级高速小碎片，不需要接触目标。'],
+      ['限制', '需要极高指向精度，且要避免误伤正常航天器。'],
+    ],
   },
   {
     id: 'arm', img: '/cleanup/2.png',
     title: '机械臂抓取', titleEn: 'ROBOTIC ARM', status: '任务中',
     desc: '清理卫星近距接近目标，伸出高精度机械臂固定失控卫星，再拖入大气层。ClearSpace-1 任务以此方案为目标 Vespa 残骸设计。',
+    details: [
+      ['原理', '清理航天器先交会靠近，再用机械臂锁定主体结构。'],
+      ['目标', '适合大型退役卫星、火箭上面级等可识别目标。'],
+      ['限制', '目标若翻滚剧烈，接近和抓取风险会显著上升。'],
+    ],
   },
   {
     id: 'net', img: '/cleanup/3.png',
     title: '柔性捕捉网', titleEn: 'SPACE NET', status: '已测试',
     desc: '对旋转或形状不规则的碎片发射高强度网，包裹目标无需精确对准接口。RemoveDEBRIS 项目已完成在轨抛网测试。',
+    details: [
+      ['原理', '发射柔性高强度网，张开后包裹目标，再由母星拖拽离轨。'],
+      ['目标', '适合形状不规则、没有标准对接口的中大型残骸。'],
+      ['进展', 'RemoveDEBRIS 曾完成在轨抛网捕获演示。'],
+    ],
   },
   {
     id: 'harpoon', img: '/cleanup/4.png',
     title: '飞弹鱼叉', titleEn: 'HARPOON', status: '已测试',
     desc: '向碎片发射带倒钩的钛合金鱼叉，穿透金属外壳后通过缆绳拖离轨道。适合远距离捕获坚硬大型残骸结构。',
+    details: [
+      ['原理', '鱼叉高速射入金属外壳，倒钩固定后由缆绳牵引。'],
+      ['目标', '适合坚硬、外壳较厚的大型残骸或火箭结构。'],
+      ['风险', '穿透冲击可能制造二次碎片，因此目标选择很关键。'],
+    ],
   },
   {
     id: 'tether', img: '/cleanup/5.png',
     title: '电动缆索', titleEn: 'ELECTRODYNAMIC TETHER', status: '研究阶段',
     desc: '释放数公里长的导电缆索切割地磁场，产生洛伦兹力令卫星减速，无需燃料即可离轨。寿命末期部署，可大幅压缩在轨残留时间。',
+    details: [
+      ['原理', '导电缆索切割地磁场产生电流，洛伦兹力提供持续减速。'],
+      ['目标', '适合卫星寿命末期主动部署，减少长期滞留。'],
+      ['优势', '不依赖推进剂，能把离轨过程从多年压缩到更短周期。'],
+    ],
   },
   {
     id: 'sail', img: '/cleanup/6.png',
     title: '阻力帆', titleEn: 'DRAG SAIL', status: '已部署',
     desc: '寿命结束时展开大面积薄膜帆，利用稀薄大气阻力加速轨道衰减，将自然再入从数百年缩短至数年甚至数月。',
+    details: [
+      ['原理', '展开大面积薄膜，提高迎风面积，让稀薄大气更快拖慢轨道速度。'],
+      ['目标', '适合低轨小卫星和轻质结构的寿命末期离轨。'],
+      ['优势', '结构简单、成本低，可作为任务结束后的被动清理装置。'],
+    ],
   },
 ]
 
 const DRAG_TECHNOLOGIES = ALL_METHODS.filter(m => ['laser', 'arm', 'sail'].includes(m.id))
 
+const MATERIAL_META = {
+  frame: {
+    aluminum: { label: '铝合金主框架', risk: '低存活', note: '再入时大多烧蚀，但碰撞后会形成可追踪金属片。' },
+    titanium: { label: '钛合金主框架', risk: '高存活', note: '高熔点大块结构更可能长期滞留或再入存活。' },
+    cfrp: { label: '碳纤维复合主框架', risk: '纤维化', note: '破碎后容易形成轻质复合材料片和纤维颗粒。' },
+  },
+  solar: {
+    silicon: { label: '硅基太阳能板', risk: '玻璃碎裂', note: '玻璃盖片和硅片会形成密集小碎片。' },
+    gaas: { label: '砷化镓太阳能板', risk: '中等存活', note: '电池层与铝基底可能产生片状和滴状残留。' },
+    flexible: { label: '柔性薄膜太阳能板', risk: '薄膜剥离', note: '在轨更容易剥离成轻薄高面积碎片。' },
+  },
+  insulation: {
+    mli: { label: '多层铝箔隔热毯', risk: '微粒多', note: '冷热循环和撞击后会释放大量薄片与微粒。' },
+    honeycomb: { label: '铝蜂窝板', risk: '结构碎片', note: '蜂窝结构碰撞后会裂成片状和块状混合碎片。' },
+    kevlar: { label: '凯夫拉吸收层', risk: '高韧性', note: '纤维层韧性高，碎片可能呈轻质复合絮片。' },
+  },
+  propulsion: {
+    ti_tank: { label: '钛合金球形贮箱', risk: '高存活', note: '厚壁球形结构很难完全烧蚀，属于重点清理目标。' },
+    al_tank: { label: '铝合金贮箱', risk: '低存活', note: '壁薄但碰撞后仍可能形成金属片和阀体残件。' },
+    copv: { label: '复合材料缠绕贮箱', risk: '爆裂风险', note: '复合外层和金属内衬可能形成混合碎片。' },
+  },
+}
+
+function materialInfo(materials, part) {
+  return MATERIAL_META[part]?.[materials?.[part]] || null
+}
+
 function buildDebrisSet({ gameResult, materials, debrisGenerated }) {
   const sourceText = (debrisGenerated && debrisGenerated[0]) || '轨道任务结束后产生的残余碎片'
-  const highSurvival = ['titanium', 'ti_tank', 'kevlar'].includes(materials?.frame)
+  const frame = materialInfo(materials, 'frame')
+  const solar = materialInfo(materials, 'solar')
+  const insulation = materialInfo(materials, 'insulation')
+  const propulsion = materialInfo(materials, 'propulsion')
+  const result = typeof gameResult === 'string' ? gameResult : gameResult?.result
+  const failed = result === 'failure'
+  const highSurvival = ['titanium', 'kevlar'].includes(materials?.frame)
     || ['ti_tank', 'copv'].includes(materials?.propulsion)
+    || materials?.insulation === 'kevlar'
+  const microSource = [solar, insulation].filter(Boolean).map(m => m.label).join(' + ') || '外露薄片与隔热层'
+  const bodySource = [frame, propulsion].filter(Boolean).map(m => m.label).join(' + ') || '卫星主体结构'
+  const lightSource = [solar, insulation, frame].filter(Boolean).map(m => m.label).join(' / ') || '轻质外露结构'
 
   return [
     {
       id: 'd1', ideal: 'laser',
-      name: '厘米级高速碎片群',
-      detail: '尺度 1–10 cm，密度高，传统机械捕获成本过高，激光微推方案可批量施加微小轨道变化。',
-      source: sourceText,
+      name: `${microSource} 释放的厘米级高速碎片群`,
+      detail: `${solar?.note || '太阳能板碎裂会形成玻璃和电池片残骸'}${insulation ? ` ${insulation.note}` : ''} 这类 1–10 cm 碎片数量多、速度高，逐个机械捕获不现实，适合用激光微推批量改变轨道。`,
+      source: `M4 事件记录：${sourceText}`,
+      context: `M1 选择材料：${microSource}`,
     },
     {
       id: 'd2', ideal: 'arm',
-      name: gameResult === 'failure' ? '失控卫星主体残骸' : '退役卫星主体',
-      detail: '体积大、质量高、姿态不可控，需近距离固定后执行受控离轨。',
-      source: gameResult === 'failure' ? '任务失败后遗留的主要目标' : '任务完成后的大型在轨结构',
+      name: failed ? `${bodySource} 构成的失控主体` : `${bodySource} 构成的退役主体`,
+      detail: `${frame?.note || '主体框架决定碎片尺寸和存活率'} ${propulsion?.note || '推进系统残件通常质量集中'} 目标体积大、质量高，若姿态不可控，需要近距离固定后执行受控离轨。`,
+      source: failed ? `M4 结果：任务失败，主体成为新的清理目标` : `M4 结果：任务完成后仍需处理大型在轨结构`,
+      context: `最终护甲 ${gameResult?.finalArmor ?? '未知'} / 燃料 ${gameResult?.finalFuel ?? '未知'} / 任务进度 ${gameResult?.finalMission ?? '未知'}`,
     },
     {
       id: 'd3', ideal: 'sail',
-      name: highSurvival ? '高面积质量比复合碎片' : '轻质剥离薄片碎片',
-      detail: '轻质、分散、受阻面积相对大，通过增加气动阻力可有效缩短在轨寿命。',
-      source: '长期轨道环境侵蚀产生',
+      name: highSurvival ? `${lightSource} 形成的复合轻质颗粒` : `${lightSource} 剥离的轻质薄片`,
+      detail: `${insulation?.note || solar?.note || '轻薄材料容易形成高面积质量比碎片'} 这些碎片质量小、受阻面积相对大，增加气动阻力能更有效缩短轨道寿命。`,
+      source: `M1 个性化材料路径：${lightSource}`,
+      context: highSurvival ? '含高熔点或复合材料，需优先缩短在轨滞留时间。' : '以轻质薄片为主，适合增阻离轨思路。',
     },
   ]
 }
@@ -96,26 +167,33 @@ function MethodCard({ m, index }) {
     <div
       onMouseEnter={() => setFlipped(true)}
       onMouseLeave={() => setFlipped(false)}
-      style={{ perspective: '1000px', height: 300 }}
+      style={{ perspective: '1200px', height: 330 }}
     >
       <div style={{
         position: 'relative', width: '100%', height: '100%',
         transformStyle: 'preserve-3d',
-        transition: 'transform 0.72s cubic-bezier(0.2, 0.8, 0.2, 1)',
-        transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
         animationDelay: `${index * 0.06}s`,
+        filter: flipped ? 'drop-shadow(0 18px 34px rgba(0,0,0,0.45))' : 'drop-shadow(0 10px 24px rgba(0,0,0,0.28))',
       }}>
 
         {/* ── 正面 ── */}
         <div style={{
           position: 'absolute', inset: 0,
           backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden',
+          transform: flipped ? 'rotateY(-180deg)' : 'rotateY(0deg)',
+          opacity: flipped ? 0 : 1,
+          transition: 'transform 0.72s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.18s linear 0.24s',
           background: '#0d0d0b', border: '1px solid #1c1c1a',
           overflow: 'hidden',
+          boxShadow: 'inset 0 0 0 1px rgba(245,244,240,0.025)',
         }}>
           <img
             src={m.img} alt={m.title}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.72, display: 'block' }}
+            style={{
+              width: '100%', height: '100%', objectFit: 'cover', opacity: 0.74, display: 'block',
+              transform: flipped ? 'scale(1.04)' : 'scale(1)',
+              transition: 'transform 0.72s cubic-bezier(0.2, 0.8, 0.2, 1)',
+            }}
             onError={e => { e.target.style.display = 'none' }}
           />
           <div style={{
@@ -144,27 +222,55 @@ function MethodCard({ m, index }) {
         <div style={{
           position: 'absolute', inset: 0,
           backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden',
-          transform: 'rotateY(180deg)',
-          background: '#0d0d0b',
+          transform: flipped ? 'rotateY(0deg)' : 'rotateY(180deg)',
+          opacity: flipped ? 1 : 0,
+          transition: 'transform 0.72s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.18s linear 0.24s',
+          background: 'radial-gradient(circle at 80% 10%, rgba(200,184,154,0.055), transparent 38%), #0d0d0b',
           border: '1px solid #2a2a28',
           borderLeft: '3px solid #c8b89a',
           display: 'flex', flexDirection: 'column',
-          justifyContent: 'center', padding: '28px 24px',
+          justifyContent: 'flex-start', padding: '20px 18px',
           boxSizing: 'border-box',
+          overflow: 'hidden',
         }}>
-          <div style={{ fontFamily: MONO, fontSize: 9, color: '#c8b89a', letterSpacing: '0.12em', marginBottom: 12 }}>
-            {m.titleEn}
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', marginBottom: 12 }}>
+            <div>
+              <div style={{ fontFamily: MONO, fontSize: 8, color: '#c8b89a', letterSpacing: '0.12em', marginBottom: 8 }}>
+                TECHNICAL DETAIL
+              </div>
+              <div style={{ fontFamily: SERIF, fontSize: 16, color: '#f0efe8', fontWeight: 400 }}>
+                {m.title}
+              </div>
+            </div>
+            <div style={{
+              fontFamily: MONO, fontSize: 8, color: '#5a5a56', letterSpacing: '0.08em',
+              border: '1px solid #2a2a28', padding: '3px 7px', whiteSpace: 'nowrap',
+            }}>
+              {m.status}
+            </div>
           </div>
-          <div style={{ width: 28, height: 1, background: '#3a3a38', marginBottom: 18 }} />
-          <div style={{ fontFamily: SERIF, fontSize: 17, color: '#f0efe8', fontWeight: 400, marginBottom: 16 }}>
-            {m.title}
-          </div>
+          <div style={{ width: '100%', height: 1, background: '#252522', marginBottom: 13 }} />
           <p style={{
-            fontFamily: SANS, fontSize: 12, color: '#9a9a92',
-            lineHeight: 1.85, margin: 0,
+            fontFamily: SANS, fontSize: 10, color: '#9a9a92',
+            lineHeight: 1.58, margin: '0 0 12px',
           }}>
             {m.desc}
           </p>
+          <div style={{ display: 'grid', gap: 7 }}>
+            {m.details?.map(([label, text]) => (
+              <div key={label} style={{
+                borderTop: '1px solid rgba(245,244,240,0.055)',
+                paddingTop: 6,
+              }}>
+                <div style={{ fontFamily: MONO, fontSize: 8, color: '#c8b89a', letterSpacing: '0.08em', marginBottom: 4 }}>
+                  {label}
+                </div>
+                <div style={{ fontFamily: SANS, fontSize: 9.5, color: '#7f7f78', lineHeight: 1.48 }}>
+                  {text}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
       </div>
@@ -198,6 +304,13 @@ export default function M6({ onComplete }) {
   const [epilogueState,  setEpilogueState]  = useState('idle')
   const [epilogue,       setEpilogue]       = useState('')
 
+  useEffect(() => {
+    setMatches({})
+    setFeedbackMap({})
+    setEpilogue('')
+    setEpilogueState('idle')
+  }, [debrisSet])
+
   const allMatched   = debrisSet.length > 0 && debrisSet.every(d => !!matches[d.id])
   const correctCount = debrisSet.filter(d => matches[d.id]?.isCorrect).length
   const accuracy     = debrisSet.length ? correctCount / debrisSet.length : 0
@@ -213,7 +326,14 @@ export default function M6({ onComplete }) {
     setMatches(prev => ({ ...prev, [debrisId]: { technologyId: techId, isCorrect } }))
     setLoadingId(debrisId)
     try {
-      const res = await generateCleanupFeedback({ debris: debris.name, technology: tech.title, isCorrect })
+      const res = await generateCleanupFeedback({
+        debris: debris.name,
+        debrisDetail: debris.detail,
+        debrisSource: debris.source,
+        debrisContext: debris.context,
+        technology: tech.title,
+        isCorrect,
+      })
       setFeedbackMap(prev => ({ ...prev, [debrisId]: res.feedback || fallbackFeedback(isCorrect) }))
     } catch {
       setFeedbackMap(prev => ({ ...prev, [debrisId]: fallbackFeedback(isCorrect) }))
@@ -249,7 +369,7 @@ export default function M6({ onComplete }) {
 
   return (
     <div style={{ background: '#0a0a0a', color: '#f5f4f0', padding: '80px 24px' }}>
-      <div style={{ maxWidth: 680, margin: '0 auto' }}>
+      <div style={{ maxWidth: CONTENT_MAX, margin: '0 auto' }}>
 
         {/* ── Header ── */}
         <div style={{ marginBottom: 52 }}>
@@ -259,7 +379,7 @@ export default function M6({ onComplete }) {
           <h2 style={{ fontFamily: SERIF, fontSize: 28, fontWeight: 300, color: '#f5f4f0', margin: '0 0 14px' }}>
             怎么清理太空垃圾
           </h2>
-          <p style={{ fontFamily: SANS, fontSize: 13, color: '#6a6a64', margin: 0, lineHeight: 1.75 }}>
+          <p style={{ fontFamily: SANS, fontSize: 13, color: '#6a6a64', margin: 0, lineHeight: 1.75, maxWidth: 760 }}>
             目前没有商业规模化清理案例。速度、数量、法律与成本，构成了每一次清理的四重障碍。
             三类技术路径已进入测试阶段，但距离规模化仍有距离。
           </p>
@@ -294,56 +414,53 @@ export default function M6({ onComplete }) {
           <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em', color: '#5a5a56', marginBottom: 16 }}>
             02 · 六种清理技术
           </div>
-          <p style={{ fontFamily: SANS, fontSize: 13, color: '#6a6a64', margin: '0 0 20px', lineHeight: 1.75 }}>
+          <p style={{ fontFamily: SANS, fontSize: 13, color: '#6a6a64', margin: '0 0 20px', lineHeight: 1.75, maxWidth: 760 }}>
             三类主要路径：激光微推、物理捕获、离轨增阻。每种方案针对特定碎片尺度与轨道条件，
             实际任务中通常需要组合使用。
           </p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            {ALL_METHODS.map((m, i) => (
-              <motion.div
-                key={m.id}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: i * 0.06, ease: EASE }}
-                style={{
-                  background: '#0d0d0b', border: '1px solid #1c1c1a',
-                  borderRadius: 3, overflow: 'hidden',
-                }}
-              >
-                {/* Image */}
-                <div style={{ position: 'relative', height: 148, overflow: 'hidden' }}>
-                  <img
-                    src={m.img} alt={m.title}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.72, display: 'block' }}
-                    onError={e => { e.target.style.display = 'none' }}
-                  />
-                  <div style={{
-                    position: 'absolute', inset: 0,
-                    background: 'linear-gradient(to bottom, transparent 25%, #0d0d0b 100%)',
-                  }} />
-                  <div style={{
-                    position: 'absolute', top: 10, right: 10,
-                    fontFamily: MONO, fontSize: 8, letterSpacing: '0.08em',
-                    color: '#c8b89a', background: 'rgba(10,9,8,0.80)',
-                    padding: '3px 8px', border: '1px solid rgba(200,184,154,0.22)',
-                  }}>
-                    {m.status}
-                  </div>
-                </div>
-                {/* Text */}
-                <div style={{ padding: '12px 16px 16px' }}>
-                  <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: '0.1em', color: '#3a3a38', marginBottom: 5 }}>
-                    {m.titleEn}
-                  </div>
-                  <div style={{ fontFamily: SERIF, fontSize: 14, color: '#f0efe8', fontWeight: 400, marginBottom: 8 }}>
-                    {m.title}
-                  </div>
-                  <p style={{ fontFamily: SANS, fontSize: 11, color: '#6a6a64', margin: 0, lineHeight: 1.65 }}>
-                    {m.desc}
-                  </p>
-                </div>
-              </motion.div>
-            ))}
+          <div style={{
+            width: '100%',
+            borderTop: '1px solid #151513',
+            borderBottom: '1px solid #151513',
+            padding: '18px 0 20px',
+          }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 14,
+              margin: '0 0 14px',
+            }}>
+              <div style={{ height: 1, background: '#1c1c1a', flex: 1 }} />
+              <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '0.12em', color: '#3a3a38', whiteSpace: 'nowrap' }}>
+                HOVER TO REVEAL METHOD DETAILS
+              </div>
+              <div style={{ height: 1, background: '#1c1c1a', flex: 1 }} />
+            </div>
+
+            <div style={{
+              overflowX: 'auto',
+              overflowY: 'hidden',
+              padding: '2px 2px 14px',
+              scrollbarWidth: 'thin',
+              scrollbarColor: '#2a2a28 transparent',
+            }}>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(6, 190px)',
+                gap: 12,
+                width: 'max-content',
+              }}>
+                {ALL_METHODS.map((m, i) => (
+                  <motion.div
+                    key={m.id}
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: i * 0.06, ease: EASE }}
+                    style={{ minWidth: 0 }}
+                  >
+                    <MethodCard m={m} index={i} />
+                  </motion.div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -356,7 +473,7 @@ export default function M6({ onComplete }) {
             为这批碎片选择清理方式。
           </h3>
           <p style={{ fontFamily: SANS, fontSize: 13, color: '#6a6a64', margin: '0 0 24px', lineHeight: 1.75 }}>
-            把左侧技术卡拖到右侧碎片目标上。每次匹配会返回即时分析。
+            右侧目标会根据你在 M1 选择的卫星材料，以及 M4 游戏结局中产生的垃圾描述生成。把左侧技术卡拖到目标上，每次匹配会返回即时分析。
           </p>
 
           <div style={{ display: 'grid', gridTemplateColumns: '210px 1fr', gap: 14 }}>
@@ -447,8 +564,34 @@ export default function M6({ onComplete }) {
                       <p style={{ fontFamily: SANS, fontSize: 11, color: '#6a6a64', margin: '0 0 6px', lineHeight: 1.7 }}>
                         {debris.detail}
                       </p>
-                      <div style={{ fontFamily: MONO, fontSize: 9, color: '#2e2e2c', marginBottom: 8 }}>
+                      <div style={{ fontFamily: MONO, fontSize: 9, color: '#3a3a38', marginBottom: 5, lineHeight: 1.55 }}>
                         来源 · {debris.source}
+                      </div>
+                      {debris.context && (
+                        <div style={{
+                          fontFamily: MONO, fontSize: 9, color: '#5a5a56',
+                          borderLeft: '2px solid rgba(200,184,154,0.25)',
+                          paddingLeft: 8, marginBottom: 8, lineHeight: 1.55,
+                        }}>
+                          个性化依据 · {debris.context}
+                        </div>
+                      )}
+
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+                        <span style={{
+                          fontFamily: MONO, fontSize: 8, letterSpacing: '0.06em',
+                          color: '#c8b89a', border: '1px solid rgba(200,184,154,0.18)',
+                          padding: '2px 6px',
+                        }}>
+                          来自 M1 材料
+                        </span>
+                        <span style={{
+                          fontFamily: MONO, fontSize: 8, letterSpacing: '0.06em',
+                          color: '#7a7a72', border: '1px solid #242420',
+                          padding: '2px 6px',
+                        }}>
+                          关联 M4 事件
+                        </span>
                       </div>
 
                       {pickedTech && !isLoading && (
