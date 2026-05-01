@@ -9,6 +9,7 @@ import M3 from './modules/M3'
 import M4 from './modules/M4'
 import M5 from './modules/M5'
 import M6 from './modules/M6'
+import M7 from './modules/M7'
 
 // 模块顺序 + 衔接句（解锁后出现在模块顶部）
 const MODULES = [
@@ -19,6 +20,7 @@ const MODULES = [
   { id: 'm4',       Component: M4,       connector: null },
   { id: 'm5',       Component: M5,       connector: '旅行结束了，那些留下来的，我们总是忘了还有机会处理。' },
   { id: 'm6',       Component: M6,       connector: '不要问还有没有人在乎，问你自己。' },
+  { id: 'm7',       Component: M7,       connector: '最后，把这些碎片重新放回真实世界的信息里。' },
 ]
 
 export default function App() {
