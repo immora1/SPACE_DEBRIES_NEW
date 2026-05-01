@@ -301,12 +301,14 @@ export default function M6({ onComplete }) {
   const [feedbackMap,    setFeedbackMap]    = useState({})
   const [loadingId,      setLoadingId]      = useState(null)
   const [dragOverId,     setDragOverId]     = useState(null)
+  const [selectedTechId, setSelectedTechId] = useState(null)
   const [epilogueState,  setEpilogueState]  = useState('idle')
   const [epilogue,       setEpilogue]       = useState('')
 
   useEffect(() => {
     setMatches({})
     setFeedbackMap({})
+    setSelectedTechId(null)
     setEpilogue('')
     setEpilogueState('idle')
   }, [debrisSet])
@@ -315,6 +317,8 @@ export default function M6({ onComplete }) {
   const correctCount = debrisSet.filter(d => matches[d.id]?.isCorrect).length
   const accuracy     = debrisSet.length ? correctCount / debrisSet.length : 0
   const canContinue  = allMatched && (epilogueState === 'done' || epilogueState === 'error')
+  const selectedTech = DRAG_TECHNOLOGIES.find(t => t.id === selectedTechId)
+  const matchedCount = Object.keys(matches).length
 
   async function handleDrop(debrisId, techId) {
     if (loadingId) return
@@ -324,6 +328,7 @@ export default function M6({ onComplete }) {
 
     const isCorrect = debris.ideal === techId
     setMatches(prev => ({ ...prev, [debrisId]: { technologyId: techId, isCorrect } }))
+    setSelectedTechId(null)
     setLoadingId(debrisId)
     try {
       const res = await generateCleanupFeedback({
@@ -354,11 +359,20 @@ export default function M6({ onComplete }) {
   }, [accuracy, allMatched, epilogueState, satName, satObj, storyOutline, user])
 
   function onDragStart(e, techId)    { e.dataTransfer.setData('text/plain', techId) }
+  function onDragEnd()               { setSelectedTechId(null) }
   function onDragOver(e, debrisId)   { e.preventDefault(); setDragOverId(debrisId) }
   function onDragLeave()             { setDragOverId(null) }
   function onDropDebris(e, debrisId) {
     e.preventDefault(); setDragOverId(null)
     handleDrop(debrisId, e.dataTransfer.getData('text/plain'))
+  }
+  function handleTechSelect(techId) {
+    if (loadingId) return
+    setSelectedTechId(prev => prev === techId ? null : techId)
+  }
+  function handleTargetClick(debrisId) {
+    if (!selectedTechId || loadingId) return
+    handleDrop(debrisId, selectedTechId)
   }
 
   function handleContinue() {
@@ -476,30 +490,104 @@ export default function M6({ onComplete }) {
             右侧目标会根据你在 M1 选择的卫星材料，以及 M4 游戏结局中产生的垃圾描述生成。把左侧技术卡拖到目标上，每次匹配会返回即时分析。
           </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '210px 1fr', gap: 14 }}>
+          <div style={{
+            background: 'linear-gradient(180deg, rgba(255,255,255,0.018), rgba(255,255,255,0.006))',
+            border: '1px solid #181816',
+            borderRadius: 4,
+            overflow: 'hidden',
+          }}>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr auto',
+              gap: 16,
+              alignItems: 'center',
+              padding: '14px 16px',
+              borderBottom: '1px solid #181816',
+              background: 'rgba(13,13,11,0.62)',
+            }}>
+              <div>
+                <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '0.14em', color: '#c8b89a', marginBottom: 6 }}>
+                  CLEANUP MATCHING CONSOLE
+                </div>
+                <div style={{ fontFamily: SANS, fontSize: 11, color: '#5a5a56', lineHeight: 1.6 }}>
+                  {selectedTech
+                    ? `已锁定技术：${selectedTech.title}。点击右侧目标完成匹配，或继续拖拽。`
+                    : '选择左侧技术后点击目标，或直接拖拽到右侧目标区。'}
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                {debrisSet.map(d => {
+                  const r = matches[d.id]
+                  return (
+                    <div key={d.id} style={{
+                      width: 9, height: 9, borderRadius: '50%',
+                      background: r ? (r.isCorrect ? '#78c88c' : '#e07030') : '#242420',
+                      boxShadow: r ? `0 0 10px ${r.isCorrect ? 'rgba(120,200,140,0.45)' : 'rgba(224,112,48,0.42)'}` : 'none',
+                      transition: 'all 0.25s',
+                    }} />
+                  )
+                })}
+                <span style={{ fontFamily: MONO, fontSize: 10, color: '#5a5a56', marginLeft: 6 }}>
+                  {matchedCount}/{debrisSet.length}
+                </span>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 0 }}>
             {/* ── Left: tech drag cards ── */}
-            <div>
+            <div style={{ borderRight: '1px solid #181816', padding: 14, background: 'rgba(10,10,10,0.35)' }}>
               <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '0.08em', color: '#3a3a38', marginBottom: 10 }}>
                 可用技术 · 拖拽
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {DRAG_TECHNOLOGIES.map(tech => (
-                  <div
+                {DRAG_TECHNOLOGIES.map((tech, idx) => {
+                  const isSelected = selectedTechId === tech.id
+                  const disabled = !!loadingId
+                  return (
+                  <motion.div
                     key={tech.id}
                     draggable
-                    onDragStart={e => onDragStart(e, tech.id)}
+                    onClick={() => handleTechSelect(tech.id)}
+                    onDragStart={e => { setSelectedTechId(tech.id); onDragStart(e, tech.id) }}
+                    onDragEnd={onDragEnd}
+                    initial={{ opacity: 0, x: -12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.35, delay: idx * 0.05, ease: EASE }}
+                    whileHover={disabled ? {} : { x: 4 }}
+                    whileTap={disabled ? {} : { scale: 0.985 }}
                     style={{
-                      background: '#0d0d0b', border: '1px solid #222220',
-                      borderRadius: 3, overflow: 'hidden', cursor: 'grab', userSelect: 'none',
+                      position: 'relative',
+                      background: isSelected ? 'rgba(200,184,154,0.055)' : '#0d0d0b',
+                      border: `1px solid ${isSelected ? 'rgba(200,184,154,0.48)' : '#222220'}`,
+                      borderRadius: 4, overflow: 'hidden',
+                      cursor: disabled ? 'not-allowed' : 'grab',
+                      userSelect: 'none',
+                      opacity: disabled && !isSelected ? 0.52 : 1,
+                      boxShadow: isSelected ? '0 0 28px rgba(200,184,154,0.08)' : 'none',
                     }}
                   >
-                    <div style={{ position: 'relative', height: 76, overflow: 'hidden' }}>
+                    {isSelected && (
+                      <motion.div
+                        layoutId="selected-tech-rail"
+                        style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: '#c8b89a', zIndex: 2 }}
+                      />
+                    )}
+                    <div style={{ position: 'relative', height: 82, overflow: 'hidden' }}>
                       <img
                         src={tech.img} alt={tech.title}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.55, display: 'block', pointerEvents: 'none' }}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: isSelected ? 0.7 : 0.52, display: 'block', pointerEvents: 'none' }}
                         onError={e => { e.target.style.display = 'none' }}
                       />
                       <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 40%, #0d0d0b 100%)' }} />
+                      <div style={{
+                        position: 'absolute', top: 8, right: 8,
+                        fontFamily: MONO, fontSize: 8, color: isSelected ? '#0a0a0a' : '#5a5a56',
+                        background: isSelected ? '#c8b89a' : 'rgba(10,10,10,0.72)',
+                        border: '1px solid rgba(200,184,154,0.20)',
+                        padding: '2px 6px',
+                      }}>
+                        {isSelected ? 'LOCKED' : 'SELECT'}
+                      </div>
                     </div>
                     <div style={{ padding: '8px 12px 12px' }}>
                       <div style={{ fontFamily: MONO, fontSize: 8, color: '#c8b89a', letterSpacing: '0.08em', marginBottom: 3 }}>
@@ -510,13 +598,14 @@ export default function M6({ onComplete }) {
                         {tech.desc}
                       </p>
                     </div>
-                  </div>
-                ))}
+                  </motion.div>
+                  )
+                })}
               </div>
             </div>
 
             {/* ── Right: debris drop zones ── */}
-            <div>
+            <div style={{ padding: 14 }}>
               <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '0.08em', color: '#3a3a38', marginBottom: 10 }}>
                 目标碎片 · 放置区
               </div>
@@ -527,24 +616,59 @@ export default function M6({ onComplete }) {
                   const isOver    = dragOverId === debris.id
                   const isLoading = loadingId === debris.id
 
+                  const canClickTarget = !!selectedTechId && !isLoading
+                  const isLockedTarget = canClickTarget && !result
+
                   return (
-                    <div
+                    <motion.div
                       key={debris.id}
+                      layout
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.35, ease: EASE }}
                       onDragOver={e => onDragOver(e, debris.id)}
                       onDragLeave={onDragLeave}
                       onDrop={e => onDropDebris(e, debris.id)}
+                      onClick={() => handleTargetClick(debris.id)}
+                      whileHover={{ y: -2 }}
                       style={{
-                        background: isOver ? 'rgba(200,184,154,0.04)' : '#0d0d0b',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        background: isOver || isLockedTarget ? 'rgba(200,184,154,0.035)' : '#0d0d0b',
                         border: `1px solid ${
                           isOver    ? 'rgba(200,184,154,0.35)' :
                           result?.isCorrect === true  ? '#2a4a2a' :
                           result?.isCorrect === false ? '#4a2a1a' :
+                          isLockedTarget ? 'rgba(200,184,154,0.28)' :
                           '#1c1c1a'
                         }`,
-                        borderRadius: 3, padding: '14px 16px', minHeight: 104,
+                        borderRadius: 4, padding: '18px 18px', minHeight: 132,
                         transition: 'border-color 0.15s, background 0.15s',
+                        cursor: canClickTarget ? 'crosshair' : 'default',
+                        boxShadow: result
+                          ? `0 0 26px ${result.isCorrect ? 'rgba(120,200,140,0.055)' : 'rgba(224,112,48,0.05)'}`
+                          : 'none',
                       }}
                     >
+                      {(isOver || isLockedTarget || isLoading) && (
+                        <motion.div
+                          initial={{ x: '-110%' }}
+                          animate={{ x: '110%' }}
+                          transition={{ duration: 1.25, repeat: Infinity, ease: 'linear' }}
+                          style={{
+                            position: 'absolute', top: 0, bottom: 0, width: '36%',
+                            background: 'linear-gradient(90deg, transparent, rgba(200,184,154,0.08), transparent)',
+                            pointerEvents: 'none',
+                          }}
+                        />
+                      )}
+                      <div style={{
+                        position: 'absolute', left: 0, top: 0, bottom: 0, width: 3,
+                        background: result
+                          ? (result.isCorrect ? '#78c88c' : '#e07030')
+                          : isLockedTarget ? '#c8b89a' : '#242420',
+                        opacity: result || isLockedTarget ? 0.85 : 0.35,
+                      }} />
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
                         <div style={{ fontFamily: SERIF, fontSize: 14, color: '#f0efe8', fontWeight: 400 }}>
                           {debris.name}
@@ -604,9 +728,13 @@ export default function M6({ onComplete }) {
                         <motion.div
                           animate={{ opacity: [0.3, 0.8, 0.3] }}
                           transition={{ duration: 1.2, repeat: Infinity }}
-                          style={{ fontFamily: MONO, fontSize: 9, color: '#5a5a56', letterSpacing: '0.1em' }}
+                          style={{
+                            fontFamily: MONO, fontSize: 9, color: '#c8b89a', letterSpacing: '0.1em',
+                            border: '1px solid rgba(200,184,154,0.18)',
+                            display: 'inline-block', padding: '4px 8px',
+                          }}
                         >
-                          ANALYZING...
+                          ANALYZING MATCH VECTOR...
                         </motion.div>
                       )}
 
@@ -617,18 +745,23 @@ export default function M6({ onComplete }) {
                       )}
 
                       {!result && !isLoading && (
-                        <div style={{
+                        <motion.div
+                          animate={isLockedTarget ? { opacity: [0.45, 0.95, 0.45] } : { opacity: 1 }}
+                          transition={{ duration: 1.1, repeat: isLockedTarget ? Infinity : 0 }}
+                          style={{
                           fontFamily: MONO, fontSize: 9, color: '#2a2a28', letterSpacing: '0.08em',
-                          border: '1px dashed #2a2a28', padding: '5px 10px',
+                          border: `1px dashed ${isLockedTarget ? 'rgba(200,184,154,0.42)' : '#2a2a28'}`,
+                          padding: '6px 10px',
                           display: 'inline-block', marginTop: 4,
                         }}>
-                          拖拽技术到此处
-                        </div>
+                          {selectedTech ? `点击部署 ${selectedTech.title}` : '拖拽或先选择技术'}
+                        </motion.div>
                       )}
-                    </div>
+                    </motion.div>
                   )
                 })}
               </div>
+            </div>
             </div>
           </div>
         </div>
