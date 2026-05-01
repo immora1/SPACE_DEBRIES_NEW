@@ -8,6 +8,7 @@ import M2 from './modules/M2'
 import M3 from './modules/M3'
 import M4 from './modules/M4'
 import M5 from './modules/M5'
+import M6 from './modules/M6'
 
 // 模块顺序 + 衔接句（解锁后出现在模块顶部）
 const MODULES = [
@@ -17,9 +18,7 @@ const MODULES = [
   { id: 'm3',       Component: M3,       connector: '不是没有人做过这个决定，是做了这个决定的人，已经不在了。' },
   { id: 'm4',       Component: M4,       connector: null },
   { id: 'm5',       Component: M5,       connector: '旅行结束了，那些留下来的，我们总是忘了还有机会处理。' },
-  // 后续模块在各自开发完成后依次加入：
-  // { id: 'm6', Component: M6, connector: '不要问还有没有人在乎，问你自己。' },
-  // { id: 'm7', Component: M7, connector: null },
+  { id: 'm6',       Component: M6,       connector: '不要问还有没有人在乎，问你自己。' },
 ]
 
 export default function App() {
