@@ -10,6 +10,7 @@ import M4 from './modules/M4'
 import M5 from './modules/M5'
 import M6 from './modules/M6'
 import M7 from './modules/M7'
+import M8 from './modules/M8'
 
 // 模块顺序 + 衔接句（解锁后出现在模块顶部）
 const MODULES = [
@@ -21,6 +22,7 @@ const MODULES = [
   { id: 'm5',       Component: M5,       connector: '旅行结束了，那些留下来的，我们总是忘了还有机会处理。' },
   { id: 'm6',       Component: M6,       connector: '不要问还有没有人在乎，问你自己。' },
   { id: 'm7',       Component: M7,       connector: '最后，把这些碎片重新放回真实世界的信息里。' },
+  { id: 'm8',       Component: M8,       connector: '看见之后，下一步是让别人也能复核你看见了什么。', alwaysUnlocked: true },
 ]
 
 export default function App() {
@@ -38,6 +40,16 @@ export default function App() {
     document.body.style.overflow = scrollLocked ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
   }, [scrollLocked])
+
+  // 兼容新增模块：如果用户在旧版本已经完成某个模块，自动补解锁它后面的新模块。
+  useEffect(() => {
+    MODULES.forEach((module, idx) => {
+      const next = MODULES[idx + 1]
+      if (next && completedModules.includes(module.id) && !unlockedModules.includes(next.id)) {
+        unlockModule(next.id)
+      }
+    })
+  }, [completedModules, unlockedModules, unlockModule])
 
   // 新模块解锁后自动滚动到该模块
   useEffect(() => {
@@ -62,10 +74,10 @@ export default function App() {
     <div style={{ background: '#0a0a0a', minHeight: '100vh' }}>
       <ProgressBar completed={completedModules.length} total={MODULES.length} />
 
-      {MODULES.map(({ id, Component, connector }) => (
+      {MODULES.map(({ id, Component, connector, alwaysUnlocked }) => (
         <ModuleWrapper
           key={id}
-          isUnlocked={unlockedModules.includes(id)}
+          isUnlocked={alwaysUnlocked || unlockedModules.includes(id)}
           connector={connector}
           ref={(el) => { moduleRefs.current[id] = el }}
         >
