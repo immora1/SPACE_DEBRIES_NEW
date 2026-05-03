@@ -1,16 +1,21 @@
-import { useEffect, useRef } from 'react'
+import { lazy, Suspense, useEffect, useRef } from 'react'
 import useAppStore from './store/useAppStore'
 import ProgressBar from './components/ProgressBar'
 import ModuleWrapper from './components/ModuleWrapper'
-import Entrance from './modules/Entrance'
-import M1 from './modules/M1'
-import M2 from './modules/M2'
-import M3 from './modules/M3'
-import M4 from './modules/M4'
-import M5 from './modules/M5'
-import M6 from './modules/M6'
-import M7 from './modules/M7'
-import M8 from './modules/M8'
+
+const Entrance = lazy(() => import('./modules/Entrance'))
+const M1 = lazy(() => import('./modules/M1'))
+const M2 = lazy(() => import('./modules/M2'))
+const M3 = lazy(() => import('./modules/M3'))
+const M4 = lazy(() => import('./modules/M4'))
+const M5 = lazy(() => import('./modules/M5'))
+const M6 = lazy(() => import('./modules/M6'))
+const M7 = lazy(() => import('./modules/M7'))
+const M8 = lazy(() => import('./modules/M8'))
+
+function ModuleLoader() {
+  return <div style={{ height: 120, background: '#0a0a0a' }} />
+}
 
 // 模块顺序 + 衔接句（解锁后出现在模块顶部）
 const MODULES = [
@@ -75,14 +80,15 @@ export default function App() {
       <ProgressBar completed={completedModules.length} total={MODULES.length} />
 
       {MODULES.map(({ id, Component, connector, alwaysUnlocked }) => (
-        <ModuleWrapper
-          key={id}
-          isUnlocked={alwaysUnlocked || unlockedModules.includes(id)}
-          connector={connector}
-          ref={(el) => { moduleRefs.current[id] = el }}
-        >
-          <Component onComplete={() => handleComplete(id)} />
-        </ModuleWrapper>
+        <Suspense key={id} fallback={<ModuleLoader />}>
+          <ModuleWrapper
+            isUnlocked={alwaysUnlocked || unlockedModules.includes(id)}
+            connector={connector}
+            ref={(el) => { moduleRefs.current[id] = el }}
+          >
+            <Component onComplete={() => handleComplete(id)} />
+          </ModuleWrapper>
+        </Suspense>
       ))}
     </div>
   )
