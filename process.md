@@ -176,74 +176,117 @@ proxy: { '/api': { target: 'http://localhost:3001', changeOrigin: true } }
 
 ---
 
-## 五、当前文件结构
+## 五、全部模块搭建完成
+
+所有 9 个模块（Entrance + M1–M8）均已创建并接入全局状态和 `App.jsx` 解锁逻辑。
+
+---
+
+## 六、Cloudflare Pages 部署迁移
+
+### 完成内容
+
+**后端迁移：Express → Cloudflare Pages Functions**
+
+原 `server/index.js`（Express）迁移为 `functions/api/` 目录下的 Workers 函数，每个端点一个文件：
+
+```
+functions/
+  api/
+    health.js       ✅ GET  /api/health
+    test-gpt.js     ✅ POST /api/test-gpt
+    gpt.js          ✅ POST /api/gpt
+    satellite.js    ✅ GET  /api/satellite（含完整 CITY_LAT 表 + satellites.json 导入）
+```
+
+关键变化：
+- 环境变量从 `process.env.X` 改为 `context.env.X`
+- 外部 HTTP 用原生 `fetch`（不需要 proxiedFetch，CF 数据中心直连 OpenAI）
+- 卫星数据通过 ES module `import` 导入（wrangler 用 esbuild 打包进 bundle）
+- 响应用 `Response.json()` 代替 `res.json()`
+
+**本地开发改为 wrangler**
+
+- 新增 `wrangler.toml`（指定项目名和构建输出目录 `dist`）
+- 本地密钥写在 `.dev.vars`（已加入 `.gitignore`，格式见 `.dev.vars.example`）
+- `npm run dev` 同时启动：`vite --port 5173` + `wrangler pages dev --proxy 5173 --port 8788`
+- 开发时访问 **http://localhost:8788**
+
+**Cloudflare 部署配置**
+- 构建命令：`npm run build`，输出目录：`dist`
+- 在 CF Pages 控制台 Settings → Environment Variables 中添加 `OPENAI_API_KEY`
+
+---
+
+## 七、首屏性能优化（React.lazy 懒加载）
+
+### 完成内容
+
+**问题：** `npm run build` 产出单个 1,464 kB chunk，Three.js 随首屏一起加载。
+
+**方案：** 将 `App.jsx` 所有模块改为 `React.lazy()` + 动态 `import()`，每个模块用 `<Suspense>` 包裹。
+
+效果：
+
+| | 改前 | 改后 |
+|---|---|---|
+| 首屏 JS（gzip） | 417 kB | 59 kB |
+| Three.js 加载时机 | 首屏 | 仅 M2 解锁时（237 kB gzip） |
+
+各模块现为独立 chunk，按解锁顺序按需加载。利用 `ModuleWrapper` 在 `isUnlocked=false` 时 `return null` 的特性确保 locked 模块的 JS 不被提前请求。
+
+---
+
+## 八、当前文件结构
 
 ```
 SPACE_DEBRIES_NEW/
+├── functions/
+│   └── api/
+│       ├── health.js       ✅ GET  /api/health
+│       ├── test-gpt.js     ✅ POST /api/test-gpt
+│       ├── gpt.js          ✅ POST /api/gpt
+│       └── satellite.js    ✅ GET  /api/satellite
 ├── server/
-│   ├── index.js          ✅ Express 后端，含全部 API 端点
-│   └── .env              ✅ OpenAI Key + 代理配置（不入 git）
+│   ├── index.js            ✅ 保留（本地备用，不再是主路径）
+│   └── .env                ✅ OpenAI Key + 代理配置（不入 git）
 ├── src/
 │   ├── modules/
-│   │   └── Entrance/
-│   │       └── index.jsx ✅ 入口模块（三阶段：表单→加载→结果）
+│   │   ├── Entrance/       ✅
+│   │   ├── M1/             ✅
+│   │   ├── M2/             ✅ Three.js 三维地球（懒加载）
+│   │   ├── M3/             ✅
+│   │   ├── M4/             ✅ 游戏模块（懒加载）
+│   │   ├── M5/             ✅
+│   │   ├── M6/             ✅
+│   │   ├── M7/             ✅
+│   │   └── M8/             ✅
 │   ├── pages/
-│   │   └── ApiTest.jsx   ✅ MVP 验证调试页
+│   │   └── ApiTest.jsx     ✅ MVP 验证调试页
 │   ├── services/
-│   │   └── ai.js         ✅ 全站 AI 调用层（12个函数，含故事大纲）
+│   │   └── ai.js           ✅ 全站 AI 调用层（12个函数，含故事大纲）
 │   ├── store/
-│   │   └── useAppStore.js ✅ Zustand 全局状态
-│   ├── App.jsx           ⚠️ 仅挂载 Entrance，路由未接入
-│   └── index.css         ✅ 全局样式变量和组件类
-├── vite.config.js        ✅ Vite + 代理配置
-├── package.json          ✅ 依赖完整
-├── CLAUDE.md             ✅ 项目规范文档
-├── problem.md            ✅ 问题记录
-└── process.md            ✅ 本文件
+│   │   └── useAppStore.js  ✅ Zustand 全局状态
+│   ├── App.jsx             ✅ React.lazy 懒加载全部模块
+│   └── index.css           ✅ 全局样式变量和组件类
+├── satellites.json         ✅ 本地卫星数据库（4976 颗）
+├── wrangler.toml           ✅ Cloudflare Pages 配置
+├── .dev.vars.example       ✅ 本地密钥模板
+├── vite.config.js          ✅
+├── package.json            ✅ 含 wrangler devDep
+├── CLAUDE.md               ✅ 项目规范文档
+├── problem.md              ✅ 问题记录
+└── process.md              ✅ 本文件
 ```
 
 ---
 
-## 六、未完成内容
+## 九、关键规则备忘
 
-### 模块页面（均未创建）
-- [ ] M1 · 太空垃圾是什么（材料选择交互）
-- [ ] M2 · 轨道是什么（Three.js 三维地球 + 任务选择）
-- [ ] M3 · 重大历史事件（时间线 + 沉浸叙事视图）
-- [ ] M4 · 卫星生存任务游戏（核心玩法，决策节点）
-- [ ] M5 · 太空垃圾落地球（再入动画 + 文件夹交互 + 世界地图）
-- [ ] M6 · 怎么清理太空垃圾（拖拽匹配）
-- [ ] M7 · 科普视频（视频 + 开放问答）
-- [ ] 前测页（20题知识选择题）
-- [ ] 后测页（知识题 + 量表 + 个人知识卡生成）
-- [ ] 社区模块（目击报告 + 讨论区）
-
-### 路由系统
-- [ ] App.jsx 接入 React Router，模块间导航
-- [ ] 模块解锁逻辑（完成上一模块才解锁下一个）
-
-### AI Prompt
-- [ ] 全部 12 个函数的 prompt 均为临时占位版本，标有 `// TODO`，待替换为完整 prompt
-
-### 全局状态补全
-- [ ] `mission`（M2 选择）
-- [ ] `damageLevel`（M3 累积受损值）
-- [ ] `gameResult`（M4 输出）
-- [ ] `debrisGenerated`（M4 输出碎片类型）
-- [ ] `preTest` / `postTest`（前后测得分）
-
-### 其他
-- [ ] Three.js 三维轨道可视化（M2）
-- [ ] PostHog 埋点接入
-- [ ] satellite.js TLE 解析（当前仅用 satcat 参数，未解析 TLE 做实时位置计算）
-
----
-
-## 七、关键规则备忘
-
-1. **修改任何文件后必须验证三条 API**（health / test-celestrak / test-gpt），任意失败立即 `git restore`
-2. **代理核心三行禁止改动**（server/index.js 的 node-fetch + HttpsProxyAgent + proxiedFetch）
+1. **修改任何文件后必须验证三条 API**（health / test-gpt / satellite），任意失败立即 `git restore`
+2. **Functions 中禁止用 node-fetch / proxiedFetch**，CF Workers 直接用原生 `fetch`
 3. **前端只写 `/api/xxx`**，不带端口，不带域名
-4. **AI 用 OpenAI（sk-proj-前缀），不是 Claude/Anthropic**
-5. **所有 AI 输出 JSON**，前端用 `extractJSON()` 解析，兼容 markdown 代码块包裹
-6. **修改 server/index.js 后必须重启服务端**（--watch 只在 npm run dev 下生效）
+4. **AI 用 OpenAI（sk-proj-前缀），不是 Claude/Anthropic**；Key 只放 `server/.env`（本地旧路径）或 `.dev.vars` / CF Pages 环境变量
+5. **所有 AI 输出 JSON**，前端用正则 `/\{[\s\S]*\}/` 提取，兼容 markdown 代码块包裹
+6. **本地开发访问 http://localhost:8788**（wrangler），不是 :5173
+7. **本地密钥写在 `.dev.vars`**（不入 git），格式参考 `.dev.vars.example`

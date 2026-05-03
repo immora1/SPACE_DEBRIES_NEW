@@ -228,4 +228,83 @@ Get-Process node | Stop-Process -Force
 
 ---
 
-*最后更新：2026-04-23*
+## P009 · 首屏 JS 包体积超过 500 kB 警告
+
+**类型：** 构建 / 性能  
+**发现时间：** Cloudflare Pages 部署准备阶段  
+**严重程度：** 中（不影响功能，但首屏加载慢）
+
+### 问题描述
+`npm run build` 输出警告：单个 JS chunk 体积 1,464 kB（gzip 后 417 kB），超过 Vite 的 500 kB 警告阈值。根本原因是 `App.jsx` 用静态 `import` 引入了全部 9 个模块，Three.js（来自 M2 的 OrbitGlobe）和 M4 游戏场景被一次性打包进首屏。
+
+### 解决方案
+将 `App.jsx` 中所有模块改为 `React.lazy()` + 动态 `import()`，配合 `<Suspense>` 包裹每个 `ModuleWrapper`：
+
+```jsx
+// 改前
+import M2 from './modules/M2'
+
+// 改后
+const M2 = lazy(() => import('./modules/M2'))
+
+// 渲染侧
+<Suspense fallback={<ModuleLoader />}>
+  <ModuleWrapper isUnlocked={...}>
+    <M2 onComplete={...} />
+  </ModuleWrapper>
+</Suspense>
+```
+
+利用 `ModuleWrapper` 在未解锁时 `return null` 的特性——locked 模块的 children 不会被 React 实例化，因此对应 chunk 不会被请求。
+
+### 效果
+| | 改前 | 改后 |
+|---|---|---|
+| 首屏 JS（gzip） | 417 kB | **59 kB** |
+| Three.js 加载时机 | 首屏 | 仅 M2 解锁时（237 kB gzip，按需） |
+
+每个模块现为独立 chunk，按解锁顺序逐步加载。
+
+---
+
+## P010 · Express 后端无法部署到 Cloudflare Pages
+
+**类型：** 部署架构  
+**发现时间：** Cloudflare Pages 部署准备阶段  
+**严重程度：** 致命（不迁移则无法上线）
+
+### 问题描述
+Cloudflare Pages 是纯静态托管 + Functions（Workers 运行时），不支持运行 Node.js 进程（Express、node --watch 等）。原有的 `server/index.js`（Express + node-fetch + https-proxy-agent）无法直接部署。
+
+### 解决方案
+将 `server/index.js` 的全部端点迁移到 `functions/api/` 目录，改写为 Cloudflare Pages Functions 格式（Cloudflare Workers 运行时）：
+
+```
+functions/
+  api/
+    health.js       → GET  /api/health
+    test-gpt.js     → POST /api/test-gpt
+    gpt.js          → POST /api/gpt
+    satellite.js    → GET  /api/satellite
+```
+
+### 关键差异
+
+| | Express（本地） | CF Pages Function |
+|---|---|---|
+| 环境变量 | `process.env.OPENAI_API_KEY` | `context.env.OPENAI_API_KEY` |
+| 外部 HTTP | `proxiedFetch`（需手动注入代理） | 原生 `fetch`（CF 数据中心直连，不需要代理） |
+| 卫星数据 | `fs.readFileSync('satellites.json')` | `import satellitesData from '../../satellites.json'`（wrangler 打包） |
+| 响应 | `res.json({...})` | `Response.json({...})` |
+
+### 本地开发调整
+- 本地密钥改为 `.dev.vars` 文件（格式同 `.env`，被 wrangler 读取，已加入 `.gitignore`）
+- 启动命令不变（`npm run dev`），内部改为 `wrangler pages dev --proxy 5173 --port 8788`
+- 开发时访问 **http://localhost:8788**，不再是 :5173
+
+### 代理不再需要的原因
+`https-proxy-agent` 是为了绕过 GFW。Cloudflare Workers 在 CF 的全球网络上运行，可直连 OpenAI，无需代理。本地 wrangler 也走系统 HTTP 代理，无需在代码层面手动注入。
+
+---
+
+*最后更新：2026-05-04*
