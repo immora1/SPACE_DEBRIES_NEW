@@ -6,11 +6,11 @@
   "scripts": {
     "dev": "concurrently \"npm run dev:client\" \"npm run dev:pages\"",
     "dev:client": "vite --port 5173",
-    "dev:pages": "wrangler pages dev --proxy 5173 --port 8788",
+    "dev:pages": "npx wrangler pages dev --proxy 5173 --port 8788",
     "dev:server": "node --watch server/index.js",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "wrangler pages dev dist --port 8788"
+    "preview": "npx wrangler pages dev dist --port 8788"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",
@@ -33,7 +33,6 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
-    "wrangler": "^3.114.4",
     "@eslint/js": "^9.39.4",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
