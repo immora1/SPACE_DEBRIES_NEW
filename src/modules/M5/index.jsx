@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, animate as fmAnimate, useMotionValue } from 'framer-motion'
 import useAppStore from '../../store/useAppStore'
 import { generateReentryEnding } from '../../services/ai'
 
@@ -64,80 +64,127 @@ const MAP_MARKERS = [
   { id: 'columbia', lat: 31.5,  lng: -95,    year: 2003, name: 'Columbia 碎片',   color: '#906060' },
 ]
 
-function latLngToXY(lat, lng) {
-  return {
-    x: ((lng + 180) / 360) * 100,
-    y: ((90 - lat) / 180) * 100,
-  }
-}
-
-// ─── Geometry constants (shared center → concentric) ─────────────────────────
-// ViewBox 560×280. Earth+Orbit share center (100, 500) off bottom-left.
-// Earth surface arc: from (0,82) curving to (469,280)
-// Orbit arc: enters top at (413,0), passes (490,70), exits right ~(560,130)
-// Satellite on orbit: (490, 70)
-// Impact on Earth surface (30° from vertical): (315, 128)
-// Track: quadratic bezier P0→CP→P2 — single control, guaranteed smooth arc
+// ─── Geometry — concentric Earth + Orbit, impact INSIDE Earth ────────────────
+// ViewBox 560×280. Earth center (100,500) r=430 — only top arc visible.
+// Orbit: same center r=590. Both ORB and ENT are exactly ON the orbit circle.
+// ENT_Y = 500 − sqrt(590²−390²) ≈ 57  (verified: dist from center = 590 ✓)
+// IMP: dist from center ≈290 (67% of radius) — clearly INSIDE Earth body.
 const GEO = {
-  ECX: 100, ECY: 500, ER: 430,    // Earth
-  OR: 590,                          // Orbit radius (same center)
-  SAT_X: 490, SAT_Y: 70,           // satellite on orbit
-  IMP_X: 315, IMP_Y: 128,          // impact on Earth surface
-  CP_X: 400,  CP_Y: 130,           // bezier control (slightly below straight line)
-  // Phase positions along bezier (t=0, 0.35, 0.65, 1)
-  POS: [
-    [490, 70],
-    [428, 104],
-    [375, 122],
-    [315, 128],
-  ],
+  ECX: 100, ECY: 500, ER: 430,
+  OR: 590,
+  ORB_X: 438, ORB_Y: 17,    // orbit start  (on orbit circle)
+  ENT_X: 490, ENT_Y: 57,    // orbit end / re-entry start (on orbit circle)
+  IMP_X: 175, IMP_Y: 220,   // impact — dist≈290 from center, INSIDE Earth
+  CP_X:  380, CP_Y:  130,   // bezier control point
 }
 
-// ─── Re-entry diagram — vintage engraving + image-2 composition ──────────────
+// n evenly-spaced points along the circular arc from angle θ1 to θ2
+function computeArcPts(cx, cy, r, θ1, θ2, n) {
+  return Array.from({ length: n }, (_, i) => {
+    const θ = θ1 + (θ2 - θ1) * i / (n - 1)
+    return { x: cx + r * Math.cos(θ), y: cy + r * Math.sin(θ) }
+  })
+}
+
+// n evenly-spaced points along quadratic bezier P0→CP→P2
+function computeBezPts(p0x, p0y, cpx, cpy, p2x, p2y, n) {
+  return Array.from({ length: n }, (_, i) => {
+    const t = i / (n - 1), mt = 1 - t
+    return {
+      x: mt * mt * p0x + 2 * mt * t * cpx + t * t * p2x,
+      y: mt * mt * p0y + 2 * mt * t * cpy + t * t * p2y,
+    }
+  })
+}
+
+// ─── Re-entry diagram — vintage engraving, looping animation ─────────────────
 function ReentryVis({ material }) {
-  const info = MATERIAL_SURVIVAL[material] || MATERIAL_SURVIVAL['铝合金']
+  // material key may be English (from store) or Chinese — map both
+  const MAT_KEYS = { titanium: '钛合金', carbon: '碳纤维', solar: '太阳能电池板', aluminum: '铝合金' }
+  const matKey  = MAT_KEYS[material] ?? material
+  const info    = MATERIAL_SURVIVAL[matKey] || MATERIAL_SURVIVAL['铝合金']
+
   const [phase, setPhase] = useState(0)
+  const [cycle, setCycle] = useState(0)
 
+  const satX      = useMotionValue(GEO.ORB_X)
+  const satY      = useMotionValue(GEO.ORB_Y)
+  const satRotate = useMotionValue(0)
+
+  // Drive satellite along orbit arc then bezier track using imperative keyframe animation.
+  // Both paths are precomputed so the satellite's motion exactly follows the drawn lines.
   useEffect(() => {
-    const t1 = setTimeout(() => setPhase(1), 900)
-    const t2 = setTimeout(() => setPhase(2), 2700)
-    const t3 = setTimeout(() => setPhase(3), 4600)
-    return () => [t1, t2, t3].forEach(clearTimeout)
-  }, [])
+    const { ECX, ECY, OR, ORB_X, ORB_Y, ENT_X, ENT_Y, CP_X, CP_Y, IMP_X, IMP_Y } = GEO
 
-  const { ECX, ECY, ER, OR, SAT_X, SAT_Y, IMP_X, IMP_Y, CP_X, CP_Y, POS } = GEO
-  const [px, py] = POS[Math.min(phase, 3)]
+    satX.set(ORB_X); satY.set(ORB_Y); satRotate.set(0)
+    setPhase(0)
 
-  // 14 dots along quadratic bezier: P0→CP→P2 (single control = no S-curve)
+    const θ1 = Math.atan2(ORB_Y - ECY, ORB_X - ECX)
+    const θ2 = Math.atan2(ENT_Y - ECY, ENT_X - ECX)
+
+    // 12 pts along orbit arc, 20 pts along bezier (ENT→IMP)
+    const arcPts = computeArcPts(ECX, ECY, OR, θ1, θ2, 12)
+    const bezPts = computeBezPts(ENT_X, ENT_Y, CP_X, CP_Y, IMP_X, IMP_Y, 20)
+
+    const TOTAL = 10.2
+    const T_ENT = 3.8 / TOTAL   // ≈0.373
+    const T_IMP = 9.5 / TOTAL   // ≈0.931
+
+    // Normalized times: arc (0→T_ENT), bezier (T_ENT→T_IMP), hold (T_IMP→1)
+    // arcPts[11] = ENT = bezPts[0] → dedup junction by skipping bezPts[0] in xs/ys
+    const arcTimes = arcPts.map((_, i) => (i / (arcPts.length - 1)) * T_ENT)
+    const bezAllT  = bezPts.map((_, j) => T_ENT + (j / (bezPts.length - 1)) * (T_IMP - T_ENT))
+    const times = [...arcTimes, ...bezAllT.slice(1), 1.0]
+    const xs    = [...arcPts.map(p => p.x), ...bezPts.slice(1).map(p => p.x), IMP_X]
+    const ys    = [...arcPts.map(p => p.y), ...bezPts.slice(1).map(p => p.y), IMP_Y]
+
+    const cx = fmAnimate(satX, xs, { duration: TOTAL, times, ease: 'linear' })
+    const cy = fmAnimate(satY, ys, { duration: TOTAL, times, ease: 'linear' })
+    const cr = fmAnimate(satRotate,
+      [0, 0, 16, 48, 48, 48],
+      { duration: TOTAL, times: [0, T_ENT, T_ENT + 0.02, 7700 / 10200, T_IMP, 1.0], ease: 'linear' },
+    )
+
+    const t1 = setTimeout(() => setPhase(1), 3800)
+    const t2 = setTimeout(() => setPhase(2), 5700)
+    const t3 = setTimeout(() => setPhase(3), 7700)
+    const t4 = setTimeout(() => { setPhase(0); setCycle(c => c + 1) }, 10200)
+
+    return () => {
+      cx.stop(); cy.stop(); cr.stop()
+      ;[t1, t2, t3, t4].forEach(clearTimeout)
+    }
+  }, [cycle]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const { ECX, ECY, ER, OR, ENT_X, ENT_Y, CP_X, CP_Y, IMP_X, IMP_Y } = GEO
+
+  // 14 dots along the bezier — satellite's re-entry track
   const dots = useMemo(() => {
     const n = 14
     return Array.from({ length: n }, (_, i) => {
-      const t = i / (n - 1)
-      const mt = 1 - t
+      const t = i / (n - 1), mt = 1 - t
       return {
-        x: mt * mt * SAT_X + 2 * mt * t * CP_X + t * t * IMP_X,
-        y: mt * mt * SAT_Y + 2 * mt * t * CP_Y + t * t * IMP_Y,
+        x: mt * mt * ENT_X + 2 * mt * t * CP_X + t * t * IMP_X,
+        y: mt * mt * ENT_Y + 2 * mt * t * CP_Y + t * t * IMP_Y,
         t,
       }
     })
   }, [])
 
-  const INK     = '#d8cfbc'
-  const INK_DIM = '#6a6055'
+  const INK      = '#d8cfbc'
+  const INK_DIM  = '#6a6055'
+  const ablating    = phase >= 1
+  const heavyAblate = phase >= 2
 
   return (
     <div style={{
-      position: 'relative',
-      background: '#0a0906',
-      border: '1px solid #2a2520',
-      borderRadius: 4,
-      overflow: 'hidden',
-      marginBottom: 4,
+      position: 'relative', background: '#0a0906',
+      border: '1px solid #2a2520', borderRadius: 4,
+      overflow: 'hidden', marginBottom: 4,
     }}>
-      {/* Scanline texture */}
       <div style={{
         position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 3,
-        background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.07) 2px, rgba(0,0,0,0.07) 3px)',
+        background: 'repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.07) 2px,rgba(0,0,0,0.07) 3px)',
       }} />
 
       <svg width="100%" viewBox="0 0 560 280" style={{ display: 'block' }}>
@@ -147,7 +194,7 @@ function ReentryVis({ material }) {
           </clipPath>
         </defs>
 
-        {/* ── Star field: engraving cross-marks ── */}
+        {/* Star field */}
         {[
           [35,18],[95,12],[175,30],[255,10],[335,24],[420,8],[505,35],[545,15],
           [55,65],[160,52],[240,42],[340,60],[450,48],[530,70],
@@ -160,7 +207,7 @@ function ReentryVis({ material }) {
           </g>
         ))}
 
-        {/* ── Earth: filled + diagonal hatch ── */}
+        {/* Earth fill + hatch */}
         <circle cx={ECX} cy={ECY} r={ER} fill="#100e0a"/>
         {Array.from({ length: 32 }, (_, i) => (
           <line key={i}
@@ -170,190 +217,176 @@ function ReentryVis({ material }) {
             clipPath="url(#earthClipM5)"
           />
         ))}
-        {/* Earth outline */}
-        <circle cx={ECX} cy={ECY} r={ER}
-          fill="none" stroke={INK} strokeWidth="1.6"/>
-        {/* Atmosphere halos (same center) */}
+        <circle cx={ECX} cy={ECY} r={ER} fill="none" stroke={INK} strokeWidth="1.6"/>
         <circle cx={ECX} cy={ECY} r={ER + 16}
           fill="none" stroke={INK} strokeWidth="0.5" opacity="0.20" strokeDasharray="5 9"/>
         <circle cx={ECX} cy={ECY} r={ER + 30}
           fill="none" stroke={INK} strokeWidth="0.35" opacity="0.11" strokeDasharray="3 11"/>
 
-        {/* ── Orbit: SAME center, larger radius ── */}
+        {/* Orbit — same center */}
         <circle cx={ECX} cy={ECY} r={OR}
           fill="none" stroke={INK} strokeWidth="1.1" opacity="0.52"/>
 
-        {/* ── Labels ── */}
-        {/* EARTH */}
-        <text x="52" y="180" fill={INK} fontSize="14"
-          fontFamily="Georgia, serif" letterSpacing="3" opacity="0.68">
-          EARTH
-        </text>
-
-        {/* ORBIT — leader line from orbit arc at ~(450,26) */}
-        <line x1="450" y1="28" x2="432" y2="14"
-          stroke={INK} strokeWidth="0.8" opacity="0.45"/>
+        {/* Labels */}
+        <text x="52" y="185" fill={INK} fontSize="14"
+          fontFamily="Georgia, serif" letterSpacing="3" opacity="0.65">EARTH</text>
+        <line x1="450" y1="28" x2="432" y2="14" stroke={INK} strokeWidth="0.8" opacity="0.45"/>
         <text x="378" y="12" fill={INK} fontSize="12"
-          fontFamily="Georgia, serif" letterSpacing="2" opacity="0.62">
-          ORBIT
-        </text>
+          fontFamily="Georgia, serif" letterSpacing="2" opacity="0.60">ORBIT</text>
 
-        {/* ── Track dots (quadratic bezier, monotone arc) ── */}
+        {/* Track dots — progressive reveal per phase */}
         {dots.map((d, i) => {
-          const vis = d.t <= phase / 2.5
+          const threshold = [0, 0.42, 0.85, 1.5][phase] || 0
+          const vis = phase >= 1 && d.t <= threshold
           return (
-            <motion.circle
-              key={i}
-              cx={d.x} cy={d.y}
-              r={1.3 + (1 - d.t) * 0.5}
-              fill={INK}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: vis ? (0.38 + d.t * 0.42) : 0 }}
-              transition={{ duration: 0.45, delay: i * 0.05 }}
+            <motion.circle key={i} cx={d.x} cy={d.y}
+              r={1.3 + (1 - d.t) * 0.5} fill={INK}
+              animate={{ opacity: vis ? (0.36 + d.t * 0.44) : 0 }}
+              transition={{ duration: 0.4, delay: vis ? i * 0.04 : 0 }}
             />
           )
         })}
 
-        {/* TRACK label — midpoint of bezier at t=0.5 ≈ (401,115) */}
+        {/* TRACK label */}
         <AnimatePresence>
           {phase >= 1 && (
-            <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }}>
+            <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
               <line x1="403" y1="116" x2="424" y2="103"
                 stroke={INK} strokeWidth="0.7" opacity="0.4"/>
               <text x="426" y="101" fill={INK} fontSize="11"
-                fontFamily="Georgia, serif" letterSpacing="2" opacity="0.52">
-                TRACK
-              </text>
+                fontFamily="Georgia, serif" letterSpacing="2" opacity="0.50">TRACK</text>
             </motion.g>
           )}
         </AnimatePresence>
 
-        {/* ── Satellite — centered at (0,0), group translated to position ── */}
+        {/* ── Satellite — position driven by motion values along orbit arc + bezier ── */}
         <motion.g
-          initial={{ x: SAT_X, y: SAT_Y, rotate: 0 }}
-          animate={{
-            x: px, y: py,
-            rotate: phase >= 2 ? 40 : phase >= 1 ? 14 : 0,
-          }}
-          transition={{ duration: phase === 1 ? 1.8 : phase === 2 ? 1.9 : 0.3, ease: 'easeIn' }}
-          style={{ opacity: phase >= 3 ? 0 : 1 }}
+          style={{ x: satX, y: satY, rotate: satRotate }}
+          animate={{ opacity: phase >= 3 ? 0 : 1 }}
+          transition={{ duration: 0.3 }}
         >
-          {/* Solar panels */}
-          {phase < 2 && <>
-            <rect x="-24" y="-4" width="12" height="8"
-              fill="#100e0a" stroke={INK} strokeWidth="0.9" opacity="0.72"/>
-            <line x1="-24" y1="0" x2="-12" y2="0"
-              stroke={INK} strokeWidth="0.4" opacity="0.3"/>
-            <rect x="12" y="-4" width="12" height="8"
-              fill="#100e0a" stroke={INK} strokeWidth="0.9" opacity="0.72"/>
-            <line x1="12" y1="0" x2="24" y2="0"
-              stroke={INK} strokeWidth="0.4" opacity="0.3"/>
+          {/* Dish antenna — hidden when ablating */}
+          {!ablating && <>
+            <line x1="0" y1="-8" x2="0" y2="-18"
+              stroke={INK} strokeWidth="0.9" opacity="0.65"/>
+            <path d="M -7,-18 Q 0,-25 7,-18"
+              fill="none" stroke={INK} strokeWidth="0.9" opacity="0.65"/>
+            <circle cx="0" cy="-18" r="1.8" fill={INK} opacity="0.70"/>
           </>}
-          {/* Body — cross-hatched square */}
-          <rect x="-11" y="-11" width="22" height="22"
-            fill="#100e0a"
-            stroke={INK} strokeWidth={phase >= 1 ? '0.8' : '1.4'}
-            opacity={phase >= 2 ? 0.55 : 1}/>
-          {phase < 1 && <>
-            <line x1="-11" y1="-11" x2="11" y2="11"
-              stroke={INK} strokeWidth="0.5" opacity="0.32"/>
-            <line x1="11" y1="-11" x2="-11" y2="11"
-              stroke={INK} strokeWidth="0.5" opacity="0.32"/>
+
+          {/* Solar arrays — 3-panel wings, hidden when heavy ablation */}
+          {!heavyAblate && <>
+            <rect x="-40" y="-5" width="30" height="10"
+              fill="#100e0a" stroke={INK} strokeWidth="0.9"
+              opacity={ablating ? 0.45 : 0.82}/>
+            <line x1="-30" y1="-5" x2="-30" y2="5" stroke={INK} strokeWidth="0.5" opacity="0.33"/>
+            <line x1="-20" y1="-5" x2="-20" y2="5" stroke={INK} strokeWidth="0.5" opacity="0.33"/>
+            <rect x="10" y="-5" width="30" height="10"
+              fill="#100e0a" stroke={INK} strokeWidth="0.9"
+              opacity={ablating ? 0.45 : 0.82}/>
+            <line x1="20" y1="-5" x2="20" y2="5" stroke={INK} strokeWidth="0.5" opacity="0.33"/>
+            <line x1="30" y1="-5" x2="30" y2="5" stroke={INK} strokeWidth="0.5" opacity="0.33"/>
           </>}
-          {/* Antenna */}
-          {phase < 1 && (
-            <line x1="0" y1="-11" x2="0" y2="-20"
-              stroke={INK} strokeWidth="0.8" opacity="0.55"/>
+
+          {/* Main body */}
+          <rect x="-10" y="-7" width="20" height="14"
+            fill="#100e0a" stroke={INK}
+            strokeWidth={ablating ? 0.7 : 1.5}
+            opacity={heavyAblate ? 0.5 : 1}/>
+          {!ablating && <>
+            <line x1="-10" y1="-7" x2="10" y2="7" stroke={INK} strokeWidth="0.45" opacity="0.28"/>
+            <line x1="10" y1="-7" x2="-10" y2="7" stroke={INK} strokeWidth="0.45" opacity="0.28"/>
+          </>}
+
+          {/* Thruster nozzle */}
+          {!ablating && (
+            <path d="M -4,7 L-5,13 L5,13 L4,7 Z"
+              fill="#100e0a" stroke={INK} strokeWidth="0.7" opacity="0.55"/>
           )}
-          {/* Ablation — engraving tapered strokes */}
-          {phase >= 1 && (
+
+          {/* Ablation flames */}
+          {ablating && (
             <motion.g
-              animate={{ opacity: [0.5, 1, 0.5] }}
-              transition={{ duration: 0.32, repeat: Infinity }}
+              animate={{ opacity: [0.45, 1, 0.45] }}
+              transition={{ duration: 0.30, repeat: Infinity }}
             >
-              <line x1="-4" y1="11" x2="-10" y2="30"
-                stroke={INK} strokeWidth="1.1" opacity={phase >= 2 ? 0.9 : 0.65}/>
-              <line x1="0" y1="11" x2="0" y2="35"
-                stroke={INK} strokeWidth="1.4" opacity={phase >= 2 ? 1 : 0.75}/>
-              <line x1="4" y1="11" x2="9" y2="29"
-                stroke={INK} strokeWidth="1.1" opacity={phase >= 2 ? 0.9 : 0.65}/>
-              {phase >= 2 && <>
-                <line x1="-8" y1="13" x2="-18" y2="42"
-                  stroke={INK} strokeWidth="0.7" opacity="0.4"/>
-                <line x1="8" y1="13" x2="17" y2="40"
-                  stroke={INK} strokeWidth="0.7" opacity="0.4"/>
+              <line x1="-4" y1="7" x2="-11" y2="28"
+                stroke={INK} strokeWidth="1.1" opacity={heavyAblate ? 0.9 : 0.62}/>
+              <line x1="0" y1="7" x2="0" y2="33"
+                stroke={INK} strokeWidth="1.5" opacity={heavyAblate ? 1 : 0.72}/>
+              <line x1="4" y1="7" x2="10" y2="27"
+                stroke={INK} strokeWidth="1.1" opacity={heavyAblate ? 0.9 : 0.62}/>
+              {heavyAblate && <>
+                <line x1="-8" y1="9" x2="-20" y2="42"
+                  stroke={INK} strokeWidth="0.75" opacity="0.42"/>
+                <line x1="8" y1="9" x2="19" y2="40"
+                  stroke={INK} strokeWidth="0.75" opacity="0.42"/>
               </>}
             </motion.g>
           )}
         </motion.g>
 
-        {/* SATELLITE label — only visible on orbit (phase < 2) */}
+        {/* SATELLITE label */}
         <AnimatePresence>
           {phase < 2 && (
-            <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <line x1={SAT_X + 13} y1={SAT_Y - 5} x2={SAT_X + 28} y2={SAT_Y - 16}
+            <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              transition={{ delay: phase === 0 ? 1.5 : 0 }}>
+              <line x1={ENT_X + 12} y1={ENT_Y - 5} x2={ENT_X + 28} y2={ENT_Y - 17}
                 stroke={INK} strokeWidth="0.7" opacity="0.45"/>
-              <text x={SAT_X + 30} y={SAT_Y - 12} fill={INK} fontSize="11"
-                fontFamily="Georgia, serif" letterSpacing="1.5" opacity="0.65">
-                SATELLITE
-              </text>
+              <text x={ENT_X + 30} y={ENT_Y - 13} fill={INK} fontSize="11"
+                fontFamily="Georgia, serif" letterSpacing="1.5" opacity="0.62">SATELLITE</text>
             </motion.g>
           )}
         </AnimatePresence>
 
-        {/* ── Impact crater ── */}
+        {/* Impact crater — inside Earth body */}
         <AnimatePresence>
           {phase >= 3 && (
-            <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}>
-              <ellipse cx={IMP_X} cy={IMP_Y + 3} rx="12" ry="5"
-                fill="none" stroke={INK} strokeWidth="0.9" opacity="0.55"/>
-              <ellipse cx={IMP_X} cy={IMP_Y + 3} rx="5.5" ry="2.3"
-                fill="none" stroke={INK} strokeWidth="0.65" opacity="0.35"/>
-              {[[-15,-7],[-7,-19],[3,-14],[12,-6],[-2,-21]].map(([dx, dy], i) => (
+            <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}>
+              <ellipse cx={IMP_X} cy={IMP_Y + 3} rx="13" ry="5.5"
+                fill="none" stroke={INK} strokeWidth="0.9" opacity="0.58"/>
+              <ellipse cx={IMP_X} cy={IMP_Y + 3} rx="6" ry="2.5"
+                fill="none" stroke={INK} strokeWidth="0.65" opacity="0.36"/>
+              {[[-16,-8],[-8,-20],[3,-15],[13,-7],[-2,-22],[7,-18]].map(([dx, dy], i) => (
                 <line key={i}
                   x1={IMP_X} y1={IMP_Y + 3}
                   x2={IMP_X + dx} y2={IMP_Y + dy}
-                  stroke={INK} strokeWidth="0.6" opacity="0.4"/>
+                  stroke={INK} strokeWidth="0.65" opacity="0.42"/>
               ))}
             </motion.g>
           )}
         </AnimatePresence>
 
-        {/* ── Status + material note ── */}
+        {/* Status caption */}
         <motion.text
-          key={phase} x="32" y="270"
+          key={`${phase}-${cycle}`} x="32" y="270"
           fill={INK_DIM} fontSize="10"
           fontFamily="'Space Mono', monospace" letterSpacing="1.5"
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}
         >
-          {phase === 0 && 'ORBITAL DECAY'}
-          {phase === 1 && 'ATMOSPHERIC ENTRY'}
-          {phase === 2 && 'ABLATION IN PROGRESS'}
-          {phase >= 3 && `IMPACT  ·  SURVIVAL  ${info.rate}`}
+          {['ORBITAL APPROACH','ATMOSPHERIC ENTRY','ABLATION IN PROGRESS',
+            `IMPACT  ·  SURVIVAL  ${info.rate}`][phase]}
         </motion.text>
 
+        {/* Material note box — top-right, appears at impact */}
         <AnimatePresence>
           {phase >= 3 && (
             <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
-              <rect x="165" y="40" width="248" height="66" rx="1"
-                fill="#100e0a" stroke={INK} strokeWidth="0.8" opacity="0.92"/>
-              {[[165,40],[413,40],[165,106],[413,106]].map(([rx, ry], i) => (
+              <rect x="298" y="42" width="248" height="68" rx="1"
+                fill="#100e0a" stroke={INK} strokeWidth="0.8" opacity="0.93"/>
+              {[[298,42],[546,42],[298,110],[546,110]].map(([rx, ry], i) => (
                 <g key={i}>
-                  <line
-                    x1={rx + (i % 2 === 0 ? 4 : -4)} y1={ry}
-                    x2={rx + (i % 2 === 0 ? 10 : -10)} y2={ry}
+                  <line x1={rx+(i%2===0?4:-4)} y1={ry} x2={rx+(i%2===0?10:-10)} y2={ry}
                     stroke={INK} strokeWidth="0.6" opacity="0.38"/>
-                  <line
-                    x1={rx} y1={ry + (i < 2 ? 4 : -4)}
-                    x2={rx} y2={ry + (i < 2 ? 10 : -10)}
+                  <line x1={rx} y1={ry+(i<2?4:-4)} x2={rx} y2={ry+(i<2?10:-10)}
                     stroke={INK} strokeWidth="0.6" opacity="0.38"/>
                 </g>
               ))}
-              <text x="181" y="61" fill={INK} fontSize="10"
+              <text x="314" y="63" fill={INK} fontSize="10"
                 fontFamily="'Space Mono', monospace" letterSpacing="1" opacity="0.80">
-                {material}  ·  {info.rate} SURVIVES
+                {matKey}  ·  {info.rate} SURVIVES
               </text>
-              <foreignObject x="181" y="69" width="214" height="48">
+              <foreignObject x="314" y="71" width="216" height="50">
                 <div xmlns="http://www.w3.org/1999/xhtml" style={{
                   fontFamily: 'Georgia, serif', fontSize: '10px',
                   color: '#7a7060', lineHeight: 1.55,
@@ -365,7 +398,7 @@ function ReentryVis({ material }) {
           )}
         </AnimatePresence>
 
-        {/* ── Double border frame ── */}
+        {/* Double border frame */}
         <rect x="5" y="5" width="550" height="270" rx="1"
           fill="none" stroke={INK} strokeWidth="0.6" opacity="0.17"/>
         <rect x="9" y="9" width="542" height="262" rx="1"
@@ -391,14 +424,13 @@ function CaseArchive({ openedIds, onOpen }) {
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10,
         fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em',
-        color: '#5a5a56', marginBottom: 14,
+        color: '#3a3a38', marginBottom: 12,
       }}>
-        <span>INCIDENT ARCHIVE</span>
-        <span style={{ color: '#1e1e1c', flexGrow: 1, overflow: 'hidden' }}>{'─'.repeat(40)}</span>
-        <span>{openedIds.size}/{CASES.length} READ</span>
+        <div style={{ height: 1, background: '#1c1c1a', flex: 1 }} />
+        <span style={{ color: '#5a5a56' }}>{openedIds.size}/{CASES.length} READ</span>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 12 }}>
         {CASES.map(c => {
           const isRead = openedIds.has(c.id)
           const isActive = activeId === c.id
@@ -494,105 +526,131 @@ function CaseArchive({ openedIds, onOpen }) {
 }
 
 // ─── World map ────────────────────────────────────────────────────────────────
+// Equirectangular: x = lng+180 (0–360), y = 90–lat (0–180)
+const _lp = cs => cs.map(([ln, la]) => `${(ln + 180).toFixed(1)},${(90 - la).toFixed(1)}`).join(' ')
+
+// Continent polygons in [lng, lat] pairs — simplified but geographically recognisable
+const LAND_SHAPES = [
+  { id: 'na',   pts: [[-165,66],[-156,58],[-138,57],[-125,49],[-120,35],[-110,23],[-87,16],[-83,10],[-77,25],[-81,25],[-75,37],[-70,42],[-65,45],[-52,47],[-55,55],[-62,63],[-80,75],[-110,77],[-130,70],[-155,65]] },
+  { id: 'gl',   pts: [[-46,83],[-18,78],[-18,68],[-26,65],[-44,60],[-57,65],[-57,77]] },
+  { id: 'ic',   pts: [[-24,66],[-14,63],[-13,65],[-22,66]] },
+  { id: 'sa',   pts: [[-80,10],[-73,11],[-61,11],[-35,-8],[-34,-3],[-43,-23],[-50,-30],[-57,-40],[-65,-55],[-68,-56],[-73,-50],[-75,-30],[-77,-5],[-80,0]] },
+  { id: 'eu',   pts: [[-9,36],[2,43],[10,36],[20,36],[26,40],[32,48],[28,62],[20,72],[5,62],[-2,52],[-10,44]] },
+  { id: 'bi',   pts: [[-5,50],[-3,51],[0,51],[2,52],[0,56],[-2,58],[-5,58]] },
+  { id: 'af',   pts: [[-6,36],[10,37],[36,30],[42,14],[50,11],[42,0],[40,-5],[36,-20],[20,-35],[4,-5],[-5,2],[-17,14],[-13,28]] },
+  { id: 'arab', pts: [[36,36],[44,28],[50,26],[58,22],[50,12],[44,10],[38,12],[36,22]] },
+  { id: 'as',   pts: [[26,40],[36,36],[48,28],[60,22],[65,22],[72,8],[80,8],[80,22],[90,24],[95,20],[100,2],[108,2],[108,10],[118,20],[128,30],[132,34],[140,40],[142,48],[138,55],[110,58],[95,60],[80,75],[60,72],[40,68],[30,70],[28,62],[32,48]] },
+  { id: 'jp',   pts: [[130,34],[138,36],[136,42],[130,38]] },
+  { id: 'ph',   pts: [[118,18],[122,18],[122,10],[118,10]] },
+  { id: 'bo',   pts: [[108,7],[118,7],[118,0],[108,0]] },
+  { id: 'au',   pts: [[114,-22],[130,-12],[136,-12],[138,-18],[142,-18],[150,-24],[154,-28],[152,-35],[148,-38],[136,-35],[122,-34],[114,-34],[112,-28]] },
+  { id: 'nz',   pts: [[167,-34],[172,-36],[172,-40],[168,-44],[166,-44]] },
+]
+
 function WorldMap({ selectedId, onSelect }) {
   const selected = MAP_MARKERS.find(m => m.id === selectedId)
+  const INK     = '#d8cfbc'   // warm cream — matches ReentryVis
+  const INK_DIM = '#8a7a60'   // muted amber
+  const CFILL   = '#0e0c09'   // very dark warm-black land
+  const CSTROKE = '#2e2818'   // subtle warm outline
 
   return (
     <div>
-      <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em', color: '#5a5a56', marginBottom: 10 }}>
-        DOCUMENTED FALL LOCATIONS
+      <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.12em', color: '#6a6055', marginBottom: 8 }}>
+        已记录的坠落地点
       </div>
+
       <div style={{
-        position: 'relative',
-        width: '100%', paddingBottom: '50%',
-        background: '#060c10',
-        border: '1px solid #142014',
-        borderRadius: 4,
-        overflow: 'hidden',
-        marginBottom: 10,
+        position: 'relative', background: '#0a0906',
+        border: '1px solid #2a2520', borderRadius: 2, overflow: 'hidden', marginBottom: 10,
       }}>
-        <svg
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
-          viewBox="0 0 100 50"
-          preserveAspectRatio="none"
-        >
-          {/* Lat/lng grid */}
-          {[-60, -30, 0, 30, 60].map(lat => {
-            const y = ((90 - lat) / 180) * 50
-            return <line key={lat} x1="0" y1={y} x2="100" y2={y}
-              stroke={lat === 0 ? '#182818' : '#0c180c'} strokeWidth={lat === 0 ? 0.4 : 0.25} />
-          })}
-          {[-120, -60, 0, 60, 120].map(lng => {
-            const x = ((lng + 180) / 360) * 100
-            return <line key={lng} x1={x} y1="0" x2={x} y2="50"
-              stroke="#0c180c" strokeWidth="0.25" />
-          })}
+        {/* Scanlines overlay */}
+        <div style={{
+          position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 3,
+          background: 'repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.07) 2px,rgba(0,0,0,0.07) 3px)',
+        }} />
 
-          {/* Simplified continent silhouettes */}
-          {/* North America */}
-          <polygon points="10,5 14,4 20,5 26,6 27,10 25,16 20,20 16,19 13,15 10,10" fill="#0e180e" />
-          {/* Greenland */}
-          <polygon points="28,2 33,2 33,7 29,8 27,5" fill="#0e180e" />
-          {/* South America */}
-          <polygon points="20,23 27,21 30,26 28,34 24,39 19,38 17,32 18,26" fill="#0e180e" />
-          {/* Europe */}
-          <polygon points="46,4 54,4 55,8 53,12 50,14 47,12 45,8" fill="#0e180e" />
-          {/* Africa */}
-          <polygon points="47,14 55,13 57,18 56,28 53,36 49,36 46,28 45,20 46,14" fill="#0e180e" />
-          {/* Middle East */}
-          <polygon points="55,12 65,11 67,16 63,20 57,18 55,14" fill="#0e180e" />
-          {/* Asia */}
-          <polygon points="55,4 80,3 82,8 78,14 72,16 65,14 58,10 55,7" fill="#0e180e" />
-          {/* SE Asia */}
-          <polygon points="72,16 80,15 82,20 77,24 73,22 71,18" fill="#0e180e" />
-          {/* Australia */}
-          <polygon points="73,28 82,27 83,34 78,37 72,36 70,32" fill="#0e180e" />
+        <svg width="100%" viewBox="0 0 360 180" style={{ display: 'block' }}>
+          {/* Ocean fill */}
+          <rect x="0" y="0" width="360" height="180" fill="#0a0906" />
+
+          {/* Lat / lng grid */}
+          {[-60,-30,0,30,60].map(lat => (
+            <line key={lat} x1="0" y1={90-lat} x2="360" y2={90-lat}
+              stroke={lat === 0 ? '#302a1e' : '#1c1810'} strokeWidth={lat === 0 ? 0.55 : 0.28} />
+          ))}
+          {[-120,-60,0,60,120].map(lng => (
+            <line key={lng} x1={lng+180} y1="0" x2={lng+180} y2="180"
+              stroke="#1c1810" strokeWidth="0.28" />
+          ))}
+
+          {/* Continents */}
+          {LAND_SHAPES.map(({ id, pts }) => (
+            <polygon key={id} points={_lp(pts)} fill={CFILL} stroke={CSTROKE} strokeWidth="0.6" />
+          ))}
+
+          {/* Ocean labels */}
+          <text x="48"  y="102" fill={INK_DIM} fontSize="7" fontFamily="Georgia,serif" letterSpacing="4" opacity="0.55" textAnchor="middle">PACIFIC</text>
+          <text x="212" y="88"  fill={INK_DIM} fontSize="7" fontFamily="Georgia,serif" letterSpacing="4" opacity="0.55" textAnchor="middle">ATLANTIC</text>
+          <text x="292" y="122" fill={INK_DIM} fontSize="6" fontFamily="Georgia,serif" letterSpacing="3" opacity="0.50" textAnchor="middle">INDIAN</text>
+          <text x="322" y="76"  fill={INK_DIM} fontSize="7" fontFamily="Georgia,serif" letterSpacing="4" opacity="0.55" textAnchor="middle">PACIFIC</text>
+
+          {/* Lat labels */}
+          <text x="5" y="94"  fill={INK} fontSize="5.5" fontFamily="'Space Mono',monospace" opacity="0.45">EQ</text>
+          <text x="5" y="64"  fill={INK} fontSize="5"   fontFamily="'Space Mono',monospace" opacity="0.28">30°N</text>
+          <text x="5" y="124" fill={INK} fontSize="5"   fontFamily="'Space Mono',monospace" opacity="0.28">30°S</text>
+
+          {/* Double frame — matches ReentryVis border style */}
+          <rect x="0" y="0" width="360" height="180" fill="none" stroke={INK} strokeWidth="1.2" opacity="0.25"/>
+          <rect x="4" y="4" width="352" height="172" fill="none" stroke={INK} strokeWidth="0.4"  opacity="0.10"/>
+          {/* Corner ticks */}
+          {[[0,0,6,0,0,6],[356,0,-6,0,0,6],[0,176,6,0,0,-6],[356,176,-6,0,0,-6]].map(([x,y,dx1,dy1,dx2,dy2],i) => (
+            <g key={i}>
+              <line x1={x} y1={y} x2={x+dx1} y2={y+dy1} stroke={INK} strokeWidth="0.7" opacity="0.35"/>
+              <line x1={x} y1={y} x2={x+dx2} y2={y+dy2} stroke={INK} strokeWidth="0.7" opacity="0.35"/>
+            </g>
+          ))}
+
+          {/* Markers — crosshair + pulsing ring on select */}
+          {MAP_MARKERS.map(m => {
+            const mx = m.lng + 180
+            const my = 90 - m.lat
+            const sel = selectedId === m.id
+            return (
+              <g key={m.id} onClick={() => onSelect(sel ? null : m.id)} style={{ cursor: 'pointer' }}>
+                {sel && (
+                  <motion.circle cx={mx} cy={my} r="8"
+                    fill="none" stroke={m.color} strokeWidth="0.7"
+                    animate={{ r: [7, 16, 7], opacity: [0.50, 0, 0.50] }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: 'easeOut' }}
+                  />
+                )}
+                {/* Crosshair lines */}
+                <line x1={mx-5} y1={my}   x2={mx-2} y2={my}   stroke={m.color} strokeWidth="0.85" opacity={sel ? 0.95 : 0.55}/>
+                <line x1={mx+2} y1={my}   x2={mx+5} y2={my}   stroke={m.color} strokeWidth="0.85" opacity={sel ? 0.95 : 0.55}/>
+                <line x1={mx}   y1={my-5} x2={mx}   y2={my-2} stroke={m.color} strokeWidth="0.85" opacity={sel ? 0.95 : 0.55}/>
+                <line x1={mx}   y1={my+2} x2={mx}   y2={my+5} stroke={m.color} strokeWidth="0.85" opacity={sel ? 0.95 : 0.55}/>
+                {/* Centre dot */}
+                <circle cx={mx} cy={my} r={sel ? 2.2 : 1.6} fill={m.color} opacity={sel ? 1 : 0.75}/>
+                {/* Year label when selected */}
+                {sel && (
+                  <text x={mx+4} y={my-3} fill={m.color} fontSize="5.5"
+                    fontFamily="'Space Mono',monospace" opacity="0.90">{m.year}</text>
+                )}
+              </g>
+            )
+          })}
         </svg>
-
-        {/* Markers */}
-        {MAP_MARKERS.map(m => {
-          const pos = latLngToXY(m.lat, m.lng)
-          const isSelected = selectedId === m.id
-          return (
-            <motion.button
-              key={m.id}
-              onClick={() => onSelect(isSelected ? null : m.id)}
-              whileHover={{ scale: 1.5 }}
-              style={{
-                position: 'absolute',
-                left: `${pos.x}%`, top: `${pos.y}%`,
-                transform: 'translate(-50%, -50%)',
-                background: 'none', border: 'none',
-                cursor: 'pointer', padding: 5, zIndex: 2,
-              }}
-            >
-              <motion.div
-                animate={isSelected ? { scale: [1, 1.5, 1], opacity: [1, 0.6, 1] } : {}}
-                transition={{ duration: 1.2, repeat: Infinity }}
-                style={{
-                  width: isSelected ? 10 : 7,
-                  height: isSelected ? 10 : 7,
-                  borderRadius: '50%',
-                  background: m.color,
-                  boxShadow: `0 0 ${isSelected ? 10 : 5}px ${m.color}`,
-                  transition: 'all 0.2s',
-                }}
-              />
-            </motion.button>
-          )
-        })}
       </div>
 
       <AnimatePresence>
         {selected && (
           <motion.div
-            initial={{ opacity: 0, y: -6 }}
+            key={selected.id}
+            initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              fontFamily: MONO, fontSize: 10, color: '#7a7a74',
-            }}
+            style={{ display: 'flex', alignItems: 'center', gap: 10, fontFamily: MONO, fontSize: 10, color: '#7a7a74' }}
           >
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: selected.color, flexShrink: 0 }} />
             <span style={{ color: selected.color }}>{selected.year}</span>
@@ -602,6 +660,21 @@ function WorldMap({ selectedId, onSelect }) {
         )}
       </AnimatePresence>
     </div>
+  )
+}
+
+// ─── Fade-up section wrapper ──────────────────────────────────────────────────
+function FadeSection({ children, delay = 0, style = {} }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-60px' }}
+      transition={{ duration: 0.5, delay, ease: EASE }}
+      style={style}
+    >
+      {children}
+    </motion.div>
   )
 }
 
@@ -633,164 +706,224 @@ export default function M5({ onComplete }) {
         setStoryChapter('m5', fallback)
       })
       .finally(() => setLoadingEnding(false))
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleOpenCase(id) {
     setOpenedCases(prev => new Set([...prev, id]))
   }
 
   const allCasesRead = openedCases.size >= CASES.length
+  const resultColor = result === 'success' ? '#4a7a41' : '#c84840'
 
   return (
     <div style={{ background: '#0a0a0a', color: '#f5f4f0', padding: '80px 24px' }}>
-      <div style={{ maxWidth: 680, margin: '0 auto' }}>
+      <div style={{ maxWidth: 1080, margin: '0 auto' }}>
 
-        {/* Header */}
-        <div style={{ marginBottom: 52 }}>
+        {/* ── Header ── */}
+        <FadeSection style={{ marginBottom: 52 }}>
           <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.15em', color: '#5a5a56', marginBottom: 12 }}>
             MODULE 05 · REENTRY
           </div>
           <h2 style={{ fontFamily: SERIF, fontSize: 28, fontWeight: 300, color: '#f5f4f0', margin: '0 0 14px' }}>
             太空垃圾落地球
           </h2>
-          <p style={{ fontFamily: SANS, fontSize: 13, color: '#6a6a64', margin: 0, lineHeight: 1.75 }}>
+          <p style={{ fontFamily: SANS, fontSize: 13, color: '#6a6a64', margin: 0, lineHeight: 1.75, maxWidth: 760 }}>
             每一颗卫星都有生命尽头。任务结束后，它们面临两种命运：受控离轨，或等待轨道衰减。
             无论哪种，再入大气层的过程都在地球上留下了痕迹。
           </p>
-        </div>
+        </FadeSection>
 
-        {/* Re-entry animation */}
-        <div style={{ marginBottom: 6 }}>
+        {/* ── 01 · Re-entry animation ── */}
+        <FadeSection style={{ marginBottom: 40 }}>
           <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em', color: '#5a5a56', marginBottom: 10 }}>
-            RE-ENTRY SIMULATION · {material}
+            01 · RE-ENTRY SIMULATION · {material}
           </div>
           <ReentryVis material={material} />
-        </div>
+        </FadeSection>
 
-        {/* What burns table */}
-        <div style={{ marginBottom: 52 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 12 }}>
-            {BURN_TABLE.map(row => (
-              <div key={row.part} style={{
-                background: '#0d0d0b',
-                border: '1px solid #1c1c1a',
-                borderRadius: 3,
-                padding: '10px 14px',
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ fontFamily: SANS, fontSize: 12, color: '#c0c0b8' }}>{row.part}</span>
+        {/* ── 02 · Material fate table ── */}
+        <FadeSection style={{ marginBottom: 52 }}>
+          <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em', color: '#5a5a56', marginBottom: 14 }}>
+            02 · MATERIAL FATE
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+            {BURN_TABLE.map((row, i) => (
+              <motion.div
+                key={row.part}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: i * 0.06, ease: EASE }}
+                whileHover={{ y: -2, borderColor: row.ok === true ? '#4a7a4180' : row.ok === false ? '#c8484080' : '#c8a04080' }}
+                style={{
+                  background: '#0d0d0b',
+                  border: '1px solid #1c1c1a',
+                  borderTop: `3px solid ${row.ok === true ? '#4a7a41' : row.ok === false ? '#c84840' : '#c8a040'}`,
+                  borderRadius: 3,
+                  padding: '14px 16px',
+                  cursor: 'default',
+                  transition: 'border-color 0.2s',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                  <span style={{ fontFamily: SANS, fontSize: 12, color: '#c0c0b8', fontWeight: 400 }}>{row.part}</span>
                   <span style={{
-                    fontFamily: MONO, fontSize: 9, letterSpacing: '0.05em',
+                    fontFamily: MONO, fontSize: 9, letterSpacing: '0.08em',
                     color: row.ok === true ? '#4a7a41' : row.ok === false ? '#c84840' : '#c8a040',
                   }}>
                     {row.fate}
                   </span>
                 </div>
-                <div style={{ fontFamily: SANS, fontSize: 11, color: '#5a5a56', lineHeight: 1.5 }}>{row.note}</div>
-              </div>
+                <div style={{ fontFamily: SANS, fontSize: 11, color: '#5a5a56', lineHeight: 1.6 }}>{row.note}</div>
+              </motion.div>
             ))}
           </div>
-        </div>
+        </FadeSection>
 
-        {/* Story ending */}
-        <div style={{
-          marginBottom: 52,
-          padding: '24px 28px',
-          background: '#0d0d0b',
-          border: '1px solid #242420',
-          borderLeft: `3px solid ${result === 'success' ? '#4a7a41' : '#c84840'}`,
-          borderRadius: 3,
-        }}>
-          <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '0.12em', color: '#5a5a56', marginBottom: 14 }}>
-            PARALLEL TIMELINE · CHAPTER 05 · {result === 'success' ? 'MISSION SECURED' : 'MISSION LOST'}
+        {/* ── 03 · Story ending ── */}
+        <FadeSection style={{ marginBottom: 52 }}>
+          <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em', color: '#5a5a56', marginBottom: 14 }}>
+            03 · PARALLEL TIMELINE · CHAPTER 05
           </div>
-          {loadingEnding ? (
-            <div style={{ fontFamily: MONO, fontSize: 11, color: '#5a5a56', letterSpacing: '0.08em' }}>
-              GENERATING...
+          <div style={{
+            padding: '28px 32px',
+            background: '#0d0d0b',
+            border: '1px solid #242420',
+            borderLeft: `3px solid ${resultColor}`,
+            borderRadius: 3,
+            position: 'relative',
+            overflow: 'hidden',
+          }}>
+            <div style={{
+              position: 'absolute', top: 0, right: 0, bottom: 0, width: 180,
+              background: `linear-gradient(to left, ${resultColor}08, transparent)`,
+              pointerEvents: 'none',
+            }} />
+            <div style={{
+              fontFamily: MONO, fontSize: 9, letterSpacing: '0.12em',
+              color: resultColor, marginBottom: 16, opacity: 0.8,
+            }}>
+              {result === 'success' ? 'MISSION SECURED' : 'MISSION LOST'}
             </div>
-          ) : (
-            <p style={{ fontFamily: SERIF, fontSize: 14, color: '#aeaea6', lineHeight: 1.95, margin: 0, fontStyle: 'italic' }}>
-              {ending}
-            </p>
-          )}
-        </div>
+            {loadingEnding ? (
+              <motion.div
+                animate={{ opacity: [0.4, 1, 0.4] }}
+                transition={{ duration: 1.2, repeat: Infinity }}
+                style={{ fontFamily: MONO, fontSize: 11, color: '#5a5a56', letterSpacing: '0.08em' }}
+              >
+                GENERATING...
+              </motion.div>
+            ) : (
+              <p style={{ fontFamily: SERIF, fontSize: 15, color: '#aeaea6', lineHeight: 2, margin: 0, fontStyle: 'italic' }}>
+                {ending}
+              </p>
+            )}
+          </div>
+        </FadeSection>
 
-        {/* 25-year rule + legal vacuum */}
-        <div style={{ marginBottom: 52 }}>
+        {/* ── 04 · International framework (two columns) ── */}
+        <FadeSection style={{ marginBottom: 52 }}>
           <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em', color: '#5a5a56', marginBottom: 16 }}>
-            INTERNATIONAL FRAMEWORK
+            04 · INTERNATIONAL FRAMEWORK
           </div>
-          <div style={{
-            background: '#0d0d0b', border: '1px solid #222220',
-            borderRadius: 3, padding: '20px 24px', marginBottom: 10,
-          }}>
-            <div style={{ fontFamily: SERIF, fontSize: 15, color: '#f0efe8', marginBottom: 10, fontWeight: 400 }}>
-              25 年离轨规定
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div style={{
+              background: '#0d0d0b', border: '1px solid #222220',
+              borderRadius: 3, padding: '22px 26px',
+            }}>
+              <div style={{
+                fontFamily: MONO, fontSize: 9, letterSpacing: '0.1em',
+                color: '#c8b89a', marginBottom: 10, opacity: 0.7,
+              }}>
+                1995 · NASA / COPUOS
+              </div>
+              <div style={{ fontFamily: SERIF, fontSize: 15, color: '#f0efe8', marginBottom: 12, fontWeight: 400 }}>
+                25 年离轨规定
+              </div>
+              <p style={{ fontFamily: SANS, fontSize: 12, color: '#8a8a82', lineHeight: 1.8, margin: '0 0 12px' }}>
+                LEO 卫星在任务结束后{' '}
+                <span style={{ color: '#c8b89a' }}>25 年内</span>必须离轨。
+                超过这个时限，大气阻力已无法保证可预测的再入时间和落点。
+              </p>
+              <p style={{ fontFamily: SANS, fontSize: 11, color: '#5a5a56', lineHeight: 1.7, margin: 0 }}>
+                这只是建议，不是强制法律。统计显示目前约{' '}
+                <span style={{ color: '#c8a040' }}>60% 的卫星</span>未能满足这一时限。
+              </p>
             </div>
-            <p style={{ fontFamily: SANS, fontSize: 13, color: '#8a8a82', lineHeight: 1.8, margin: '0 0 10px' }}>
-              1995 年由 NASA 提出、后被联合国和平利用外层空间委员会（COPUOS）采纳的国际建议标准：
-              LEO 卫星在任务结束后 <span style={{ color: '#c8b89a' }}>25 年内</span>必须离轨。
-              超过这个时限，大气阻力已无法保证可预测的再入时间和落点。
-            </p>
-            <p style={{ fontFamily: SANS, fontSize: 12, color: '#5a5a56', lineHeight: 1.7, margin: 0 }}>
-              问题在于：这只是建议，不是强制法律。统计显示目前约{' '}
-              <span style={{ color: '#c8a040' }}>60% 的卫星</span>未能满足这一时限。
-            </p>
-          </div>
-          <div style={{
-            background: '#0d0d0b', border: '1px solid #222220',
-            borderRadius: 3, padding: '20px 24px',
-          }}>
-            <div style={{ fontFamily: SERIF, fontSize: 15, color: '#f0efe8', marginBottom: 10, fontWeight: 400 }}>
-              法律真空：无国家有权强制清除他国碎片
+            <div style={{
+              background: '#0d0d0b', border: '1px solid #222220',
+              borderRadius: 3, padding: '22px 26px',
+            }}>
+              <div style={{
+                fontFamily: MONO, fontSize: 9, letterSpacing: '0.1em',
+                color: '#c84840', marginBottom: 10, opacity: 0.7,
+              }}>
+                1967 · OUTER SPACE TREATY
+              </div>
+              <div style={{ fontFamily: SERIF, fontSize: 15, color: '#f0efe8', marginBottom: 12, fontWeight: 400 }}>
+                法律真空
+              </div>
+              <p style={{ fontFamily: SANS, fontSize: 12, color: '#8a8a82', lineHeight: 1.8, margin: '0 0 12px' }}>
+                卫星在轨期间的所有权归发射国永久持有，即使失效后也不例外。
+                任何第三国或私人公司都无权在未获授权情况下移动或清除他国碎片。
+              </p>
+              <p style={{ fontFamily: SANS, fontSize: 11, color: '#5a5a56', lineHeight: 1.7, margin: 0 }}>
+                碎片清理的核心障碍，不是技术，是国际法。
+              </p>
             </div>
-            <p style={{ fontFamily: SANS, fontSize: 13, color: '#8a8a82', lineHeight: 1.8, margin: '0 0 10px' }}>
-              根据 1967 年《外层空间条约》，卫星在轨期间的所有权归发射国永久持有，即使失效后也不例外。
-              这意味着：即便某颗废弃卫星正在向其他国家的航天器靠近，任何第三国或私人公司都无权
-              在未经该国许可的情况下移动或清除它。
-            </p>
-            <p style={{ fontFamily: SANS, fontSize: 12, color: '#5a5a56', lineHeight: 1.7, margin: 0 }}>
-              碎片清理的核心障碍，不是技术，是国际法。
-            </p>
           </div>
-        </div>
+        </FadeSection>
 
-        {/* Archive */}
-        <div style={{ marginBottom: 52 }}>
+        {/* ── 05 · Incident archive ── */}
+        <FadeSection style={{ marginBottom: 52 }}>
+          <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em', color: '#5a5a56', marginBottom: 16 }}>
+            05 · INCIDENT ARCHIVE
+          </div>
           <CaseArchive openedIds={openedCases} onOpen={handleOpenCase} />
-        </div>
+        </FadeSection>
 
-        {/* World map */}
-        <div style={{ marginBottom: 52 }}>
+        {/* ── 06 · World map ── */}
+        <FadeSection style={{ marginBottom: 52 }}>
+          <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em', color: '#5a5a56', marginBottom: 10 }}>
+            06 · REENTRY IMPACT RECORD
+          </div>
           <WorldMap selectedId={selectedMapId} onSelect={setSelectedMapId} />
-        </div>
+        </FadeSection>
 
-        {/* Complete */}
-        <div style={{ borderTop: '1px solid #1c1c1a', paddingTop: 36, textAlign: 'center' }}>
-          {!allCasesRead && (
-            <p style={{ fontFamily: SANS, fontSize: 12, color: '#5a5a56', margin: '0 0 20px' }}>
-              还有 {CASES.length - openedCases.size} 个档案未读
-            </p>
-          )}
-          <motion.button
-            onClick={onComplete}
-            whileHover={{ opacity: 0.85 }}
-            whileTap={{ scale: 0.97 }}
-            style={{
-              fontFamily: MONO,
-              fontSize: 12,
-              letterSpacing: '0.12em',
-              color: '#0a0a0a',
-              background: allCasesRead ? '#c8b89a' : '#5a5a56',
-              border: 'none',
-              borderRadius: 2,
-              padding: '12px 40px',
-              cursor: 'pointer',
-              transition: 'background 0.3s',
-            }}
-          >
-            {allCasesRead ? '前往 M6' : '跳过，前往 M6'}
-          </motion.button>
+        {/* ── Complete ── */}
+        <div style={{ borderTop: '1px solid #1c1c1a', paddingTop: 40 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+            <div>
+              {!allCasesRead ? (
+                <p style={{ fontFamily: SANS, fontSize: 12, color: '#5a5a56', margin: 0 }}>
+                  还有 <span style={{ color: '#c8b89a' }}>{CASES.length - openedCases.size}</span> 个档案未读
+                </p>
+              ) : (
+                <p style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em', color: '#4a7a41', margin: 0 }}>
+                  ✓ 全部档案已读
+                </p>
+              )}
+            </div>
+            <motion.button
+              onClick={onComplete}
+              whileHover={{ opacity: 0.85, y: -1 }}
+              whileTap={{ scale: 0.97 }}
+              style={{
+                fontFamily: MONO,
+                fontSize: 12,
+                letterSpacing: '0.12em',
+                color: '#0a0a0a',
+                background: allCasesRead ? '#c8b89a' : '#3a3a38',
+                border: 'none',
+                borderRadius: 2,
+                padding: '12px 40px',
+                cursor: 'pointer',
+                transition: 'background 0.3s',
+              }}
+            >
+              {allCasesRead ? '前往 M6 →' : '跳过，前往 M6 →'}
+            </motion.button>
+          </div>
         </div>
 
       </div>
