@@ -1,10 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;600&family=Space+Mono:wght@400;700&family=Noto+Sans+SC:wght@300;400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;600&family=Space+Mono:wght@400;700&family=Noto+Sans+SC:wght@300;400;500&family=Lexend:wght@300;400;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-mono:  "Space Mono", monospace;
-  --font-serif: "Noto Serif SC", serif;
-  --font-sans:  "Noto Sans SC", sans-serif;
+  --font-mono:   "Space Mono", monospace;
+  --font-serif:  "Noto Serif SC", serif;
+  --font-sans:   "Noto Sans SC", sans-serif;
+  --font-lexend: "Lexend", sans-serif;
+  --font-zh:     "PingFang SC", "Microsoft YaHei", sans-serif;
 
   /* ── Deep Space Blue-Purple Palette ── */
   --color-void:    #04040f;

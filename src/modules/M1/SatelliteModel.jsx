@@ -3,6 +3,18 @@ import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 
+// Reads plain refs (updated via MotionValue.on('change')) — runs outside React render cycle
+function CameraRig({ mouseX, mouseY }) {
+  useFrame(({ camera }) => {
+    const tx = (mouseX.current - 0.5) * 0.6
+    const ty = (mouseY.current - 0.5) * -0.4
+    camera.position.x += (tx - camera.position.x) * 0.04
+    camera.position.y += (ty + 0.5 - camera.position.y) * 0.04
+    camera.lookAt(0, 0, 0)
+  })
+  return null
+}
+
 const BODY  = '#12122a'
 const PANEL = '#1a2845'
 
@@ -214,7 +226,7 @@ function Satellite({ selections }) {
   )
 }
 
-export default function SatelliteModel({ selections = {}, height = 480, fill = false }) {
+export default function SatelliteModel({ selections = {}, height = 480, fill = false, mouseXRef, mouseYRef }) {
   const containerStyle = fill
     ? { width: '100%', height: '100%' }
     : { height, background: 'transparent' }
@@ -246,6 +258,7 @@ export default function SatelliteModel({ selections = {}, height = 480, fill = f
           maxPolarAngle={Math.PI * 0.72}
           minPolarAngle={Math.PI * 0.28}
         />
+        {mouseXRef && mouseYRef && <CameraRig mouseX={mouseXRef} mouseY={mouseYRef} />}
       </Canvas>
     </div>
   )
