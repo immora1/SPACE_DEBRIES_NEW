@@ -1,4 +1,4 @@
-// 右侧悬浮威胁事件面板 — glassmorphism 设计，从右侧滑入
+﻿// 右侧悬浮威胁事件面板 — glassmorphism 设计，从右侧滑入
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 
@@ -17,7 +17,7 @@ export default function EventCard({ event, onChoose, disabled, round, totalRound
 
   if (!event) return null
 
-  const info = THREAT_INFO[event.type] || { label: event.type, color: '#c8b89a', icon: '!', bg: 'rgba(200,184,154,0.08)' }
+  const info = THREAT_INFO[event.type] || { label: event.type, color: '#6b7fff', icon: '!', bg: 'rgba(107,127,255,0.08)' }
   const lastStory = storyThread.length > 0 ? storyThread[storyThread.length - 1] : null
 
   return (
@@ -241,3 +241,4 @@ export default function EventCard({ event, onChoose, disabled, round, totalRound
     </motion.div>
   )
 }
+

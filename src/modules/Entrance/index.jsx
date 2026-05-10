@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import useAppStore from '../../store/useAppStore'
 import { generateStoryOutline, generateOpeningStory } from '../../services/ai'
@@ -99,11 +99,11 @@ export default function Entrance({ onComplete }) {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', background: 'transparent', display: 'flex', flexDirection: 'column' }}>
 
       {/* 顶部标题栏 */}
       <div style={{ padding: '24px 32px', borderBottom: '1px solid #2a2a28' }}>
-        <span style={{ fontFamily: 'monospace', fontSize: 10, color: '#6b6b66', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+        <span style={{ fontFamily: 'monospace', fontSize: 10, color: '#484878', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
           SPACE_DEBRIES · ENTRANCE
         </span>
       </div>
@@ -119,13 +119,13 @@ export default function Entrance({ onComplete }) {
               style={{ width: '100%', maxWidth: 480 }}
             >
               <div style={{ marginBottom: 48 }}>
-                <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#6b6b66', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 16 }}>
+                <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#484878', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 16 }}>
                   ENTRANCE · 个人信息
                 </div>
-                <h1 style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 22, color: '#f5f4f0', lineHeight: 1.5, marginBottom: 12 }}>
+                <h1 style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 22, color: '#e8e8f8', lineHeight: 1.5, marginBottom: 12 }}>
                   在平行宇宙里，<br />一颗卫星正在等待你的名字。
                 </h1>
-                <p style={{ color: '#6b6b66', fontSize: 13, lineHeight: 1.7 }}>
+                <p style={{ color: '#484878', fontSize: 13, lineHeight: 1.7 }}>
                   填写下面三项，系统将为你匹配一颗真实卫星，并开始一段关于你和太空垃圾的故事。
                 </p>
               </div>
@@ -138,10 +138,10 @@ export default function Entrance({ onComplete }) {
                 ].map((f) => (
                   <div key={f.key}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                      <span style={{ fontFamily: 'monospace', fontSize: 10, color: '#c8b89a', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                      <span style={{ fontFamily: 'monospace', fontSize: 10, color: '#6b7fff', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
                         {f.label}
                       </span>
-                      <span style={{ fontSize: 10, color: '#6b6b66' }}>{f.hint}</span>
+                      <span style={{ fontSize: 10, color: '#484878' }}>{f.hint}</span>
                     </div>
                     {f.type === 'input' ? (
                       <input
@@ -151,7 +151,7 @@ export default function Entrance({ onComplete }) {
                         style={{
                           width: '100%', background: 'transparent', border: 'none',
                           borderBottom: '1px solid #2a2a28', padding: '8px 0',
-                          color: '#f5f4f0', fontSize: 13, outline: 'none', fontFamily: 'sans-serif',
+                          color: '#e8e8f8', fontSize: 13, outline: 'none', fontFamily: 'sans-serif',
                         }}
                       />
                     ) : (
@@ -162,7 +162,7 @@ export default function Entrance({ onComplete }) {
                         rows={4}
                         style={{
                           width: '100%', background: 'transparent', border: '1px solid #2a2a28',
-                          padding: 12, color: '#f5f4f0', fontSize: 13, outline: 'none',
+                          padding: 12, color: '#e8e8f8', fontSize: 13, outline: 'none',
                           resize: 'none', fontFamily: 'sans-serif', marginTop: 4,
                         }}
                       />
@@ -180,7 +180,7 @@ export default function Entrance({ onComplete }) {
                   style={{
                     fontFamily: 'monospace', fontSize: 11, letterSpacing: '0.12em',
                     textTransform: 'uppercase', padding: '14px 24px',
-                    border: '1px solid rgba(200,184,154,0.4)', color: '#c8b89a',
+                    border: '1px solid rgba(107,127,255,0.4)', color: '#6b7fff',
                     background: 'transparent', cursor: ready ? 'pointer' : 'not-allowed',
                     opacity: ready ? 1 : 0.3, transition: 'opacity 0.2s',
                   }}
@@ -202,12 +202,12 @@ export default function Entrance({ onComplete }) {
                 {[0, 1, 2].map((i) => (
                   <div key={i} style={{
                     position: 'absolute', inset: i * 12, borderRadius: '50%',
-                    border: '1px solid rgba(200,184,154,0.3)',
+                    border: '1px solid rgba(107,127,255,0.3)',
                     animation: `ping 1.5s ease-out ${i * 0.3}s infinite`,
                   }} />
                 ))}
               </div>
-              <p style={{ fontFamily: 'monospace', fontSize: 10, color: '#6b6b66', letterSpacing: '0.12em', marginBottom: 8 }}>
+              <p style={{ fontFamily: 'monospace', fontSize: 10, color: '#484878', letterSpacing: '0.12em', marginBottom: 8 }}>
                 {step === 'matching' ? 'SCANNING ORBIT' : 'WRITING STORY'}
               </p>
               <p style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 14, color: 'rgba(245,244,240,0.7)' }}>
@@ -224,11 +224,11 @@ export default function Entrance({ onComplete }) {
               style={{ width: '100%', maxWidth: 480 }}
             >
               {/* 卫星信息卡 */}
-              <div style={{ border: '1px solid #2a2a28', background: '#111110', padding: 20, marginBottom: 32 }}>
-                <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#6b6b66', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 12 }}>
+              <div style={{ border: '1px solid #2a2a28', background: '#08081a', padding: 20, marginBottom: 32 }}>
+                <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#484878', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 12 }}>
                   已匹配卫星 · MATCHED
                 </div>
-                <div style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 18, color: '#f5f4f0', marginBottom: 16 }}>
+                <div style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 18, color: '#e8e8f8', marginBottom: 16 }}>
                   {sat.name}
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
@@ -238,10 +238,10 @@ export default function Entrance({ onComplete }) {
                     { label: '发射年份', value: sat.launchYear },
                   ].map((s) => (
                     <div key={s.label}>
-                      <div style={{ fontFamily: 'monospace', fontSize: 9, color: '#6b6b66', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
+                      <div style={{ fontFamily: 'monospace', fontSize: 9, color: '#484878', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
                         {s.label}
                       </div>
-                      <div style={{ fontFamily: '"Space Mono", monospace', fontSize: 13, color: '#f5f4f0' }}>
+                      <div style={{ fontFamily: '"Space Mono", monospace', fontSize: 13, color: '#e8e8f8' }}>
                         {s.value}
                       </div>
                     </div>
@@ -252,7 +252,7 @@ export default function Entrance({ onComplete }) {
               {/* 开场故事 */}
               {story && (
                 <div style={{ marginBottom: 32, paddingLeft: 16, borderLeft: '2px solid rgba(139,115,85,0.3)' }}>
-                  <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#6b6b66', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
+                  <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#484878', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
                     第一段 · 开场
                   </div>
                   <p style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 14, color: 'rgba(245,244,240,0.85)', lineHeight: 1.8 }}>
@@ -266,7 +266,7 @@ export default function Entrance({ onComplete }) {
                 style={{
                   fontFamily: 'monospace', fontSize: 11, letterSpacing: '0.12em',
                   textTransform: 'uppercase', padding: '14px 24px',
-                  border: '1px solid rgba(200,184,154,0.4)', color: '#c8b89a',
+                  border: '1px solid rgba(107,127,255,0.4)', color: '#6b7fff',
                   background: 'transparent', cursor: 'pointer', width: '100%',
                 }}
               >
@@ -280,3 +280,4 @@ export default function Entrance({ onComplete }) {
     </div>
   )
 }
+

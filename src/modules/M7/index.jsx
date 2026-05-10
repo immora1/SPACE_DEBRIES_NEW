@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, useEffect } from 'react'
+﻿import { useMemo, useState, useRef, useEffect } from 'react'
 import { AnimatePresence, motion, animate as fmAnimate, useMotionValue } from 'framer-motion'
 import useAppStore from '../../store/useAppStore'
 import { generateAnswerExplanation, generateVideoQuestion } from '../../services/ai'
@@ -111,7 +111,7 @@ function getRecommendation({ gameResult, materials }) {
   return 'cleanup'
 }
 
-function Dots({ color = '#c8b89a' }) {
+function Dots({ color = '#6b7fff' }) {
   return (
     <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center', marginLeft: 6 }}>
       {[0, 1, 2].map(i => (
@@ -133,7 +133,7 @@ function ScanBar() {
         transition={{ duration: 1.4, repeat: Infinity, ease: 'linear' }}
         style={{
           position: 'absolute', top: 0, left: 0, width: '45%', height: '100%',
-          background: 'linear-gradient(90deg, transparent, rgba(200,184,154,0.7), transparent)',
+          background: 'linear-gradient(90deg, transparent, rgba(107,127,255,0.7), transparent)',
         }}
       />
     </div>
@@ -149,7 +149,7 @@ function HeroCard({ video, isVisited, isSelected, onClick }) {
       style={{
         position: 'relative', overflow: 'hidden', height: 300,
         background: '#0d0d0b',
-        border: `1px solid ${isSelected ? 'rgba(200,184,154,0.28)' : '#1c1c1a'}`,
+        border: `1px solid ${isSelected ? 'rgba(107,127,255,0.28)' : '#1c1c1a'}`,
         borderRadius: 3, cursor: 'pointer',
         transition: 'border-color 0.25s',
         userSelect: 'none',
@@ -163,13 +163,13 @@ function HeroCard({ video, isVisited, isSelected, onClick }) {
       <div style={{
         position: 'absolute', inset: 0,
         background: isSelected
-          ? 'linear-gradient(to top, rgba(13,13,11,0.97) 0%, rgba(13,13,11,0.65) 42%, rgba(13,13,11,0.18) 100%)'
-          : 'linear-gradient(to top, rgba(13,13,11,0.95) 0%, rgba(13,13,11,0.5) 52%, rgba(13,13,11,0.1) 100%)',
+          ? 'linear-gradient(to top, rgba(8,8,26,0.97) 0%, rgba(8,8,26,0.65) 42%, rgba(8,8,26,0.18) 100%)'
+          : 'linear-gradient(to top, rgba(8,8,26,0.95) 0%, rgba(8,8,26,0.5) 52%, rgba(8,8,26,0.1) 100%)',
         transition: 'background 0.35s', pointerEvents: 'none',
       }} />
 
       <div style={{ position: 'absolute', top: 16, left: 18, display: 'flex', gap: 6, alignItems: 'center' }}>
-        <span style={{ fontFamily: MONO, fontSize: 8, color: '#c8b89a', border: '1px solid rgba(200,184,154,0.22)', padding: '2px 8px', letterSpacing: '0.1em' }}>
+        <span style={{ fontFamily: MONO, fontSize: 8, color: '#6b7fff', border: '1px solid rgba(107,127,255,0.22)', padding: '2px 8px', letterSpacing: '0.1em' }}>
           {video.tag}
         </span>
         <span style={{ fontFamily: MONO, fontSize: 7, color: '#78c88c', border: '1px solid rgba(120,200,140,0.25)', padding: '2px 7px', letterSpacing: '0.06em' }}>
@@ -198,7 +198,7 @@ function HeroCard({ video, isVisited, isSelected, onClick }) {
         transition={{ duration: 0.3, ease: EASE }}
         style={{
           position: 'absolute', bottom: 0, left: 0, right: 0, height: 2,
-          background: 'linear-gradient(to right, rgba(200,184,154,0.55), rgba(200,184,154,0.08))',
+          background: 'linear-gradient(to right, rgba(107,127,255,0.55), rgba(107,127,255,0.08))',
           transformOrigin: 'left', pointerEvents: 'none',
         }}
       />
@@ -221,9 +221,9 @@ function TrackCard({ video, isVisited, isSelected, isActive, progressScaleX, onC
         height: 200, flexShrink: 0, width: CARD_W,
         background: '#0d0d0b',
         border: `1px solid ${
-          isSelected ? 'rgba(200,184,154,0.28)'
-          : isActive  ? 'rgba(200,184,154,0.16)'
-          : isVisited ? 'rgba(200,184,154,0.09)'
+          isSelected ? 'rgba(107,127,255,0.28)'
+          : isActive  ? 'rgba(107,127,255,0.16)'
+          : isVisited ? 'rgba(107,127,255,0.09)'
           : '#1c1c1a'
         }`,
         borderRadius: 3, cursor: 'pointer',
@@ -240,15 +240,15 @@ function TrackCard({ video, isVisited, isSelected, isActive, progressScaleX, onC
       <div style={{
         position: 'absolute', inset: 0,
         background: hovered
-          ? 'linear-gradient(to top, rgba(13,13,11,0.97) 0%, rgba(13,13,11,0.65) 45%, rgba(13,13,11,0.15) 100%)'
-          : 'linear-gradient(to top, rgba(13,13,11,0.95) 0%, rgba(13,13,11,0.28) 55%, transparent 100%)',
+          ? 'linear-gradient(to top, rgba(8,8,26,0.97) 0%, rgba(8,8,26,0.65) 45%, rgba(8,8,26,0.15) 100%)'
+          : 'linear-gradient(to top, rgba(8,8,26,0.95) 0%, rgba(8,8,26,0.28) 55%, transparent 100%)',
         transition: 'background 0.4s',
         pointerEvents: 'none',
       }} />
 
       {/* Badges */}
       <div style={{ position: 'absolute', top: 11, left: 12, display: 'flex', gap: 5 }}>
-        <span style={{ fontFamily: MONO, fontSize: 7, color: '#c8b89a', border: '1px solid rgba(200,184,154,0.17)', padding: '2px 6px', letterSpacing: '0.08em' }}>
+        <span style={{ fontFamily: MONO, fontSize: 7, color: '#6b7fff', border: '1px solid rgba(107,127,255,0.17)', padding: '2px 6px', letterSpacing: '0.08em' }}>
           {video.tag}
         </span>
         {isVisited && (
@@ -275,7 +275,7 @@ function TrackCard({ video, isVisited, isSelected, isActive, progressScaleX, onC
         <div style={{ fontFamily: SANS, fontSize: 11, color: '#8a8a82', lineHeight: 1.65, marginBottom: 12 }}>
           {video.focus[0]}
         </div>
-        <div style={{ fontFamily: MONO, fontSize: 9, color: '#c8b89a', letterSpacing: '0.08em' }}>点击查看详情 →</div>
+        <div style={{ fontFamily: MONO, fontSize: 9, color: '#6b7fff', letterSpacing: '0.08em' }}>点击查看详情 →</div>
       </motion.div>
 
       {/* Selected bottom line */}
@@ -284,7 +284,7 @@ function TrackCard({ video, isVisited, isSelected, isActive, progressScaleX, onC
         transition={{ duration: 0.22 }}
         style={{
           position: 'absolute', bottom: 0, left: 0, right: 0, height: 2,
-          background: '#c8b89a', transformOrigin: 'left', pointerEvents: 'none',
+          background: '#6b7fff', transformOrigin: 'left', pointerEvents: 'none',
         }}
       />
 
@@ -293,7 +293,7 @@ function TrackCard({ video, isVisited, isSelected, isActive, progressScaleX, onC
         <motion.div
           style={{
             position: 'absolute', bottom: 0, left: 0, right: 0, height: 2,
-            background: 'rgba(200,184,154,0.45)',
+            background: 'rgba(107,127,255,0.45)',
             scaleX: progressScaleX,
             transformOrigin: 'left', pointerEvents: 'none',
           }}
@@ -316,13 +316,13 @@ function DetailPanel({ video, onOpen, onClose }) {
     >
       <div style={{
         background: '#0d0d0b',
-        border: '1px solid rgba(200,184,154,0.12)',
-        borderLeft: '3px solid rgba(200,184,154,0.32)',
+        border: '1px solid rgba(107,127,255,0.12)',
+        borderLeft: '3px solid rgba(107,127,255,0.32)',
         borderRadius: 3, padding: '22px 26px',
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 15 }}>
           <div style={{ flex: 1, minWidth: 0, paddingRight: 12 }}>
-            <div style={{ fontFamily: MONO, fontSize: 8, color: '#c8b89a', letterSpacing: '0.1em', marginBottom: 7, opacity: 0.6 }}>
+            <div style={{ fontFamily: MONO, fontSize: 8, color: '#6b7fff', letterSpacing: '0.1em', marginBottom: 7, opacity: 0.6 }}>
               {video.tag} · {video.duration}
             </div>
             <div style={{ fontFamily: SERIF, fontSize: 16, color: '#f0ede6', fontWeight: 300, lineHeight: 1.5 }}>
@@ -335,7 +335,7 @@ function DetailPanel({ video, onOpen, onClose }) {
           }}>✕</button>
         </div>
 
-        <div style={{ height: 1, background: '#1a1a18', marginBottom: 16 }} />
+        <div style={{ height: 1, background: '#1a1a35', marginBottom: 16 }} />
 
         <div style={{ display: 'grid', gap: 11, marginBottom: 22 }}>
           {video.focus.map((f, i) => (
@@ -355,7 +355,7 @@ function DetailPanel({ video, onOpen, onClose }) {
             onClick={() => onOpen(video)}
             whileHover={{ opacity: 0.85 }} whileTap={{ scale: 0.97 }}
             style={{
-              background: '#c8b89a', border: 'none', color: '#0a0a0a',
+              background: '#6b7fff', border: 'none', color: 'transparent',
               fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em',
               padding: '9px 22px', cursor: 'pointer', borderRadius: 2,
             }}
@@ -503,7 +503,7 @@ export default function M7({ onComplete }) {
   const visitedCount  = Object.keys(visited).length
 
   return (
-    <div style={{ background: '#0a0a0a', color: '#f5f4f0', padding: '80px 24px' }}>
+    <div style={{ background: 'transparent', color: '#e8e8f8', padding: '80px 24px' }}>
       <div style={{ maxWidth: CONTENT_MAX, margin: '0 auto' }}>
 
         {/* ── Header ── */}
@@ -515,7 +515,7 @@ export default function M7({ onComplete }) {
           <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.15em', color: '#5a5a56', marginBottom: 12 }}>
             MODULE 07 · VIDEO BRIEFING
           </div>
-          <h2 style={{ fontFamily: SERIF, fontSize: 28, fontWeight: 300, color: '#f5f4f0', margin: '0 0 14px' }}>
+          <h2 style={{ fontFamily: SERIF, fontSize: 28, fontWeight: 300, color: '#e8e8f8', margin: '0 0 14px' }}>
             探索太空垃圾的多个视角。
           </h2>
           <p style={{ fontFamily: SANS, fontSize: 13, color: '#6a6a64', margin: 0, lineHeight: 1.75, maxWidth: 680 }}>
@@ -570,7 +570,7 @@ export default function M7({ onComplete }) {
                   onClick={() => jumpTo(i)}
                   animate={{
                     width: i === autoIdx ? 20 : 5,
-                    background: i === autoIdx ? '#c8b89a' : '#2a2a28',
+                    background: i === autoIdx ? '#6b7fff' : '#1c1c38',
                   }}
                   transition={{ duration: 0.38, ease: EASE }}
                   style={{ height: 3, borderRadius: 99, border: 'none', cursor: 'pointer', padding: 0 }}
@@ -653,7 +653,7 @@ export default function M7({ onComplete }) {
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
-                  <span style={{ fontFamily: MONO, fontSize: 8, color: '#c8b89a', letterSpacing: '0.1em' }}>{r.tag}</span>
+                  <span style={{ fontFamily: MONO, fontSize: 8, color: '#6b7fff', letterSpacing: '0.1em' }}>{r.tag}</span>
                   <span style={{ fontFamily: MONO, fontSize: 11, color: '#3a3a38' }}>↗</span>
                 </div>
                 <div style={{ fontFamily: SERIF, fontSize: 15, color: '#f0efe8', marginBottom: 7, fontWeight: 300 }}>{r.title}</div>
@@ -681,8 +681,8 @@ export default function M7({ onComplete }) {
               whileHover={{ opacity: 0.8 }} whileTap={{ scale: 0.97 }}
               style={{
                 flexShrink: 0, background: 'transparent',
-                border: `1px solid ${aiOpen ? 'rgba(200,184,154,0.30)' : '#252523'}`,
-                color: aiOpen ? '#c8b89a' : '#5a5a56',
+                border: `1px solid ${aiOpen ? 'rgba(107,127,255,0.30)' : '#252523'}`,
+                color: aiOpen ? '#6b7fff' : '#5a5a56',
                 fontFamily: MONO, fontSize: 9, letterSpacing: '0.08em',
                 padding: '9px 16px', cursor: 'pointer', borderRadius: 2,
                 transition: 'all 0.2s',
@@ -713,7 +713,7 @@ export default function M7({ onComplete }) {
                       whileHover={{ opacity: 0.8 }} whileTap={{ scale: 0.97 }}
                       style={{
                         background: 'transparent', border: '1px solid #2a2a28', borderRadius: 2,
-                        color: '#c8b89a', fontFamily: MONO, fontSize: 9, letterSpacing: '0.08em',
+                        color: '#6b7fff', fontFamily: MONO, fontSize: 9, letterSpacing: '0.08em',
                         padding: '6px 12px', cursor: questionState === 'loading' ? 'wait' : 'pointer',
                         display: 'flex', alignItems: 'center',
                       }}
@@ -765,7 +765,7 @@ export default function M7({ onComplete }) {
                         style={{
                           width: '100%', minHeight: 96, resize: 'vertical', boxSizing: 'border-box',
                           background: '#080807',
-                          border: `1px solid ${answer.trim() ? 'rgba(200,184,154,0.20)' : '#1e1e1c'}`,
+                          border: `1px solid ${answer.trim() ? 'rgba(107,127,255,0.20)' : '#1e1e1c'}`,
                           color: '#d8d3c8', fontFamily: SANS, fontSize: 13, lineHeight: 1.7,
                           padding: '12px 14px', outline: 'none', borderRadius: 2,
                           transition: 'border-color 0.3s', marginBottom: 10,
@@ -779,8 +779,8 @@ export default function M7({ onComplete }) {
                           whileTap={answer.trim() ? { scale: 0.97 } : {}}
                           style={{
                             background: 'transparent',
-                            border: `1px solid ${answer.trim() ? '#2a2a28' : '#181816'}`,
-                            color: answer.trim() ? '#c8b89a' : '#282826',
+                            border: `1px solid ${answer.trim() ? '#1c1c38' : '#181816'}`,
+                            color: answer.trim() ? '#6b7fff' : '#282826',
                             fontFamily: MONO, fontSize: 9, letterSpacing: '0.08em',
                             padding: '7px 12px', borderRadius: 2,
                             cursor: answer.trim() ? 'pointer' : 'not-allowed',
@@ -815,7 +815,7 @@ export default function M7({ onComplete }) {
                               <div style={{ marginTop: 18 }}>
                                 <div style={{ height: 1, background: '#181816', marginBottom: 16 }} />
                                 <div style={{ display: 'flex', gap: 14 }}>
-                                  <div style={{ width: 2, background: 'rgba(200,184,154,0.18)', borderRadius: 1, flexShrink: 0 }} />
+                                  <div style={{ width: 2, background: 'rgba(107,127,255,0.18)', borderRadius: 1, flexShrink: 0 }} />
                                   <p style={{ fontFamily: SANS, fontSize: 12, color: '#8a8a82', lineHeight: 1.85, margin: 0 }}>
                                     {explanation}
                                   </p>
@@ -844,7 +844,7 @@ export default function M7({ onComplete }) {
               whileHover={{ opacity: 0.85, y: -1 }} whileTap={{ scale: 0.97 }}
               style={{
                 fontFamily: MONO, fontSize: 12, letterSpacing: '0.12em',
-                color: '#0a0a0a', background: '#c8b89a',
+                color: 'transparent', background: '#6b7fff',
                 border: 'none', borderRadius: 2,
                 padding: '12px 40px', cursor: 'pointer',
               }}
@@ -858,3 +858,4 @@ export default function M7({ onComplete }) {
     </div>
   )
 }
+

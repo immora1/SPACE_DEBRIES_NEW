@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+﻿import { useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import useAppStore from '../../store/useAppStore'
 
@@ -144,13 +144,13 @@ export default function M8({ onComplete }) {
   }
 
   return (
-    <div style={{ background: '#0a0a0a', color: '#f5f4f0', padding: '80px 24px' }}>
+    <div style={{ background: 'transparent', color: '#e8e8f8', padding: '80px 24px' }}>
       <div style={{ maxWidth: CONTENT_MAX, margin: '0 auto' }}>
         <div style={{ marginBottom: 46 }}>
           <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.15em', color: '#5a5a56', marginBottom: 12 }}>
             MODULE 08 · OBSERVATION & COMMUNITY
           </div>
-          <h2 style={{ fontFamily: SERIF, fontSize: 28, fontWeight: 300, color: '#f5f4f0', margin: '0 0 14px' }}>
+          <h2 style={{ fontFamily: SERIF, fontSize: 28, fontWeight: 300, color: '#e8e8f8', margin: '0 0 14px' }}>
             学会写一份有效的太空垃圾观测报告。
           </h2>
           <p style={{ fontFamily: SANS, fontSize: 13, color: '#6a6a64', margin: 0, lineHeight: 1.75, maxWidth: 780 }}>
@@ -181,8 +181,8 @@ export default function M8({ onComplete }) {
                 style={{
                   width: '100%',
                   textAlign: 'left',
-                  background: lessonStep === idx ? 'rgba(200,184,154,0.06)' : 'transparent',
-                  border: `1px solid ${lessonStep === idx ? 'rgba(200,184,154,0.25)' : 'transparent'}`,
+                  background: lessonStep === idx ? 'rgba(107,127,255,0.06)' : 'transparent',
+                  border: `1px solid ${lessonStep === idx ? 'rgba(107,127,255,0.25)' : 'transparent'}`,
                   borderRadius: 4,
                   padding: '12px 10px',
                   marginBottom: 8,
@@ -190,7 +190,7 @@ export default function M8({ onComplete }) {
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ fontFamily: MONO, fontSize: 9, color: '#c8b89a' }}>{n}</span>
+                  <span style={{ fontFamily: MONO, fontSize: 9, color: '#6b7fff' }}>{n}</span>
                   <span style={{ fontFamily: MONO, fontSize: 8, color: '#3a3a38' }}>{idx < 3 ? 'LESSON' : 'COMMUNITY'}</span>
                 </div>
                 <div style={{ fontFamily: SERIF, fontSize: 15, color: '#f0efe8', marginBottom: 4 }}>{title}</div>
@@ -212,8 +212,8 @@ export default function M8({ onComplete }) {
                     <span key={m} style={{ display: 'inline-block', fontFamily: MONO, fontSize: 8, color: '#e07030', border: '1px solid rgba(224,112,48,0.22)', padding: '2px 6px', margin: '0 5px 5px 0' }}>{m}</span>
                   ))}
                 </div>
-                <div style={{ border: '1px solid rgba(200,184,154,0.22)', padding: 16, borderRadius: 4, background: 'rgba(200,184,154,0.025)' }}>
-                  <div style={{ fontFamily: MONO, fontSize: 9, color: '#c8b89a', marginBottom: 8 }}>VALID REPORT</div>
+                <div style={{ border: '1px solid rgba(107,127,255,0.22)', padding: 16, borderRadius: 4, background: 'rgba(107,127,255,0.025)' }}>
+                  <div style={{ fontFamily: MONO, fontSize: 9, color: '#6b7fff', marginBottom: 8 }}>VALID REPORT</div>
                   <p style={{ fontFamily: SERIF, fontSize: 15, color: '#d8d3c8', lineHeight: 1.8, margin: '0 0 12px' }}>{GOOD_REPORT.text}</p>
                   {GOOD_REPORT.fields.map(m => (
                     <span key={m} style={{ display: 'inline-block', fontFamily: MONO, fontSize: 8, color: '#78c88c', border: '1px solid rgba(120,200,140,0.22)', padding: '2px 6px', margin: '0 5px 5px 0' }}>{m}</span>
@@ -234,14 +234,14 @@ export default function M8({ onComplete }) {
                     whileHover={{ y: -3 }}
                     style={{
                       textAlign: 'left',
-                      background: lessonStep === idx ? 'rgba(200,184,154,0.055)' : '#090908',
-                      border: `1px solid ${lessonStep === idx ? 'rgba(200,184,154,0.35)' : '#20201e'}`,
+                      background: lessonStep === idx ? 'rgba(107,127,255,0.055)' : '#090908',
+                      border: `1px solid ${lessonStep === idx ? 'rgba(107,127,255,0.35)' : '#20201e'}`,
                       borderRadius: 4,
                       padding: 14,
                       cursor: 'pointer',
                     }}
                   >
-                    <div style={{ fontFamily: MONO, fontSize: 9, color: '#c8b89a', marginBottom: 10 }}>步骤 {idx + 1}</div>
+                    <div style={{ fontFamily: MONO, fontSize: 9, color: '#6b7fff', marginBottom: 10 }}>步骤 {idx + 1}</div>
                     <div style={{ fontFamily: SERIF, fontSize: 16, color: '#f0efe8', marginBottom: 8 }}>{card.title}</div>
                     <div style={{ fontFamily: SANS, fontSize: 11, color: '#7a7a72', lineHeight: 1.65 }}>{card.signal}</div>
                   </motion.button>
@@ -254,9 +254,9 @@ export default function M8({ onComplete }) {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
                   transition={{ duration: 0.25, ease: EASE }}
-                  style={{ borderLeft: '3px solid #c8b89a', padding: '10px 14px', background: 'rgba(200,184,154,0.025)' }}
+                  style={{ borderLeft: '3px solid #6b7fff', padding: '10px 14px', background: 'rgba(107,127,255,0.025)' }}
                 >
-                  <div style={{ fontFamily: MONO, fontSize: 9, color: '#c8b89a', marginBottom: 5 }}>判断提醒</div>
+                  <div style={{ fontFamily: MONO, fontSize: 9, color: '#6b7fff', marginBottom: 5 }}>判断提醒</div>
                   <div style={{ fontFamily: SANS, fontSize: 12, color: '#8a8a82', lineHeight: 1.75 }}>{STANDARD_CARDS[lessonStep]?.warning}</div>
                 </motion.div>
               </AnimatePresence>
@@ -286,8 +286,8 @@ export default function M8({ onComplete }) {
                               onClick={() => setPractice(prev => ({ ...prev, [item.id]: type }))}
                               style={{
                                 flex: 1,
-                                background: answer === type ? '#c8b89a' : 'transparent',
-                                color: answer === type ? '#0a0a0a' : '#5a5a56',
+                                background: answer === type ? '#6b7fff' : 'transparent',
+                                color: answer === type ? 'transparent' : '#5a5a56',
                                 border: '1px solid #2a2a28',
                                 fontFamily: MONO,
                                 fontSize: 8,
@@ -325,7 +325,7 @@ export default function M8({ onComplete }) {
                     onClick={() => { setSelectedId(item.id); setActiveCommunityId(item.id) }}
                     style={{
                       height: 88,
-                      border: `1px solid ${selectedId === item.id ? 'rgba(200,184,154,0.55)' : '#1c1c1a'}`,
+                      border: `1px solid ${selectedId === item.id ? 'rgba(107,127,255,0.55)' : '#1c1c1a'}`,
                       background: '#080807',
                       padding: 0,
                       cursor: 'pointer',
@@ -334,7 +334,7 @@ export default function M8({ onComplete }) {
                     }}
                   >
                     <img src={item.img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: selectedId === item.id ? 0.76 : 0.48 }} />
-                    <div style={{ position: 'absolute', left: 6, bottom: 5, fontFamily: MONO, fontSize: 8, color: '#c8b89a' }}>{item.type.toUpperCase()}</div>
+                    <div style={{ position: 'absolute', left: 6, bottom: 5, fontFamily: MONO, fontSize: 8, color: '#6b7fff' }}>{item.type.toUpperCase()}</div>
                   </button>
                 ))}
               </div>
@@ -389,7 +389,7 @@ export default function M8({ onComplete }) {
               />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
                 <span style={{ fontFamily: MONO, fontSize: 10, color: reportScore >= 75 ? '#78c88c' : '#5a5a56' }}>REPORT QUALITY · {reportScore}%</span>
-                <button onClick={submitReport} disabled={!canSubmit} style={{ background: canSubmit ? '#c8b89a' : 'transparent', color: canSubmit ? '#0a0a0a' : '#4a4a46', border: `1px solid ${canSubmit ? '#c8b89a' : '#2a2a28'}`, fontFamily: MONO, fontSize: 10, padding: '8px 12px', cursor: canSubmit ? 'pointer' : 'not-allowed' }}>
+                <button onClick={submitReport} disabled={!canSubmit} style={{ background: canSubmit ? '#6b7fff' : 'transparent', color: canSubmit ? 'transparent' : '#4a4a46', border: `1px solid ${canSubmit ? '#6b7fff' : '#1c1c38'}`, fontFamily: MONO, fontSize: 10, padding: '8px 12px', cursor: canSubmit ? 'pointer' : 'not-allowed' }}>
                   提交到社区
                 </button>
               </div>
@@ -410,7 +410,7 @@ export default function M8({ onComplete }) {
             <div style={{ display: 'grid', gap: 10 }}>
               {[...(SAMPLE_COMMENTS[activeCommunity.id] || []), ...reports.filter(r => r.imageId === activeCommunity.id).map(r => ({ name: r.author, text: `${r.report.time || '未填时间'} · ${r.report.location || '未填地点'} · ${r.report.note}` }))].map((comment, idx) => (
                 <motion.div key={`${comment.name}-${idx}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} style={{ border: '1px solid #20201e', borderRadius: 4, padding: '12px 14px', background: '#090908' }}>
-                  <div style={{ fontFamily: MONO, fontSize: 9, color: '#c8b89a', marginBottom: 6 }}>{comment.name}</div>
+                  <div style={{ fontFamily: MONO, fontSize: 9, color: '#6b7fff', marginBottom: 6 }}>{comment.name}</div>
                   <div style={{ fontFamily: SANS, fontSize: 12, color: '#8a8a82', lineHeight: 1.7 }}>{comment.text}</div>
                 </motion.div>
               ))}
@@ -429,9 +429,9 @@ export default function M8({ onComplete }) {
           style={{
             width: '100%',
             padding: '16px 0',
-            background: canComplete ? '#c8b89a' : 'transparent',
-            border: `1px solid ${canComplete ? '#c8b89a' : '#2a2a28'}`,
-            color: canComplete ? '#0a0a0a' : '#5a5a56',
+            background: canComplete ? '#6b7fff' : 'transparent',
+            border: `1px solid ${canComplete ? '#6b7fff' : '#1c1c38'}`,
+            color: canComplete ? 'transparent' : '#5a5a56',
             fontFamily: SERIF,
             fontSize: 14,
             letterSpacing: '0.1em',
@@ -445,3 +445,5 @@ export default function M8({ onComplete }) {
     </div>
   )
 }
+
+

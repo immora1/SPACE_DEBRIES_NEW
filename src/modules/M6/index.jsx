@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import useAppStore from '../../store/useAppStore'
 import { generateCleanupFeedback, generateCleanupEpilogue } from '../../services/ai'
@@ -198,13 +198,13 @@ function MethodCard({ m, index }) {
           />
           <div style={{
             position: 'absolute', inset: 0,
-            background: 'linear-gradient(to bottom, transparent 35%, rgba(13,13,11,0.92) 75%, #0d0d0b 100%)',
+            background: 'linear-gradient(to bottom, transparent 35%, rgba(8,8,26,0.92) 75%, #0d0d0b 100%)',
           }} />
           <div style={{
             position: 'absolute', top: 10, right: 10,
             fontFamily: MONO, fontSize: 8, letterSpacing: '0.08em',
-            color: '#c8b89a', background: 'rgba(10,9,8,0.82)',
-            padding: '3px 8px', border: '1px solid rgba(200,184,154,0.22)',
+            color: '#6b7fff', background: 'rgba(10,9,8,0.82)',
+            padding: '3px 8px', border: '1px solid rgba(107,127,255,0.22)',
           }}>
             {m.status}
           </div>
@@ -225,9 +225,9 @@ function MethodCard({ m, index }) {
           transform: flipped ? 'rotateY(0deg)' : 'rotateY(180deg)',
           opacity: flipped ? 1 : 0,
           transition: 'transform 0.72s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.18s linear 0.24s',
-          background: 'radial-gradient(circle at 80% 10%, rgba(200,184,154,0.055), transparent 38%), #0d0d0b',
+          background: 'radial-gradient(circle at 80% 10%, rgba(107,127,255,0.055), transparent 38%), #0d0d0b',
           border: '1px solid #2a2a28',
-          borderLeft: '3px solid #c8b89a',
+          borderLeft: '3px solid #6b7fff',
           display: 'flex', flexDirection: 'column',
           justifyContent: 'flex-start', padding: '20px 18px',
           boxSizing: 'border-box',
@@ -235,7 +235,7 @@ function MethodCard({ m, index }) {
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', marginBottom: 12 }}>
             <div>
-              <div style={{ fontFamily: MONO, fontSize: 8, color: '#c8b89a', letterSpacing: '0.12em', marginBottom: 8 }}>
+              <div style={{ fontFamily: MONO, fontSize: 8, color: '#6b7fff', letterSpacing: '0.12em', marginBottom: 8 }}>
                 TECHNICAL DETAIL
               </div>
               <div style={{ fontFamily: SERIF, fontSize: 16, color: '#f0efe8', fontWeight: 400 }}>
@@ -262,7 +262,7 @@ function MethodCard({ m, index }) {
                 borderTop: '1px solid rgba(245,244,240,0.055)',
                 paddingTop: 6,
               }}>
-                <div style={{ fontFamily: MONO, fontSize: 8, color: '#c8b89a', letterSpacing: '0.08em', marginBottom: 4 }}>
+                <div style={{ fontFamily: MONO, fontSize: 8, color: '#6b7fff', letterSpacing: '0.08em', marginBottom: 4 }}>
                   {label}
                 </div>
                 <div style={{ fontFamily: SANS, fontSize: 9.5, color: '#7f7f78', lineHeight: 1.48 }}>
@@ -382,7 +382,7 @@ export default function M6({ onComplete }) {
   }
 
   return (
-    <div style={{ background: '#0a0a0a', color: '#f5f4f0', padding: '80px 24px' }}>
+    <div style={{ background: 'transparent', color: '#e8e8f8', padding: '80px 24px' }}>
       <div style={{ maxWidth: CONTENT_MAX, margin: '0 auto' }}>
 
         {/* ── Header ── */}
@@ -390,7 +390,7 @@ export default function M6({ onComplete }) {
           <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.15em', color: '#5a5a56', marginBottom: 12 }}>
             MODULE 06 · CLEANUP
           </div>
-          <h2 style={{ fontFamily: SERIF, fontSize: 28, fontWeight: 300, color: '#f5f4f0', margin: '0 0 14px' }}>
+          <h2 style={{ fontFamily: SERIF, fontSize: 28, fontWeight: 300, color: '#e8e8f8', margin: '0 0 14px' }}>
             怎么清理太空垃圾
           </h2>
           <p style={{ fontFamily: SANS, fontSize: 13, color: '#6a6a64', margin: 0, lineHeight: 1.75, maxWidth: 760 }}>
@@ -412,9 +412,9 @@ export default function M6({ onComplete }) {
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
                   <div style={{ fontFamily: SERIF, fontSize: 15, color: '#f0efe8', fontWeight: 400 }}>{b.title}</div>
-                  <div style={{ fontFamily: MONO, fontSize: 10, color: '#c8b89a' }}>{b.stat}</div>
+                  <div style={{ fontFamily: MONO, fontSize: 10, color: '#6b7fff' }}>{b.stat}</div>
                 </div>
-                <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: '0.08em', color: '#2a2a28', marginBottom: 8 }}>
+                <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: '0.08em', color: '#1c1c38', marginBottom: 8 }}>
                   {b.titleEn}
                 </div>
                 <p style={{ fontFamily: SANS, fontSize: 12, color: '#6a6a64', margin: 0, lineHeight: 1.7 }}>{b.desc}</p>
@@ -483,7 +483,7 @@ export default function M6({ onComplete }) {
           <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em', color: '#5a5a56', marginBottom: 16 }}>
             03 · 拖拽匹配
           </div>
-          <h3 style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 300, color: '#f5f4f0', margin: '0 0 10px' }}>
+          <h3 style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 300, color: '#e8e8f8', margin: '0 0 10px' }}>
             为这批碎片选择清理方式。
           </h3>
           <p style={{ fontFamily: SANS, fontSize: 13, color: '#6a6a64', margin: '0 0 24px', lineHeight: 1.75 }}>
@@ -503,10 +503,10 @@ export default function M6({ onComplete }) {
               alignItems: 'center',
               padding: '14px 16px',
               borderBottom: '1px solid #181816',
-              background: 'rgba(13,13,11,0.62)',
+              background: 'rgba(8,8,26,0.62)',
             }}>
               <div>
-                <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '0.14em', color: '#c8b89a', marginBottom: 6 }}>
+                <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '0.14em', color: '#6b7fff', marginBottom: 6 }}>
                   CLEANUP MATCHING CONSOLE
                 </div>
                 <div style={{ fontFamily: SANS, fontSize: 11, color: '#5a5a56', lineHeight: 1.6 }}>
@@ -535,7 +535,7 @@ export default function M6({ onComplete }) {
 
             <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 0 }}>
             {/* ── Left: tech drag cards ── */}
-            <div style={{ borderRight: '1px solid #181816', padding: 14, background: 'rgba(10,10,10,0.35)' }}>
+            <div style={{ borderRight: '1px solid #181816', padding: 14, background: 'rgba(4,4,15,0.35)' }}>
               <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '0.08em', color: '#3a3a38', marginBottom: 10 }}>
                 可用技术 · 拖拽
               </div>
@@ -557,19 +557,19 @@ export default function M6({ onComplete }) {
                     whileTap={disabled ? {} : { scale: 0.985 }}
                     style={{
                       position: 'relative',
-                      background: isSelected ? 'rgba(200,184,154,0.055)' : '#0d0d0b',
-                      border: `1px solid ${isSelected ? 'rgba(200,184,154,0.48)' : '#222220'}`,
+                      background: isSelected ? 'rgba(107,127,255,0.055)' : '#0d0d0b',
+                      border: `1px solid ${isSelected ? 'rgba(107,127,255,0.48)' : '#222220'}`,
                       borderRadius: 4, overflow: 'hidden',
                       cursor: disabled ? 'not-allowed' : 'grab',
                       userSelect: 'none',
                       opacity: disabled && !isSelected ? 0.52 : 1,
-                      boxShadow: isSelected ? '0 0 28px rgba(200,184,154,0.08)' : 'none',
+                      boxShadow: isSelected ? '0 0 28px rgba(107,127,255,0.08)' : 'none',
                     }}
                   >
                     {isSelected && (
                       <motion.div
                         layoutId="selected-tech-rail"
-                        style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: '#c8b89a', zIndex: 2 }}
+                        style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: '#6b7fff', zIndex: 2 }}
                       />
                     )}
                     <div style={{ position: 'relative', height: 82, overflow: 'hidden' }}>
@@ -581,16 +581,16 @@ export default function M6({ onComplete }) {
                       <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 40%, #0d0d0b 100%)' }} />
                       <div style={{
                         position: 'absolute', top: 8, right: 8,
-                        fontFamily: MONO, fontSize: 8, color: isSelected ? '#0a0a0a' : '#5a5a56',
-                        background: isSelected ? '#c8b89a' : 'rgba(10,10,10,0.72)',
-                        border: '1px solid rgba(200,184,154,0.20)',
+                        fontFamily: MONO, fontSize: 8, color: isSelected ? 'transparent' : '#5a5a56',
+                        background: isSelected ? '#6b7fff' : 'rgba(4,4,15,0.72)',
+                        border: '1px solid rgba(107,127,255,0.20)',
                         padding: '2px 6px',
                       }}>
                         {isSelected ? 'LOCKED' : 'SELECT'}
                       </div>
                     </div>
                     <div style={{ padding: '8px 12px 12px' }}>
-                      <div style={{ fontFamily: MONO, fontSize: 8, color: '#c8b89a', letterSpacing: '0.08em', marginBottom: 3 }}>
+                      <div style={{ fontFamily: MONO, fontSize: 8, color: '#6b7fff', letterSpacing: '0.08em', marginBottom: 3 }}>
                         {tech.titleEn}
                       </div>
                       <div style={{ fontFamily: SERIF, fontSize: 13, color: '#f0efe8' }}>{tech.title}</div>
@@ -634,12 +634,12 @@ export default function M6({ onComplete }) {
                       style={{
                         position: 'relative',
                         overflow: 'hidden',
-                        background: isOver || isLockedTarget ? 'rgba(200,184,154,0.035)' : '#0d0d0b',
+                        background: isOver || isLockedTarget ? 'rgba(107,127,255,0.035)' : '#0d0d0b',
                         border: `1px solid ${
-                          isOver    ? 'rgba(200,184,154,0.35)' :
+                          isOver    ? 'rgba(107,127,255,0.35)' :
                           result?.isCorrect === true  ? '#2a4a2a' :
                           result?.isCorrect === false ? '#4a2a1a' :
-                          isLockedTarget ? 'rgba(200,184,154,0.28)' :
+                          isLockedTarget ? 'rgba(107,127,255,0.28)' :
                           '#1c1c1a'
                         }`,
                         borderRadius: 4, padding: '18px 18px', minHeight: 132,
@@ -657,7 +657,7 @@ export default function M6({ onComplete }) {
                           transition={{ duration: 1.25, repeat: Infinity, ease: 'linear' }}
                           style={{
                             position: 'absolute', top: 0, bottom: 0, width: '36%',
-                            background: 'linear-gradient(90deg, transparent, rgba(200,184,154,0.08), transparent)',
+                            background: 'linear-gradient(90deg, transparent, rgba(107,127,255,0.08), transparent)',
                             pointerEvents: 'none',
                           }}
                         />
@@ -666,7 +666,7 @@ export default function M6({ onComplete }) {
                         position: 'absolute', left: 0, top: 0, bottom: 0, width: 3,
                         background: result
                           ? (result.isCorrect ? '#78c88c' : '#e07030')
-                          : isLockedTarget ? '#c8b89a' : '#242420',
+                          : isLockedTarget ? '#6b7fff' : '#242420',
                         opacity: result || isLockedTarget ? 0.85 : 0.35,
                       }} />
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
@@ -694,7 +694,7 @@ export default function M6({ onComplete }) {
                       {debris.context && (
                         <div style={{
                           fontFamily: MONO, fontSize: 9, color: '#5a5a56',
-                          borderLeft: '2px solid rgba(200,184,154,0.25)',
+                          borderLeft: '2px solid rgba(107,127,255,0.25)',
                           paddingLeft: 8, marginBottom: 8, lineHeight: 1.55,
                         }}>
                           个性化依据 · {debris.context}
@@ -704,7 +704,7 @@ export default function M6({ onComplete }) {
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
                         <span style={{
                           fontFamily: MONO, fontSize: 8, letterSpacing: '0.06em',
-                          color: '#c8b89a', border: '1px solid rgba(200,184,154,0.18)',
+                          color: '#6b7fff', border: '1px solid rgba(107,127,255,0.18)',
                           padding: '2px 6px',
                         }}>
                           来自 M1 材料
@@ -719,7 +719,7 @@ export default function M6({ onComplete }) {
                       </div>
 
                       {pickedTech && !isLoading && (
-                        <div style={{ fontFamily: MONO, fontSize: 10, color: '#c8b89a', marginBottom: 6, letterSpacing: '0.05em' }}>
+                        <div style={{ fontFamily: MONO, fontSize: 10, color: '#6b7fff', marginBottom: 6, letterSpacing: '0.05em' }}>
                           → {pickedTech.title}
                         </div>
                       )}
@@ -729,8 +729,8 @@ export default function M6({ onComplete }) {
                           animate={{ opacity: [0.3, 0.8, 0.3] }}
                           transition={{ duration: 1.2, repeat: Infinity }}
                           style={{
-                            fontFamily: MONO, fontSize: 9, color: '#c8b89a', letterSpacing: '0.1em',
-                            border: '1px solid rgba(200,184,154,0.18)',
+                            fontFamily: MONO, fontSize: 9, color: '#6b7fff', letterSpacing: '0.1em',
+                            border: '1px solid rgba(107,127,255,0.18)',
                             display: 'inline-block', padding: '4px 8px',
                           }}
                         >
@@ -749,8 +749,8 @@ export default function M6({ onComplete }) {
                           animate={isLockedTarget ? { opacity: [0.45, 0.95, 0.45] } : { opacity: 1 }}
                           transition={{ duration: 1.1, repeat: isLockedTarget ? Infinity : 0 }}
                           style={{
-                          fontFamily: MONO, fontSize: 9, color: '#2a2a28', letterSpacing: '0.08em',
-                          border: `1px dashed ${isLockedTarget ? 'rgba(200,184,154,0.42)' : '#2a2a28'}`,
+                          fontFamily: MONO, fontSize: 9, color: '#1c1c38', letterSpacing: '0.08em',
+                          border: `1px dashed ${isLockedTarget ? 'rgba(107,127,255,0.42)' : '#1c1c38'}`,
                           padding: '6px 10px',
                           display: 'inline-block', marginTop: 4,
                         }}>
@@ -774,7 +774,7 @@ export default function M6({ onComplete }) {
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
             <div style={{ fontFamily: MONO, fontSize: 11, color: '#5a5a56' }}>匹配准确率</div>
-            <div style={{ fontFamily: MONO, fontSize: 11, color: '#c8b89a' }}>
+            <div style={{ fontFamily: MONO, fontSize: 11, color: '#6b7fff' }}>
               {Math.round(accuracy * 100)}%  ·  {correctCount}/{debrisSet.length}
             </div>
           </div>
@@ -800,7 +800,7 @@ export default function M6({ onComplete }) {
               style={{
                 background: '#0d0d0b',
                 border: '1px solid #242420',
-                borderLeft: '3px solid #c8b89a',
+                borderLeft: '3px solid #6b7fff',
                 borderRadius: 3, padding: '20px 24px', marginBottom: 28,
               }}
             >
@@ -820,12 +820,12 @@ export default function M6({ onComplete }) {
             whileTap={canContinue ? { scale: 0.98 } : {}}
             style={{
               width: '100%', padding: '16px 0',
-              background: canContinue ? '#c8b89a' : 'transparent',
-              border: `1px solid ${canContinue ? '#c8b89a' : '#2a2a28'}`,
+              background: canContinue ? '#6b7fff' : 'transparent',
+              border: `1px solid ${canContinue ? '#6b7fff' : '#1c1c38'}`,
               borderRadius: 2, cursor: canContinue ? 'pointer' : 'not-allowed',
               opacity: canContinue ? 1 : 0.32,
               fontFamily: SERIF, fontSize: 14,
-              color: canContinue ? '#0a0a0a' : '#5a5a56',
+              color: canContinue ? 'transparent' : '#5a5a56',
               letterSpacing: '0.1em', transition: 'all 0.2s',
             }}
           >
@@ -841,3 +841,5 @@ export default function M6({ onComplete }) {
     </div>
   )
 }
+
+

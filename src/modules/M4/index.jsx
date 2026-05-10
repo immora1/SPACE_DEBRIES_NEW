@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+﻿import { useState, useEffect, useCallback } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import useAppStore from '../../store/useAppStore'
 import {
@@ -190,7 +190,7 @@ export default function M4({ onComplete }) {
     : 0.5
 
   return (
-    <div style={{ width: '100%', height: '100vh', position: 'relative', background: '#0a0a0a', overflow: 'hidden' }}>
+    <div style={{ width: '100%', height: '100vh', position: 'relative', background: 'transparent', overflow: 'hidden' }}>
 
       {/* 3D 场景 */}
       <div style={{ position: 'absolute', inset: 0 }}>
@@ -294,7 +294,7 @@ function IntroOverlay({ satellite, initialArmor, damageLevel, storyOutline, onSt
         <h2 style={{
           fontFamily: 'Noto Serif SC, serif',
           fontSize: '26px',
-          color: '#f5f4f0',
+          color: '#e8e8f8',
           fontWeight: 300,
           margin: '0 0 14px',
         }}>
@@ -353,8 +353,8 @@ function IntroOverlay({ satellite, initialArmor, damageLevel, storyOutline, onSt
             fontFamily: 'Space Mono, monospace',
             fontSize: '12px',
             letterSpacing: '0.12em',
-            color: '#0a0a0a',
-            background: '#c8b89a',
+            color: 'transparent',
+            background: '#6b7fff',
             border: 'none',
             borderRadius: 3,
             padding: '12px 44px',
@@ -650,3 +650,4 @@ function AiThinkingPanel() {
     </motion.div>
   )
 }
+

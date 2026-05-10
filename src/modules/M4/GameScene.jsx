@@ -1,4 +1,4 @@
-import { useRef, useMemo, useEffect } from 'react'
+﻿import { useRef, useMemo, useEffect } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
@@ -75,7 +75,7 @@ function Atmosphere() {
 }
 
 // ── 卫星轨道环 ─────────────────────────────────────────────────────────────────
-function OrbitRing({ radius, inclination = 0, color = '#c8b89a', opacity = 0.75, tubeRadius = 0.012 }) {
+function OrbitRing({ radius, inclination = 0, color = '#6b7fff', opacity = 0.75, tubeRadius = 0.012 }) {
   const geometry = useMemo(() => {
     const curve = new THREE.EllipseCurve(0, 0, radius, radius, 0, 2 * Math.PI, false, 0)
     const points = curve.getPoints(180).map((p) => new THREE.Vector3(p.x, 0, p.y))
@@ -196,9 +196,9 @@ function Satellite({ orbitRadius = 3.2, inclination = 0.5, phase = 0 }) {
       </mesh>
       <mesh position={[0, 0.14, 0]}>
         <cylinderGeometry args={[0.008, 0.008, 0.2, 6]} />
-        <meshBasicMaterial color="#c8b89a" />
+        <meshBasicMaterial color="#6b7fff" />
       </mesh>
-      <pointLight color="#c8b89a" intensity={0.4} distance={1.5} />
+      <pointLight color="#6b7fff" intensity={0.4} distance={1.5} />
     </group>
   )
 }
@@ -352,7 +352,7 @@ function PlanetOrbit({ radius }) {
 
   return (
     <mesh geometry={geometry}>
-      <meshBasicMaterial color="#c8b89a" transparent opacity={0.22} />
+      <meshBasicMaterial color="#6b7fff" transparent opacity={0.22} />
     </mesh>
   )
 }
@@ -470,9 +470,9 @@ function EarthSystem({ earthPosRef, damageLevel, alertActive, satelliteInclinati
       <Atmosphere />
 
       {/* 三层卫星轨道环（LEO / MEO / GEO） */}
-      <OrbitRing radius={2.55} inclination={0.45} color="#c8b89a" opacity={0.85} tubeRadius={0.014} />
-      <OrbitRing radius={3.60} inclination={0.25} color="#c8b89a" opacity={0.55} tubeRadius={0.010} />
-      <OrbitRing radius={5.20} inclination={0.08} color="#c8b89a" opacity={0.35} tubeRadius={0.007} />
+      <OrbitRing radius={2.55} inclination={0.45} color="#6b7fff" opacity={0.85} tubeRadius={0.014} />
+      <OrbitRing radius={3.60} inclination={0.25} color="#6b7fff" opacity={0.55} tubeRadius={0.010} />
+      <OrbitRing radius={5.20} inclination={0.08} color="#6b7fff" opacity={0.35} tubeRadius={0.007} />
 
       <DebrisCloud count={3000} damageLevel={damageLevel} />
       <Satellite orbitRadius={3.2} inclination={satelliteInclination} phase={0} />
@@ -545,3 +545,5 @@ export default function GameScene({ damageLevel = 0, alertActive = false, satell
     </Canvas>
   )
 }
+
+

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import useAppStore from '../../store/useAppStore'
 import { generateMissionStory } from '../../services/ai'
@@ -45,7 +45,7 @@ function SectionLabel({ children, style }) {
   return (
     <div style={{
       fontFamily: 'monospace', fontSize: 9, letterSpacing: '0.14em',
-      textTransform: 'uppercase', color: '#6b6b66',
+      textTransform: 'uppercase', color: '#484878',
       marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid #1a1a18',
       ...style,
     }}>
@@ -94,21 +94,21 @@ export default function M2({ onComplete }) {
   const orbitZone = alt < 2000 ? 'LEO' : alt < 35786 ? 'MEO' : 'GEO'
 
   return (
-    <div style={{ background: '#0a0a0a', color: '#f5f4f0', minHeight: '100vh' }}>
+    <div style={{ background: 'transparent', color: '#e8e8f8', minHeight: '100vh' }}>
 
       {/* 顶部标题栏 */}
       <div style={{ padding: '24px 32px', borderBottom: '1px solid #1a1a18' }}>
-        <span style={{ fontFamily: 'monospace', fontSize: 10, color: '#6b6b66', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+        <span style={{ fontFamily: 'monospace', fontSize: 10, color: '#484878', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
           SPACE_DEBRIES · M2 · 轨道是什么
         </span>
       </div>
 
       {/* 导言 */}
       <div style={{ maxWidth: 760, margin: '0 auto', padding: '48px 32px 56px' }}>
-        <h2 style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 24, fontWeight: 400, color: '#f5f4f0', lineHeight: 1.6, marginBottom: 12, letterSpacing: '0.02em' }}>
+        <h2 style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 24, fontWeight: 400, color: '#e8e8f8', lineHeight: 1.6, marginBottom: 12, letterSpacing: '0.02em' }}>
           轨道不是一条路，<br />是一个必须持续维护的状态。
         </h2>
-        <p style={{ fontSize: 12, color: '#6b6b66', lineHeight: 1.9, maxWidth: 460 }}>
+        <p style={{ fontSize: 12, color: '#484878', lineHeight: 1.9, maxWidth: 460 }}>
           卫星以 7–8 km/s 的速度持续下坠，恰好与地球曲率匹配，形成轨道。停下来就意味着坠落。
         </p>
       </div>
@@ -132,7 +132,7 @@ export default function M2({ onComplete }) {
                   style={{
                     padding: '16px 0 16px 14px',
                     borderBottom: '1px solid #151514',
-                    borderLeft: `2px solid ${isHover ? 'rgba(200,184,154,0.55)' : 'transparent'}`,
+                    borderLeft: `2px solid ${isHover ? 'rgba(107,127,255,0.55)' : 'transparent'}`,
                     transition: 'border-color 0.2s ease',
                     cursor: 'default',
                   }}
@@ -141,7 +141,7 @@ export default function M2({ onComplete }) {
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8 }}>
                     <span style={{
                       fontFamily: '"Space Mono", monospace', fontSize: 16,
-                      color: isHover ? '#c8b89a' : '#f5f4f0',
+                      color: isHover ? '#6b7fff' : '#e8e8f8',
                       letterSpacing: '-0.02em', transition: 'color 0.2s ease',
                     }}>{orb.name}</span>
                     <span style={{ fontFamily: 'monospace', fontSize: 8, color: '#2e2e2c', letterSpacing: '0.08em' }}>{orb.full}</span>
@@ -153,7 +153,7 @@ export default function M2({ onComplete }) {
                   </div>
                   {/* 参数单行 */}
                   <div style={{ display: 'flex', gap: 16, marginBottom: 6, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 11, color: '#c8b89a' }}>{orb.alt}</span>
+                    <span style={{ fontSize: 11, color: '#6b7fff' }}>{orb.alt}</span>
                     <span style={{ fontSize: 11, color: '#484840' }}>·</span>
                     <span style={{ fontSize: 11, color: '#605850' }}>{orb.period}</span>
                     <span style={{ fontSize: 11, color: '#484840' }}>·</span>
@@ -173,10 +173,10 @@ export default function M2({ onComplete }) {
                 {/* 名称行 */}
                 <div style={{ padding: '10px 0 10px 14px', borderBottom: '1px solid #151514', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-                    <span style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 15, color: '#f5f4f0' }}>{satellite.name}</span>
+                    <span style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 15, color: '#e8e8f8' }}>{satellite.name}</span>
                     <span style={{ fontFamily: 'monospace', fontSize: 8, color: '#2e2e2c', letterSpacing: '0.08em' }}>NORAD #{satellite.noradId}</span>
                   </div>
-                  <span style={{ fontFamily: 'monospace', fontSize: 8, color: '#c8b89a', border: '1px solid rgba(200,184,154,0.3)', padding: '2px 8px', letterSpacing: '0.08em' }}>
+                  <span style={{ fontFamily: 'monospace', fontSize: 8, color: '#6b7fff', border: '1px solid rgba(107,127,255,0.3)', padding: '2px 8px', letterSpacing: '0.08em' }}>
                     {orbitZone}
                   </span>
                 </div>
@@ -189,7 +189,7 @@ export default function M2({ onComplete }) {
                 ].map(({ l, v }) => (
                   <div key={l} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '9px 0 9px 14px', borderBottom: '1px solid #111110' }}>
                     <span style={{ fontFamily: 'monospace', fontSize: 8, color: '#2e2e2c', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{l}</span>
-                    <span style={{ fontFamily: '"Space Mono", monospace', fontSize: 13, color: '#c8b89a' }}>{v}</span>
+                    <span style={{ fontFamily: '"Space Mono", monospace', fontSize: 13, color: '#6b7fff' }}>{v}</span>
                   </div>
                 ))}
               </div>
@@ -206,11 +206,11 @@ export default function M2({ onComplete }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
                   <span style={{ fontFamily: 'monospace', fontSize: 9, color: '#706860', letterSpacing: '0.06em' }}>{orb.name} · {orb.full}</span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontFamily: '"Space Mono", monospace', fontSize: 11, color: '#f5f4f0' }}>{orb.debrisLabel}</span>
+                    <span style={{ fontFamily: '"Space Mono", monospace', fontSize: 11, color: '#e8e8f8' }}>{orb.debrisLabel}</span>
                     <span style={{ fontFamily: 'monospace', fontSize: 8, color: orb.riskColor, padding: '1px 6px', border: `1px solid ${orb.riskColor}50`, letterSpacing: '0.06em' }}>{orb.risk}</span>
                   </span>
                 </div>
-                <div style={{ height: 2, background: '#1a1a18' }}>
+                <div style={{ height: 2, background: '#1a1a35' }}>
                   <motion.div
                     initial={{ width: 0 }}
                     whileInView={{ width: `${(orb.debris / maxDebris) * 100}%` }}
@@ -240,7 +240,7 @@ export default function M2({ onComplete }) {
               { label: 'GEO · 35,786 KM',        opacity: 0.24 },
             ].map(({ label, opacity }) => (
               <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 20, height: 2, background: '#c8b89a', flexShrink: 0, opacity }} />
+                <div style={{ width: 20, height: 2, background: '#6b7fff', flexShrink: 0, opacity }} />
                 <span style={{ fontFamily: 'monospace', fontSize: 7, color: '#2e2e2c', letterSpacing: '0.08em' }}>{label}</span>
               </div>
             ))}
@@ -266,8 +266,8 @@ export default function M2({ onComplete }) {
                     style={{
                       padding: '12px 14px',
                       display: 'flex', alignItems: 'flex-start', gap: 10,
-                      background: isSel ? 'rgba(200,184,154,0.07)' : '#0d0d0c',
-                      borderLeft: isSel ? '2px solid #c8b89a' : '2px solid #1a1a18',
+                      background: isSel ? 'rgba(107,127,255,0.07)' : '#0d0d0c',
+                      borderLeft: isSel ? '2px solid #6b7fff' : '2px solid #1a1a18',
                       cursor: isLocked ? 'default' : 'pointer',
                       opacity: isLocked ? 0.28 : 1,
                       transition: 'all 0.15s ease',
@@ -276,20 +276,20 @@ export default function M2({ onComplete }) {
                   >
                     <div style={{
                       width: 5, height: 5, borderRadius: '50%', flexShrink: 0, marginTop: 5,
-                      background: isSel ? '#c8b89a' : 'transparent',
-                      border: `1px solid ${isSel ? '#c8b89a' : '#303030'}`,
+                      background: isSel ? '#6b7fff' : 'transparent',
+                      border: `1px solid ${isSel ? '#6b7fff' : '#303030'}`,
                       transition: 'all 0.15s',
                     }} />
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 5 }}>
-                        <span style={{ fontFamily: 'monospace', fontSize: 8, color: isSel ? '#c8b89a' : '#303028', letterSpacing: '0.09em', textTransform: 'uppercase' }}>
+                        <span style={{ fontFamily: 'monospace', fontSize: 8, color: isSel ? '#6b7fff' : '#303028', letterSpacing: '0.09em', textTransform: 'uppercase' }}>
                           {m.labelEn}
                         </span>
-                        <span style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 13, color: isSel ? '#c8b89a' : '#908880' }}>
+                        <span style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 13, color: isSel ? '#6b7fff' : '#908880' }}>
                           {m.label}
                         </span>
                       </div>
-                      <div style={{ fontSize: 11, color: isSel ? '#6b6b66' : '#383634', lineHeight: 1.7 }}>
+                      <div style={{ fontSize: 11, color: isSel ? '#484878' : '#383634', lineHeight: 1.7 }}>
                         {m.desc}
                       </div>
                     </div>
@@ -311,7 +311,7 @@ export default function M2({ onComplete }) {
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, padding: '32px 32px' }}
           >
-            <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#c8b89a', animation: 'blink 1.2s ease infinite', flexShrink: 0 }} />
+            <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#6b7fff', animation: 'blink 1.2s ease infinite', flexShrink: 0 }} />
             <span style={{ fontFamily: 'monospace', fontSize: 8, color: '#4a4a48', letterSpacing: '0.14em' }}>
               GENERATING MISSION NARRATIVE...
             </span>
@@ -344,7 +344,7 @@ export default function M2({ onComplete }) {
                     </div>
                   )
                 })()}
-                <div style={{ fontFamily: 'monospace', fontSize: 8, color: '#c8b89a', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 16 }}>
+                <div style={{ fontFamily: 'monospace', fontSize: 8, color: '#6b7fff', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 16 }}>
                   第二段 · 任务展开 · {satellite?.name ?? ''}
                 </div>
                 <p style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 15, color: 'rgba(245,244,240,0.80)', lineHeight: 2.1 }}>
@@ -373,10 +373,10 @@ export default function M2({ onComplete }) {
                 fontFamily: 'monospace', fontSize: 11,
                 letterSpacing: '0.14em', textTransform: 'uppercase',
                 padding: '16px 48px', cursor: 'pointer',
-                border: '1px solid rgba(200,184,154,0.45)', color: '#c8b89a',
+                border: '1px solid rgba(107,127,255,0.45)', color: '#6b7fff',
                 transition: 'background 0.18s ease',
               }}
-              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(200,184,154,0.06)'}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(107,127,255,0.06)'}
               onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
             >
               进入下一章：重大历史事件 →
@@ -388,3 +388,5 @@ export default function M2({ onComplete }) {
     </div>
   )
 }
+
+

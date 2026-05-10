@@ -6,18 +6,32 @@
   --font-serif: "Noto Serif SC", serif;
   --font-sans:  "Noto Sans SC", sans-serif;
 
-  --color-void:    #0a0a0a;
-  --color-surface: #111110;
-  --color-dim:     #1a1a18;
-  --color-border:  #2a2a28;
-  --color-muted:   #6b6b66;
-  --color-paper:   #f5f4f0;
-  --color-accent:  #c8b89a;
-  --color-story:   #8b7355;
-  --color-sci:     #4a6741;
-  --color-inter:   #3d5a7a;
-  --color-ai:      #6b4a7a;
-  --color-link:    #7a4a3d;
+  /* ── Deep Space Blue-Purple Palette ── */
+  --color-void:    #04040f;
+  --color-surface: #08081a;
+  --color-dim:     #0d0d20;
+  --color-border:  #1a1a35;
+  --color-border2: #252545;
+  --color-muted:   #484878;
+  --color-paper:   #e8e8f8;
+  --color-paper2:  rgba(232,232,248,0.72);
+
+  /* ── Brand Accent: Blue-Purple ── */
+  --color-accent:  #6b7fff;
+  --color-accent2: #8b6cf8;
+  --color-accent3: #4e5df0;
+
+  /* ── Semantic / Legacy ── */
+  --color-sci:     #4b82f6;
+  --color-inter:   #6b7fff;
+  --color-ai:      #8b5cf6;
+  --color-teal:    #22d3ee;
+  --color-success: #34d399;
+  --color-danger:  #f87171;
+
+  /* ── Old accent kept for compat ── */
+  --color-story:   #6b7fff;
+  --color-link:    #6b7fff;
 }
 
 @layer base {
@@ -27,8 +41,16 @@
 
   body {
     margin: 0;
-    background: #0a0a0a;
-    color: #f5f4f0;
+    background-color: #04040f;
+    /* Mesh gradient – deep indigo/blue/purple blobs, fixed so it tiles behind all modules */
+    background-image:
+      radial-gradient(ellipse at 18% 18%, rgba(55, 65, 195, 0.22) 0px, transparent 52%),
+      radial-gradient(ellipse at 82% 12%, rgba(107, 70, 220, 0.18) 0px, transparent 48%),
+      radial-gradient(ellipse at 60% 55%, rgba(34, 90, 200, 0.14) 0px, transparent 48%),
+      radial-gradient(ellipse at 22% 78%, rgba(80, 50, 190, 0.16) 0px, transparent 44%),
+      radial-gradient(ellipse at 88% 82%, rgba(55, 100, 220, 0.12) 0px, transparent 44%);
+    background-attachment: fixed;
+    color: #e8e8f8;
     font-family: 'Noto Sans SC', sans-serif;
     font-size: 14px;
     line-height: 1.6;
@@ -38,19 +60,21 @@
 
   #root { min-height: 100svh; }
 
-  ::selection { background: rgba(200,184,154,.2); color: #f5f4f0; }
+  ::selection { background: rgba(107, 127, 255, 0.28); color: #e8e8f8; }
 
   ::-webkit-scrollbar { width: 3px; }
-  ::-webkit-scrollbar-track { background: #0a0a0a; }
-  ::-webkit-scrollbar-thumb { background: #2a2a28; border-radius: 2px; }
+  ::-webkit-scrollbar-track { background: #04040f; }
+  ::-webkit-scrollbar-thumb { background: #1a1a35; border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: #6b7fff; }
 }
 
 @layer components {
+
   .story-text {
     font-family: 'Noto Serif SC', serif;
     font-size: 15px;
     line-height: 1.9;
-    color: rgba(245,244,240,.85);
+    color: rgba(232, 232, 248, 0.82);
     letter-spacing: .03em;
   }
 
@@ -59,7 +83,7 @@
     font-size: 10px;
     letter-spacing: .12em;
     text-transform: uppercase;
-    color: #6b6b66;
+    color: #484878;
   }
 
   .btn-primary {
@@ -68,15 +92,16 @@
     letter-spacing: .1em;
     text-transform: uppercase;
     padding: 12px 28px;
-    border: 1px solid rgba(200,184,154,.35);
-    color: #c8b89a;
+    border: 1px solid rgba(107, 127, 255, 0.40);
+    color: #6b7fff;
     background: transparent;
     cursor: pointer;
     transition: all 200ms ease;
   }
   .btn-primary:hover:not(:disabled) {
-    background: rgba(200,184,154,.08);
-    border-color: #c8b89a;
+    background: rgba(107, 127, 255, 0.10);
+    border-color: #6b7fff;
+    box-shadow: 0 0 16px rgba(107, 127, 255, 0.12);
   }
   .btn-primary:disabled {
     opacity: .3;
@@ -87,23 +112,23 @@
     width: 100%;
     background: transparent;
     border: none;
-    border-bottom: 1px solid #2a2a28;
+    border-bottom: 1px solid #1a1a35;
     padding: 10px 0;
-    color: #f5f4f0;
+    color: #e8e8f8;
     font-size: 15px;
     font-family: 'Noto Sans SC', sans-serif;
     outline: none;
     transition: border-color 200ms;
   }
-  .input-line::placeholder { color: #3a3a38; }
-  .input-line:focus { border-bottom-color: #c8b89a; }
+  .input-line::placeholder { color: #2a2a4a; }
+  .input-line:focus { border-bottom-color: #6b7fff; }
 
   .textarea-box {
     width: 100%;
-    background: transparent;
-    border: 1px solid #2a2a28;
+    background: rgba(8, 8, 26, 0.70);
+    border: 1px solid #1a1a35;
     padding: 12px;
-    color: #f5f4f0;
+    color: #e8e8f8;
     font-size: 14px;
     font-family: 'Noto Sans SC', sans-serif;
     outline: none;
@@ -111,10 +136,48 @@
     line-height: 1.7;
     transition: border-color 200ms;
   }
-  .textarea-box::placeholder { color: #3a3a38; }
-  .textarea-box:focus { border-color: #c8b89a; }
+  .textarea-box::placeholder { color: #2a2a4a; }
+  .textarea-box:focus { border-color: rgba(107, 127, 255, 0.6); }
+
+  /* ── Utility: gradient divider ── */
+  .gradient-line {
+    height: 1px;
+    background: linear-gradient(to right, transparent, rgba(107, 127, 255, 0.35), transparent);
+  }
+
+  /* ── Glass card ── */
+  .glass-card {
+    background: rgba(8, 8, 26, 0.72);
+    border: 1px solid #1a1a35;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  }
+  .glass-card:hover {
+    border-color: rgba(107, 127, 255, 0.38);
+    box-shadow: 0 0 28px rgba(107, 127, 255, 0.07), inset 0 0 0 0 transparent;
+  }
+
+  /* ── Section label (top-of-section mono tag) ── */
+  .section-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: #484878;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #1a1a35;
+    margin-bottom: 24px;
+  }
+
+  /* ── Glow accent text ── */
+  .text-accent-glow {
+    color: #6b7fff;
+    text-shadow: 0 0 20px rgba(107, 127, 255, 0.5);
+  }
 }
 
+/* ── Animations ── */
 @keyframes ping {
   0%, 100% { opacity: .25; transform: scale(1); }
   50%       { opacity: .7;  transform: scale(1.1); }
@@ -128,4 +191,19 @@
 @keyframes blink {
   0%, 100% { opacity: 0.25; }
   50%       { opacity: 1; }
+}
+
+@keyframes shimmer {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(250%); }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(107, 127, 255, 0.25); }
+  50%       { box-shadow: 0 0 28px rgba(107, 127, 255, 0.55); }
+}
+
+@keyframes orbit-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+﻿import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence, animate as fmAnimate, useMotionValue } from 'framer-motion'
 import useAppStore from '../../store/useAppStore'
 import { generateReentryEnding } from '../../services/ai'
@@ -654,7 +654,7 @@ function WorldMap({ selectedId, onSelect }) {
           >
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: selected.color, flexShrink: 0 }} />
             <span style={{ color: selected.color }}>{selected.year}</span>
-            <span style={{ color: '#2a2a28' }}>·</span>
+            <span style={{ color: '#1c1c38' }}>·</span>
             <span>{selected.name}</span>
           </motion.div>
         )}
@@ -716,7 +716,7 @@ export default function M5({ onComplete }) {
   const resultColor = result === 'success' ? '#4a7a41' : '#c84840'
 
   return (
-    <div style={{ background: '#0a0a0a', color: '#f5f4f0', padding: '80px 24px' }}>
+    <div style={{ background: 'transparent', color: '#e8e8f8', padding: '80px 24px' }}>
       <div style={{ maxWidth: 1080, margin: '0 auto' }}>
 
         {/* ── Header ── */}
@@ -724,7 +724,7 @@ export default function M5({ onComplete }) {
           <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.15em', color: '#5a5a56', marginBottom: 12 }}>
             MODULE 05 · REENTRY
           </div>
-          <h2 style={{ fontFamily: SERIF, fontSize: 28, fontWeight: 300, color: '#f5f4f0', margin: '0 0 14px' }}>
+          <h2 style={{ fontFamily: SERIF, fontSize: 28, fontWeight: 300, color: '#e8e8f8', margin: '0 0 14px' }}>
             太空垃圾落地球
           </h2>
           <p style={{ fontFamily: SANS, fontSize: 13, color: '#6a6a64', margin: 0, lineHeight: 1.75, maxWidth: 760 }}>
@@ -833,7 +833,7 @@ export default function M5({ onComplete }) {
             }}>
               <div style={{
                 fontFamily: MONO, fontSize: 9, letterSpacing: '0.1em',
-                color: '#c8b89a', marginBottom: 10, opacity: 0.7,
+                color: '#6b7fff', marginBottom: 10, opacity: 0.7,
               }}>
                 1995 · NASA / COPUOS
               </div>
@@ -842,7 +842,7 @@ export default function M5({ onComplete }) {
               </div>
               <p style={{ fontFamily: SANS, fontSize: 12, color: '#8a8a82', lineHeight: 1.8, margin: '0 0 12px' }}>
                 LEO 卫星在任务结束后{' '}
-                <span style={{ color: '#c8b89a' }}>25 年内</span>必须离轨。
+                <span style={{ color: '#6b7fff' }}>25 年内</span>必须离轨。
                 超过这个时限，大气阻力已无法保证可预测的再入时间和落点。
               </p>
               <p style={{ fontFamily: SANS, fontSize: 11, color: '#5a5a56', lineHeight: 1.7, margin: 0 }}>
@@ -896,7 +896,7 @@ export default function M5({ onComplete }) {
             <div>
               {!allCasesRead ? (
                 <p style={{ fontFamily: SANS, fontSize: 12, color: '#5a5a56', margin: 0 }}>
-                  还有 <span style={{ color: '#c8b89a' }}>{CASES.length - openedCases.size}</span> 个档案未读
+                  还有 <span style={{ color: '#6b7fff' }}>{CASES.length - openedCases.size}</span> 个档案未读
                 </p>
               ) : (
                 <p style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em', color: '#4a7a41', margin: 0 }}>
@@ -912,8 +912,8 @@ export default function M5({ onComplete }) {
                 fontFamily: MONO,
                 fontSize: 12,
                 letterSpacing: '0.12em',
-                color: '#0a0a0a',
-                background: allCasesRead ? '#c8b89a' : '#3a3a38',
+                color: 'transparent',
+                background: allCasesRead ? '#6b7fff' : '#3a3a38',
                 border: 'none',
                 borderRadius: 2,
                 padding: '12px 40px',
@@ -930,3 +930,4 @@ export default function M5({ onComplete }) {
     </div>
   )
 }
+

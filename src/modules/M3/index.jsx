@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, Suspense } from 'react'
+﻿import { useState, useRef, useCallback, Suspense } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Html, OrbitControls, Stars } from '@react-three/drei'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -304,7 +304,7 @@ function Spinner() {
     <motion.span
       animate={{ rotate: 360 }}
       transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-      style={{ display: 'inline-block', width: 10, height: 10, border: '1px solid #c8b89a', borderTopColor: 'transparent', borderRadius: '50%' }}
+      style={{ display: 'inline-block', width: 10, height: 10, border: '1px solid #6b7fff', borderTopColor: 'transparent', borderRadius: '50%' }}
     />
   )
 }
@@ -377,21 +377,21 @@ export default function M3({ onComplete }) {
   const eraColors = { 1:'#4488cc', 2:'#44aacc', 3:'#cc8844', 4:'#cc4444', 5:'#f5c840' }
 
   return (
-    <div style={{ background: '#050508', color: '#f5f4f0' }}>
+    <div style={{ background: '#050508', color: '#e8e8f8' }}>
 
       {/* Header */}
       <div style={{ padding: '24px 32px', borderBottom: '1px solid #14141a' }}>
-        <span style={{ fontFamily: 'monospace', fontSize: 10, color: '#6b6b66', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+        <span style={{ fontFamily: 'monospace', fontSize: 10, color: '#484878', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
           SPACE_DEBRIES · M3 · 重大历史事件
         </span>
       </div>
 
       {/* Title */}
       <div style={{ maxWidth: 760, margin: '0 auto', padding: '40px 32px 28px' }}>
-        <h2 style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 22, fontWeight: 400, color: '#f5f4f0', lineHeight: 1.6, marginBottom: 10 }}>
+        <h2 style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 22, fontWeight: 400, color: '#e8e8f8', lineHeight: 1.6, marginBottom: 10 }}>
           每一次碰撞都留下了痕迹，<br />每一片碎片都还在轨道上。
         </h2>
-        <p style={{ fontSize: 11, color: '#6b6b66', lineHeight: 1.9, maxWidth: 500, margin: 0 }}>
+        <p style={{ fontSize: 11, color: '#484878', lineHeight: 1.9, maxWidth: 500, margin: 0 }}>
           {ALL_EVENTS.length} 个历史事件分布在五条轨道上 · 拖拽旋转视角 · 滚轮缩放 ·{' '}
           {satellite && launchYear < 9999
             ? <span>你的卫星 <span style={{ color: '#f5c840' }}>{satellite.name}</span> 于 {launchYear} 年入轨，之后的金色事件与你同处一个时代</span>
@@ -404,7 +404,7 @@ export default function M3({ onComplete }) {
         {ERAS.map(era => (
           <div key={era.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', border: '1px solid #1e1e28', background: '#0a0a12' }}>
             <div style={{ width: 20, height: 1.5, background: '#f5c840', opacity: era.ringOp }} />
-            <span style={{ fontFamily: 'monospace', fontSize: 7, color: '#6b6b66', letterSpacing: '0.08em' }}>{era.sub}</span>
+            <span style={{ fontFamily: 'monospace', fontSize: 7, color: '#484878', letterSpacing: '0.08em' }}>{era.sub}</span>
           </div>
         ))}
       </div>
@@ -510,7 +510,7 @@ export default function M3({ onComplete }) {
 
         {activatedKeys.length > 0 && (
           <div style={{ marginBottom: 24 }}>
-            <div style={{ fontFamily: 'monospace', fontSize: 9, color: '#6b6b66', letterSpacing: '0.12em', marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid #1a1a18' }}>
+            <div style={{ fontFamily: 'monospace', fontSize: 9, color: '#484878', letterSpacing: '0.12em', marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid #1a1a18' }}>
               与你同处一个时代的关键碎片事件 — 点击轨道上的金色球体查看卫星视角
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -582,3 +582,5 @@ export default function M3({ onComplete }) {
     </div>
   )
 }
+
+

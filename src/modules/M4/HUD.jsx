@@ -1,4 +1,4 @@
-// HUD 状态栏 — 左上角半透明面板，SPACE GAME 风格
+﻿// HUD 状态栏 — 左上角半透明面板，SPACE GAME 风格
 export default function HUD({ armor, fuel, missionProgress, round, totalRounds, satelliteName }) {
   function barColor(val) {
     if (val > 60) return '#10b981'
@@ -49,7 +49,7 @@ export default function HUD({ armor, fuel, missionProgress, round, totalRounds, 
         <div style={{
           fontFamily: 'Space Mono, monospace',
           fontSize: 12,
-          color: '#c8b89a',
+          color: '#6b7fff',
           fontWeight: 'bold',
           letterSpacing: '0.05em',
           marginBottom: 12,
@@ -144,3 +144,4 @@ function StatBar({ label, value, color, glow }) {
     </div>
   )
 }
+

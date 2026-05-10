@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+﻿import { useRef } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
@@ -59,7 +59,7 @@ function ZoneRing({ r, baseOpacity, active, tube }) {
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]}>
       <torusGeometry args={[r, tube, 2, 160]} />
-      <meshBasicMaterial ref={matRef} color="#c8b89a" transparent opacity={baseOpacity} />
+      <meshBasicMaterial ref={matRef} color="#6b7fff" transparent opacity={baseOpacity} />
     </mesh>
   )
 }
@@ -88,11 +88,11 @@ function SatOrbit({ altKm, incDeg }) {
     <group>
       <mesh rotation={[rx, 0, 0]}>
         <torusGeometry args={[r, 0.007, 4, 128]} />
-        <meshBasicMaterial color="#c8b89a" transparent opacity={0.88} />
+        <meshBasicMaterial color="#6b7fff" transparent opacity={0.88} />
       </mesh>
       <mesh ref={dotRef}>
         <sphereGeometry args={[0.023, 8, 8]} />
-        <meshBasicMaterial color="#c8b89a" />
+        <meshBasicMaterial color="#6b7fff" />
       </mesh>
     </group>
   )
@@ -137,3 +137,4 @@ export default function OrbitGlobe({ satellite, height = 480, activeOrbit = null
     </div>
   )
 }
+

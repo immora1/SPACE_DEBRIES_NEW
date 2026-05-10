@@ -1,4 +1,4 @@
-// 游戏结算页：卫星命运 + 故事结局 + 知识清单 + 碎片描述
+﻿// 游戏结算页：卫星命运 + 故事结局 + 知识清单 + 碎片描述
 export default function ReflectionPage({ reflection, gameResult, onComplete }) {
   if (!reflection) return null
 
@@ -13,7 +13,7 @@ export default function ReflectionPage({ reflection, gameResult, onComplete }) {
     <div style={{
       position: 'absolute',
       inset: 0,
-      background: 'rgba(10,10,10,0.96)',
+      background: 'rgba(4,4,15,0.96)',
       zIndex: 20,
       overflowY: 'auto',
       padding: '48px 32px',
@@ -37,7 +37,7 @@ export default function ReflectionPage({ reflection, gameResult, onComplete }) {
           <h2 style={{
             fontFamily: 'Noto Serif SC, serif',
             fontSize: '28px',
-            color: '#f5f4f0',
+            color: '#e8e8f8',
             margin: '0 0 8px',
             fontWeight: 300,
           }}>
@@ -46,7 +46,7 @@ export default function ReflectionPage({ reflection, gameResult, onComplete }) {
           <p style={{
             fontFamily: 'Noto Sans SC, sans-serif',
             fontSize: '13px',
-            color: '#6b6b66',
+            color: '#484878',
             margin: 0,
           }}>
             {resultDesc}
@@ -110,7 +110,7 @@ export default function ReflectionPage({ reflection, gameResult, onComplete }) {
         {reflection.debrisDescription && (
           <Section label="DEBRIS OUTPUT · 产生碎片">
             <div style={{
-              background: '#111110',
+              background: '#08081a',
               border: '1px solid #2a2a28',
               borderRadius: 4,
               padding: '10px 14px',
@@ -118,7 +118,7 @@ export default function ReflectionPage({ reflection, gameResult, onComplete }) {
               <p style={{
                 fontFamily: 'Space Mono, monospace',
                 fontSize: '11px',
-                color: '#6b6b66',
+                color: '#484878',
                 margin: 0,
                 lineHeight: 1.7,
               }}>
@@ -136,8 +136,8 @@ export default function ReflectionPage({ reflection, gameResult, onComplete }) {
               fontFamily: 'Space Mono, monospace',
               fontSize: '12px',
               letterSpacing: '0.1em',
-              color: '#f5f4f0',
-              background: '#c8b89a',
+              color: '#e8e8f8',
+              background: '#6b7fff',
               border: 'none',
               borderRadius: 2,
               padding: '12px 36px',
@@ -159,7 +159,7 @@ function Section({ label, children }) {
         fontFamily: 'Space Mono, monospace',
         fontSize: '10px',
         letterSpacing: '0.12em',
-        color: '#6b6b66',
+        color: '#484878',
         marginBottom: 12,
         borderBottom: '1px solid #2a2a28',
         paddingBottom: 8,
@@ -170,3 +170,4 @@ function Section({ label, children }) {
     </div>
   )
 }
+

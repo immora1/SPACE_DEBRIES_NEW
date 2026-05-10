@@ -18,14 +18,35 @@ const ModuleWrapper = forwardRef(function ModuleWrapper(
       >
         {connector && (
           <div style={{
-            padding: '80px 32px',
+            padding: '72px 32px',
             textAlign: 'center',
-            borderTop: '1px solid #1a1a18',
+            position: 'relative',
           }}>
+            {/* gradient divider above */}
+            <div style={{
+              position: 'absolute', top: 0, left: '10%', right: '10%',
+              height: 1,
+              background: 'linear-gradient(to right, transparent, rgba(107,127,255,0.28), transparent)',
+            }} />
+
+            {/* small orbit icon */}
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              width: 28, height: 28, borderRadius: '50%',
+              border: '1px solid rgba(107,127,255,0.22)',
+              background: 'rgba(107,127,255,0.06)',
+              marginBottom: 22,
+            }}>
+              <div style={{
+                width: 5, height: 5, borderRadius: '50%',
+                background: 'rgba(107,127,255,0.55)',
+              }} />
+            </div>
+
             <p style={{
               fontFamily: '"Noto Serif SC", serif',
-              fontSize: 16,
-              color: 'rgba(245,244,240,0.35)',
+              fontSize: 15,
+              color: 'rgba(232,232,248,0.32)',
               lineHeight: 1.8,
               letterSpacing: '0.05em',
               maxWidth: 480,

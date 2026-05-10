@@ -1,4 +1,4 @@
-// 决策反馈面板 — 右侧悬浮，故事更新为视觉焦点
+﻿// 决策反馈面板 — 右侧悬浮，故事更新为视觉焦点
 import { motion } from 'framer-motion'
 
 export default function DecisionFeedback({ feedback, onContinue, isLast, storyThread = [] }) {
@@ -166,9 +166,9 @@ export default function DecisionFeedback({ feedback, onContinue, isLast, storyTh
           style={{
             fontFamily: 'Space Mono, monospace',
             fontSize: 12, letterSpacing: '0.12em',
-            color: isLast ? '#0a0a0a' : '#c8b89a',
-            background: isLast ? '#c8b89a' : 'transparent',
-            border: `1px solid ${isLast ? '#c8b89a' : 'rgba(200,184,154,0.30)'}`,
+            color: isLast ? 'transparent' : '#6b7fff',
+            background: isLast ? '#6b7fff' : 'transparent',
+            border: `1px solid ${isLast ? '#6b7fff' : 'rgba(107,127,255,0.30)'}`,
             borderRadius: 3,
             padding: '10px 24px',
             cursor: 'pointer',
@@ -206,3 +206,4 @@ function DeltaChip({ label, delta }) {
     </span>
   )
 }
+
