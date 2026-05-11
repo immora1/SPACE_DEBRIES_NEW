@@ -3,6 +3,7 @@ import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from
 import useAppStore from '../../store/useAppStore'
 import { generateMaterialFeedback } from '../../services/ai'
 import SatelliteModel from './SatelliteModel'
+import DebrisEarth from './DebrisEarth'
 
 const ZH   = "'PingFang SC', 'Microsoft YaHei', sans-serif"
 const MONO = "'Space Mono', monospace"
@@ -187,29 +188,39 @@ function SceneNav({ sceneIdx, total, onNavigate }) {
 
 /* ── Scene 0: HERO ── */
 function SceneHero({ normX, normY }) {
-  const ghostX = useTransform(normX, [-1, 1], ['-40px', '40px'])
-  const ghostY = useTransform(normY, [-1, 1], ['-24px', '24px'])
+  const ghostX = useTransform(normX, [-1, 1], ['-50px', '50px'])
+  const ghostY = useTransform(normY, [-1, 1], ['-28px', '28px'])
   const E = { duration: 0.65, ease: [0.16, 1, 0.3, 1] }
+
+  const STATS = [
+    { value: '28,000', unit: 'km/h', label: '平均碰撞速度', sub: '子弹速度的 10 倍',
+      zone: 'LEO', zoneColor: '#c8d0f8', zoneDesc: '300–2000 KM' },
+    { value: '~1.3亿', unit: '',     label: '在轨碎片总量', sub: '大多无法追踪',
+      zone: 'MEO', zoneColor: '#8b9fff', zoneDesc: '2K–35K KM' },
+    { value: '1957',   unit: '',     label: '轨道污染起点', sub: 'Sputnik 升空同年',
+      zone: 'GEO', zoneColor: '#6b7fff', zoneDesc: '35,786 KM' },
+  ]
 
   return (
     <div style={{ position: 'absolute', inset: 0 }}>
-      {/* Ghost parallax */}
+
+      {/* ── Ghost parallax — behind Earth, very subtle ── */}
       <div style={{
-        position: 'absolute', top: '42%', left: '50%',
+        position: 'absolute', top: '44%', left: '60%',
         transform: 'translate(-50%,-50%)',
-        pointerEvents: 'none', userSelect: 'none',
+        pointerEvents: 'none', userSelect: 'none', zIndex: 0,
       }}>
         <motion.div style={{
-          fontFamily: MONO, fontSize: 'clamp(100px,18vw,200px)', fontWeight: 700,
-          color: 'rgba(232,232,248,0.028)', letterSpacing: '-0.04em', lineHeight: 1,
+          fontFamily: MONO, fontSize: 'clamp(110px,19vw,210px)', fontWeight: 700,
+          color: 'rgba(232,232,248,0.018)', letterSpacing: '-0.04em', lineHeight: 1,
           whiteSpace: 'nowrap', x: ghostX, y: ghostY,
         }}>
           28,000
         </motion.div>
       </div>
 
-      {/* Module tag */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ ...E, delay: 0.05 }}
+      {/* ── Module tag — top center ── */}
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ ...E, delay: 0.05 }}
         style={{
           position: 'absolute', top: '5%', left: '50%', transform: 'translateX(-50%)',
           fontFamily: LEX, fontSize: 8, fontWeight: 700, color: '#484878',
@@ -218,71 +229,139 @@ function SceneHero({ normX, normY }) {
         M1 · 太空垃圾是什么
       </motion.div>
 
-      {/* H1 — split headline */}
-      <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ ...E, delay: 0.12 }}
-        style={{
-          position: 'absolute', top: '14%', left: '6%',
-          fontFamily: ZH, fontSize: 'clamp(52px,8vw,84px)', fontWeight: 700,
-          color: '#e8e8f8', lineHeight: 1.1,
-        }}>
-        太空垃圾
-      </motion.div>
+      {/* ── Left column — all text ── */}
+      <div style={{
+        position: 'absolute', left: '6%', top: '13%', width: '44%',
+        display: 'flex', flexDirection: 'column',
+      }}>
 
-      <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 0.55, y: 0 }} transition={{ ...E, delay: 0.26 }}
-        style={{
-          position: 'absolute', top: '30%', right: '6%',
-          fontFamily: ZH, fontSize: 'clamp(52px,8vw,84px)', fontWeight: 700,
-          color: '#e8e8f8', lineHeight: 1.1,
-        }}>
-        不是比喻，
-      </motion.div>
+        {/* H1 */}
+        <motion.div initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} transition={{ ...E, delay: 0.12 }}
+          style={{
+            fontFamily: ZH, fontSize: 'clamp(50px,7.2vw,78px)', fontWeight: 700,
+            color: '#ffffff', lineHeight: 1.08, marginBottom: 2,
+          }}>
+          太空垃圾
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} transition={{ ...E, delay: 0.20 }}
+          style={{
+            fontFamily: ZH, fontSize: 'clamp(50px,7.2vw,78px)', fontWeight: 700,
+            color: '#ffffff', lineHeight: 1.08, marginBottom: 26,
+          }}>
+          不是比喻，
+        </motion.div>
 
-      {/* H2 — conclusion */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ ...E, delay: 0.40 }}
-        style={{
-          position: 'absolute', bottom: '22%', left: '50%', transform: 'translateX(-50%)',
-          fontFamily: ZH, fontSize: 20, fontWeight: 700, color: 'rgba(232,232,248,0.80)', lineHeight: 1.8,
-          whiteSpace: 'nowrap',
-        }}>
-        是真实存在的物理威胁。
-      </motion.div>
+        {/* Hairline divider */}
+        <motion.div
+          initial={{ scaleX: 0, opacity: 0 }} animate={{ scaleX: 1, opacity: 1 }}
+          transition={{ ...E, delay: 0.28 }}
+          style={{
+            height: 1, background: 'linear-gradient(to right, rgba(107,127,255,0.45), transparent)',
+            transformOrigin: 'left', marginBottom: 22,
+          }}
+        />
 
-      {/* Body — context sentence */}
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ ...E, delay: 0.50 }}
-        style={{
-          position: 'absolute', bottom: '14%', left: '50%', transform: 'translateX(-50%)',
-          fontFamily: ZH, fontSize: 12, color: '#484878', lineHeight: 1.8,
-          whiteSpace: 'nowrap', textAlign: 'center',
-        }}>
-        自 1957 年第一颗卫星升空，人类已在轨道上留下数以亿计的碎片。
-      </motion.div>
+        {/* H2 */}
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ ...E, delay: 0.35 }}
+          style={{
+            fontFamily: ZH, fontSize: 18, fontWeight: 700,
+            color: '#ffffff', lineHeight: 1.6, marginBottom: 12,
+          }}>
+          是真实存在的物理威胁。
+        </motion.div>
 
-      {/* Scattered data atoms */}
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ ...E, delay: 0.56 }}
+        {/* Body */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ ...E, delay: 0.43 }}
+          style={{
+            fontFamily: ZH, fontSize: 13,
+            color: 'rgba(232,232,248,0.48)', lineHeight: 1.9, marginBottom: 36,
+          }}>
+          自 1957 年第一颗卫星升空，人类已在轨道上累积了数以亿计的碎片。
+          它们以超音速运行，无法回收，无法清除，且持续增加。
+        </motion.div>
+
+        {/* Detail stats row */}
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ ...E, delay: 0.52 }}
+          style={{ display: 'flex' }}>
+          {STATS.map((s, i) => (
+            <div key={i} style={{
+              flex: 1,
+              paddingLeft: i > 0 ? 20 : 0,
+              paddingRight: i < STATS.length - 1 ? 20 : 0,
+              borderLeft: i > 0 ? '1px solid rgba(107,127,255,0.14)' : 'none',
+            }}>
+              {/* Zone badge — connects to orbital layer in 3D model */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
+                <div style={{
+                  width: 4, height: 4, borderRadius: '50%',
+                  background: s.zoneColor, flexShrink: 0,
+                  boxShadow: `0 0 5px ${s.zoneColor}66`,
+                }} />
+                <span style={{
+                  fontFamily: LEX, fontSize: 6.5, fontWeight: 700,
+                  color: s.zoneColor, letterSpacing: '0.13em', textTransform: 'uppercase', opacity: 0.85,
+                }}>
+                  {s.zone} · {s.zoneDesc}
+                </span>
+              </div>
+              <div style={{
+                fontFamily: MONO, fontSize: 15, fontWeight: 700,
+                color: '#ffffff', letterSpacing: '-0.02em', lineHeight: 1, marginBottom: 6,
+                display: 'flex', alignItems: 'baseline', gap: 4,
+              }}>
+                {s.value}
+                {s.unit && (
+                  <span style={{ fontFamily: LEX, fontSize: 7.5, fontWeight: 700, color: '#6b7fff', letterSpacing: '0.10em' }}>
+                    {s.unit}
+                  </span>
+                )}
+              </div>
+              <div style={{ fontFamily: ZH, fontSize: 10, color: 'rgba(232,232,248,0.50)', lineHeight: 1.55, marginBottom: 3 }}>
+                {s.label}
+              </div>
+              <div style={{ fontFamily: ZH, fontSize: 9, color: '#2a2a4a', lineHeight: 1.5 }}>
+                {s.sub}
+              </div>
+            </div>
+          ))}
+        </motion.div>
+      </div>
+
+      {/* ── Scattered decorations — right zone ── */}
+
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ ...E, delay: 0.58 }}
         style={{
-          position: 'absolute', top: '8%', right: '5%',
-          fontFamily: MONO, fontSize: 8, color: '#2a2a4a', letterSpacing: '0.10em',
+          position: 'absolute', top: '7%', right: '5%',
+          fontFamily: MONO, fontSize: 8, color: '#2a2a4a', letterSpacing: '0.12em',
         }}>
         SINCE 1957
       </motion.div>
 
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ ...E, delay: 0.62 }}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ ...E, delay: 0.64 }}
         style={{
-          position: 'absolute', top: '56%', right: '3%',
-          fontFamily: MONO, fontSize: 9, color: 'rgba(107,127,255,0.22)', letterSpacing: '0.06em',
+          position: 'absolute', top: '28%', right: '3%',
+          fontFamily: MONO, fontSize: 8, color: 'rgba(107,127,255,0.18)', letterSpacing: '0.06em',
         }}>
         ~1.3亿 FRAGMENTS
       </motion.div>
 
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ ...E, delay: 0.68 }}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ ...E, delay: 0.70 }}
         style={{
-          position: 'absolute', top: '8%', left: '4%',
-          fontFamily: MONO, fontSize: 9, color: 'rgba(232,232,248,0.14)', letterSpacing: '0.06em',
+          position: 'absolute', bottom: '28%', right: '5%',
+          fontFamily: MONO, fontSize: 8, color: 'rgba(232,232,248,0.10)', letterSpacing: '0.08em',
         }}>
-        28,000 km/h
+        LEO · MEO · GEO
       </motion.div>
 
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ ...E, delay: 0.74 }}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ ...E, delay: 0.76 }}
+        style={{
+          position: 'absolute', bottom: '14%', right: '8%',
+          fontFamily: MONO, fontSize: 8, color: 'rgba(107,127,255,0.14)', letterSpacing: '0.06em',
+        }}>
+        KESSLER SYNDROME
+      </motion.div>
+
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ ...E, delay: 0.82 }}
         style={{
           position: 'absolute', bottom: '5%', right: '4%',
           fontFamily: LEX, fontSize: 8, color: '#2a2a4a', letterSpacing: '0.10em',
@@ -854,23 +933,22 @@ function SceneTrend() {
   )
 }
 
+/* ── Survival probability by risk level (re-entry ground reach) ── */
+const SURVIVE_PCT = { high: 85, medium: 44, low: 11 }
+
 /* ── Scene 5: MATERIAL SELECTION ── */
 function SceneMaterial({ satellite, user, storyOutline, materials, setMaterialPart, onComplete, mouseXRef, mouseYRef }) {
-  const [activePartId, setActivePartId] = useState(PARTS[0].id)
-  const [aiState,      setAiState]      = useState('idle')
-  const [feedback,     setFeedback]     = useState('')
+  const [openPartId, setOpenPartId] = useState(PARTS[0].id)
+  const [aiState,    setAiState]    = useState('idle')
+  const [feedback,   setFeedback]   = useState('')
 
   const selectedCount = Object.values(materials).filter(Boolean).length
-  const allDone       = selectedCount === 4
-  const activePart    = PARTS.find(p => p.id === activePartId)
-  const accent        = PART_ACCENT[activePartId]
+  const allDone = selectedCount === 4
 
-  function handleSelect(partId, optionId) {
-    setMaterialPart(partId, optionId)
+  function handleSelect(partId, optId) {
+    setMaterialPart(partId, optId)
     const idx = PARTS.findIndex(p => p.id === partId)
-    if (idx < PARTS.length - 1) {
-      setTimeout(() => setActivePartId(PARTS[idx + 1].id), 300)
-    }
+    if (idx < PARTS.length - 1) setTimeout(() => setOpenPartId(PARTS[idx + 1].id), 320)
   }
 
   async function handleGenerateFeedback() {
@@ -887,146 +965,253 @@ function SceneMaterial({ satellite, user, storyOutline, materials, setMaterialPa
 
   return (
     <div style={{ position: 'absolute', inset: 0, display: 'flex' }}>
-      {/* Left: 3D model */}
-      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '50%' }}>
+
+      {/* Left: 3D model — slightly wider */}
+      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '54%' }}>
         <SatelliteModel selections={materials} fill mouseXRef={mouseXRef} mouseYRef={mouseYRef} />
       </div>
 
-      {/* Right: terminal selector */}
-      <div
-        data-scroll-zone="true"
-        style={{
-          position: 'absolute', right: 0, top: 0, bottom: 0, width: '50%',
-          padding: '40px 48px', overflowY: 'auto',
-          borderLeft: '1px solid #1a1a35',
-          display: 'flex', flexDirection: 'column', gap: 24,
-        }}
-      >
-        <div>
+      {/* Right: accordion panel */}
+      <div data-scroll-zone="true" style={{
+        position: 'absolute', right: 0, top: 0, bottom: 0, width: '46%',
+        borderLeft: '1px solid #1a1a35',
+        display: 'flex', flexDirection: 'column',
+        overflowY: 'auto',
+      }}>
+
+        {/* ── Header ── */}
+        <div style={{ padding: '30px 36px 20px', borderBottom: '1px solid #1a1a35', flexShrink: 0 }}>
           <div style={{
             fontFamily: LEX, fontSize: 8, fontWeight: 700,
-            color: 'rgba(107,127,255,0.5)', letterSpacing: '0.18em',
-            textTransform: 'uppercase', marginBottom: 6,
+            color: 'rgba(107,127,255,0.5)', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 6,
           }}>
             05 · MATERIAL CONFIG
           </div>
-          <div style={{ fontFamily: ZH, fontSize: 20, fontWeight: 700, color: '#e8e8f8', lineHeight: 1.35 }}>
+          <div style={{ fontFamily: ZH, fontSize: 18, fontWeight: 700, color: '#e8e8f8', lineHeight: 1.35, marginBottom: 5 }}>
             {satellite?.name ?? '卫星'} · 材料装配
           </div>
-          <div style={{ fontFamily: ZH, fontSize: 12, color: '#484878', marginTop: 6, lineHeight: 1.75 }}>
-            材料决定卫星碎片的命运与地面危害。
+          <div style={{ fontFamily: ZH, fontSize: 11, color: '#484878', lineHeight: 1.75 }}>
+            材料决定碎片的命运与地面危害。
           </div>
         </div>
 
-        {/* Part tabs */}
-        <div style={{ display: 'flex', borderBottom: '1px solid #1a1a35' }}>
-          {PARTS.map(p => (
-            <div key={p.id} onClick={() => setActivePartId(p.id)}
-              style={{
-                flex: 1, paddingBottom: 10, cursor: 'pointer', textAlign: 'center',
-                borderBottom: activePartId === p.id ? `2px solid ${PART_ACCENT[p.id]}` : '2px solid transparent',
-                transition: 'border-color 0.2s', marginBottom: -1,
-              }}>
-              <div style={{
-                fontFamily: ZH, fontSize: 11, fontWeight: 700, transition: 'color 0.2s',
-                color: activePartId === p.id ? PART_ACCENT[p.id] : materials[p.id] ? '#6a6a9a' : '#2a2a4a',
-              }}>
-                {materials[p.id] ? '· ' : ''}{p.label}
-              </div>
-            </div>
-          ))}
-        </div>
+        {/* ── Accordion parts (only when idle) ── */}
+        {aiState === 'idle' && (
+          <div style={{ flex: 1 }}>
+            {PARTS.map((part, idx) => {
+              const isOpen    = openPartId === part.id
+              const isDone    = !!materials[part.id]
+              const selOpt    = part.options.find(o => o.id === materials[part.id])
+              const accent    = PART_ACCENT[part.id]
 
-        <AnimatePresence mode="wait">
-          <motion.div key={activePartId} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
-            style={{ fontSize: 12, fontFamily: ZH, color: '#484878', lineHeight: 1.75, marginTop: -8 }}>
-            {activePart?.desc}
-          </motion.div>
-        </AnimatePresence>
+              return (
+                <div key={part.id} style={{ borderBottom: '1px solid #1a1a35' }}>
 
-        <div style={{ flex: 1 }}>
-          <AnimatePresence mode="wait">
-            {aiState === 'idle' && (
-              <motion.div key={activePartId + '-opts'}
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                transition={{ duration: 0.18 }}
-                style={{ display: 'flex', flexDirection: 'column' }}>
-                {activePart?.options.map((opt, i) => (
-                  <div key={opt.id} onClick={() => handleSelect(activePartId, opt.id)}
+                  {/* Part header row */}
+                  <div
+                    onClick={() => setOpenPartId(isOpen ? null : part.id)}
                     style={{
-                      padding: '14px 0 14px 12px', cursor: 'pointer',
-                      borderTop: i === 0 ? '1px solid #1a1a35' : 'none',
-                      borderBottom: '1px solid #1a1a35',
-                      borderLeft: materials[activePartId] === opt.id ? `3px solid ${accent}` : '3px solid transparent',
-                      transition: 'border-color 0.15s',
-                    }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+                      padding: '14px 36px', cursor: 'pointer',
+                      borderLeft: `3px solid ${isOpen ? accent : isDone ? accent + '55' : 'transparent'}`,
+                      background: isOpen ? 'rgba(107,127,255,0.03)' : 'transparent',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      transition: 'background 0.2s, border-color 0.2s',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                       <span style={{
-                        fontFamily: ZH, fontSize: 16, fontWeight: 700, transition: 'color 0.15s',
-                        color: materials[activePartId] === opt.id ? '#e8e8f8' : '#8888aa',
+                        fontFamily: MONO, fontSize: 9, letterSpacing: '0.14em',
+                        color: isOpen ? accent : '#2a2a4a',
                       }}>
-                        {opt.label}
+                        {String(idx + 1).padStart(2, '0')}
                       </span>
-                      <span style={{ fontFamily: LEX, fontSize: 7.5, color: '#2a2a4a', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                        {opt.en}
+                      <div>
+                        <div style={{
+                          fontFamily: ZH, fontSize: 12, fontWeight: 700,
+                          color: isOpen ? '#e8e8f8' : isDone ? 'rgba(232,232,248,0.50)' : '#484878',
+                        }}>
+                          {part.label}
+                        </div>
+                        <div style={{ fontFamily: LEX, fontSize: 7, color: '#2a2a4a', letterSpacing: '0.10em', textTransform: 'uppercase' }}>
+                          {part.labelEn}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right side: done state or prompt */}
+                    {isDone && selOpt && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontFamily: ZH, fontSize: 11, color: accent, letterSpacing: '0.02em' }}>
+                          {selOpt.label}
+                        </span>
+                        <div style={{
+                          width: 5, height: 5, borderRadius: '50%',
+                          background: RISK_COLORS[selOpt.risk],
+                          boxShadow: `0 0 5px ${RISK_COLORS[selOpt.risk]}`,
+                        }} />
+                      </div>
+                    )}
+                    {!isDone && (
+                      <span style={{
+                        fontFamily: LEX, fontSize: 7.5, letterSpacing: '0.08em', textTransform: 'uppercase',
+                        color: isOpen ? accent : '#2a2a4a',
+                      }}>
+                        {isOpen ? 'SELECT ↓' : '—'}
                       </span>
-                    </div>
-                    <div style={{
-                      fontSize: 11, fontFamily: ZH, lineHeight: 1.7, transition: 'color 0.2s',
-                      color: materials[activePartId] === opt.id ? 'rgba(232,232,248,0.6)' : 'rgba(232,232,248,0.22)',
-                    }}>
-                      {materials[activePartId] === opt.id ? opt.feature : opt.shortFeature}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 6 }}>
-                      <div style={{ width: 5, height: 5, borderRadius: '50%', background: RISK_COLORS[opt.risk] }} />
-                      <span style={{ fontFamily: LEX, fontSize: 7.5, color: RISK_COLORS[opt.risk], letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                        RISK {RISK_LABEL[opt.risk]}
-                      </span>
-                    </div>
+                    )}
                   </div>
-                ))}
-              </motion.div>
-            )}
 
-            {aiState === 'loading' && (
-              <motion.div key="loading"
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '24px 0' }}>
-                <div style={{
-                  width: 5, height: 5, borderRadius: '50%', background: '#6b7fff',
-                  animation: 'blink 1.2s ease infinite', boxShadow: '0 0 8px #6b7fff', flexShrink: 0,
-                }} />
-                <span style={{ fontFamily: LEX, fontSize: 9, fontWeight: 700, color: '#484878', letterSpacing: '0.14em', textTransform: 'uppercase' }}>
-                  ANALYZING MATERIAL CONFIGURATION...
-                </span>
-              </motion.div>
-            )}
+                  {/* Expanded material options */}
+                  <AnimatePresence initial={false}>
+                    {isOpen && (
+                      <motion.div
+                        key="body"
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.38, ease: [0.16, 1, 0.3, 1] }}
+                        style={{ overflow: 'hidden' }}
+                      >
+                        {/* Part description */}
+                        <div style={{
+                          padding: '10px 36px 10px 39px',
+                          borderLeft: `3px solid ${accent}33`,
+                          background: 'rgba(107,127,255,0.015)',
+                        }}>
+                          <p style={{ fontFamily: ZH, fontSize: 11, color: '#484878', lineHeight: 1.75, margin: 0 }}>
+                            {part.desc}
+                          </p>
+                        </div>
 
-            {(aiState === 'done' || aiState === 'error') && (
-              <motion.div key="feedback"
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}
-                style={{ borderLeft: '3px solid rgba(107,127,255,0.40)', padding: '16px 16px 16px 18px' }}>
-                <div style={{
-                  fontFamily: LEX, fontSize: 8, fontWeight: 700, color: '#6b7fff',
-                  letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 14,
-                }}>
-                  材料档案 · {satellite?.name ?? '卫星'}
+                        {/* Material option rows */}
+                        {part.options.map((opt, oi) => {
+                          const isSel    = materials[part.id] === opt.id
+                          const survPct  = SURVIVE_PCT[opt.risk]
+                          return (
+                            <div
+                              key={opt.id}
+                              onClick={() => handleSelect(part.id, opt.id)}
+                              style={{
+                                padding: '13px 36px 13px 36px',
+                                borderLeft: `3px solid ${isSel ? accent : 'transparent'}`,
+                                borderTop: '1px solid rgba(26,26,53,0.7)',
+                                background: isSel ? `rgba(107,127,255,0.05)` : 'transparent',
+                                cursor: 'pointer', transition: 'all 0.18s',
+                              }}
+                            >
+                              {/* Name row */}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 7 }}>
+                                <div>
+                                  <span style={{
+                                    fontFamily: ZH, fontSize: 14, fontWeight: 700,
+                                    color: isSel ? '#e8e8f8' : '#8888aa',
+                                  }}>
+                                    {opt.label}
+                                  </span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2 }}>
+                                  <div style={{
+                                    width: 5, height: 5, borderRadius: '50%',
+                                    background: RISK_COLORS[opt.risk],
+                                    boxShadow: isSel ? `0 0 7px ${RISK_COLORS[opt.risk]}` : 'none',
+                                  }} />
+                                  <span style={{
+                                    fontFamily: LEX, fontSize: 7.5,
+                                    color: RISK_COLORS[opt.risk], letterSpacing: '0.07em', textTransform: 'uppercase',
+                                  }}>
+                                    RISK {RISK_LABEL[opt.risk]}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Survival probability bar */}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
+                                <span style={{
+                                  fontFamily: LEX, fontSize: 7, color: '#2a2a4a',
+                                  letterSpacing: '0.07em', textTransform: 'uppercase',
+                                  width: 52, flexShrink: 0,
+                                }}>
+                                  SURVIVE
+                                </span>
+                                <div style={{ flex: 1, height: 2, background: '#1a1a35', borderRadius: 1, overflow: 'hidden' }}>
+                                  <motion.div
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${survPct}%` }}
+                                    transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: oi * 0.07 }}
+                                    style={{ height: '100%', background: RISK_COLORS[opt.risk], borderRadius: 1 }}
+                                  />
+                                </div>
+                                <span style={{ fontFamily: MONO, fontSize: 7.5, color: '#484878', width: 24, textAlign: 'right', flexShrink: 0 }}>
+                                  {survPct}%
+                                </span>
+                              </div>
+
+                              {/* EN code + feature text */}
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: isSel ? 7 : 0 }}>
+                                <span style={{ fontFamily: LEX, fontSize: 7, color: '#2a2a4a', letterSpacing: '0.07em', textTransform: 'uppercase', flexShrink: 0 }}>
+                                  {opt.en}
+                                </span>
+                              </div>
+                              <div style={{
+                                fontSize: 11, fontFamily: ZH, lineHeight: 1.7,
+                                color: isSel ? 'rgba(232,232,248,0.65)' : 'rgba(232,232,248,0.22)',
+                                transition: 'color 0.22s',
+                                maxHeight: isSel ? 200 : 0,
+                                overflow: 'hidden',
+                                transition: 'max-height 0.3s ease, color 0.22s',
+                              }}>
+                                {opt.feature}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
-                <p style={{ fontFamily: ZH, fontSize: 13, color: 'rgba(232,232,248,0.80)', lineHeight: 2.0, margin: 0 }}>
-                  {aiState === 'done' ? feedback : '材料分析服务暂时不可用，材料组合已记录。'}
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+              )
+            })}
+          </div>
+        )}
 
-        {/* Action row */}
+        {/* ── Loading state ── */}
+        {aiState === 'loading' && (
+          <motion.div key="loading"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 14, padding: '0 36px' }}>
+            <div style={{
+              width: 5, height: 5, borderRadius: '50%', background: '#6b7fff',
+              animation: 'blink 1.2s ease infinite', boxShadow: '0 0 8px #6b7fff', flexShrink: 0,
+            }} />
+            <span style={{ fontFamily: LEX, fontSize: 9, fontWeight: 700, color: '#484878', letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+              ANALYZING MATERIAL CONFIGURATION...
+            </span>
+          </motion.div>
+        )}
+
+        {/* ── Feedback state ── */}
+        {(aiState === 'done' || aiState === 'error') && (
+          <motion.div key="feedback"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}
+            style={{ flex: 1, padding: '24px 36px', borderLeft: '3px solid rgba(107,127,255,0.35)' }}>
+            <div style={{
+              fontFamily: LEX, fontSize: 8, fontWeight: 700, color: '#6b7fff',
+              letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 14,
+            }}>
+              材料档案 · {satellite?.name ?? '卫星'}
+            </div>
+            <p style={{ fontFamily: ZH, fontSize: 13, color: 'rgba(232,232,248,0.80)', lineHeight: 2.0, margin: 0 }}>
+              {aiState === 'done' ? feedback : '材料分析服务暂时不可用，材料组合已记录。'}
+            </p>
+          </motion.div>
+        )}
+
+        {/* ── Action row ── */}
         <div style={{
-          borderTop: '1px solid #1a1a35', paddingTop: 16,
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          borderTop: '1px solid #1a1a35', padding: '14px 36px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
             {PARTS.map(p => (
               <div key={p.id} style={{
                 width: 6, height: 6, borderRadius: '50%',
@@ -1180,6 +1365,16 @@ export default function M1({ onComplete }) {
       position: 'fixed', inset: 0, zIndex: 100,
       overflow: 'hidden', cursor: 'none', background: '#04040f',
     }}>
+
+      {/* Persistent Earth backdrop — stays on scene 0, fades gently on navigate */}
+      <motion.div
+        animate={{ opacity: sceneIdx === 0 ? 1 : 0 }}
+        transition={{ duration: sceneIdx === 0 ? 0.9 : 0.55, ease: [0.16, 1, 0.3, 1] }}
+        style={{ position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none' }}
+      >
+        <DebrisEarth />
+      </motion.div>
+
       <AnimatePresence mode="wait" custom={direction}>
         <motion.div
           key={sceneIdx}
@@ -1188,7 +1383,7 @@ export default function M1({ onComplete }) {
           initial="enter"
           animate="show"
           exit="leave"
-          style={{ position: 'absolute', inset: 0 }}
+          style={{ position: 'absolute', inset: 0, zIndex: 3 }}
         >
           {renderScene()}
         </motion.div>
