@@ -135,6 +135,15 @@ const SOURCES = [
   },
 ]
 
+const ZONE_STATS = [
+  { value: '28,000', unit: 'km/h', label: '平均碰撞速度', sub: '子弹速度的 10 倍',
+    zone: 'LEO', zoneColor: '#c8d0f8', zoneDesc: '300–2000 KM' },
+  { value: '~1.3亿', unit: '',     label: '在轨碎片总量', sub: '大多无法追踪',
+    zone: 'MEO', zoneColor: '#8b9fff', zoneDesc: '2K–35K KM' },
+  { value: '1957',   unit: '',     label: '轨道污染起点', sub: 'Sputnik 升空同年',
+    zone: 'GEO', zoneColor: '#6b7fff', zoneDesc: '35,786 KM' },
+]
+
 /* ── Scene variants ── */
 const SCENE_VARIANTS = {
   enter: (dir) => ({ x: dir * 80, opacity: 0, filter: 'blur(6px)' }),
@@ -192,14 +201,6 @@ function SceneHero({ normX, normY }) {
   const ghostY = useTransform(normY, [-1, 1], ['-28px', '28px'])
   const E = { duration: 0.65, ease: [0.16, 1, 0.3, 1] }
 
-  const STATS = [
-    { value: '28,000', unit: 'km/h', label: '平均碰撞速度', sub: '子弹速度的 10 倍',
-      zone: 'LEO', zoneColor: '#c8d0f8', zoneDesc: '300–2000 KM' },
-    { value: '~1.3亿', unit: '',     label: '在轨碎片总量', sub: '大多无法追踪',
-      zone: 'MEO', zoneColor: '#8b9fff', zoneDesc: '2K–35K KM' },
-    { value: '1957',   unit: '',     label: '轨道污染起点', sub: 'Sputnik 升空同年',
-      zone: 'GEO', zoneColor: '#6b7fff', zoneDesc: '35,786 KM' },
-  ]
 
   return (
     <div style={{ position: 'absolute', inset: 0 }}>
@@ -280,51 +281,6 @@ function SceneHero({ normX, normY }) {
           它们以超音速运行，无法回收，无法清除，且持续增加。
         </motion.div>
 
-        {/* Detail stats row */}
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ ...E, delay: 0.52 }}
-          style={{ display: 'flex' }}>
-          {STATS.map((s, i) => (
-            <div key={i} style={{
-              flex: 1,
-              paddingLeft: i > 0 ? 20 : 0,
-              paddingRight: i < STATS.length - 1 ? 20 : 0,
-              borderLeft: i > 0 ? '1px solid rgba(107,127,255,0.14)' : 'none',
-            }}>
-              {/* Zone badge — connects to orbital layer in 3D model */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
-                <div style={{
-                  width: 4, height: 4, borderRadius: '50%',
-                  background: s.zoneColor, flexShrink: 0,
-                  boxShadow: `0 0 5px ${s.zoneColor}66`,
-                }} />
-                <span style={{
-                  fontFamily: LEX, fontSize: 6.5, fontWeight: 700,
-                  color: s.zoneColor, letterSpacing: '0.13em', textTransform: 'uppercase', opacity: 0.85,
-                }}>
-                  {s.zone} · {s.zoneDesc}
-                </span>
-              </div>
-              <div style={{
-                fontFamily: MONO, fontSize: 15, fontWeight: 700,
-                color: '#ffffff', letterSpacing: '-0.02em', lineHeight: 1, marginBottom: 6,
-                display: 'flex', alignItems: 'baseline', gap: 4,
-              }}>
-                {s.value}
-                {s.unit && (
-                  <span style={{ fontFamily: LEX, fontSize: 7.5, fontWeight: 700, color: '#6b7fff', letterSpacing: '0.10em' }}>
-                    {s.unit}
-                  </span>
-                )}
-              </div>
-              <div style={{ fontFamily: ZH, fontSize: 10, color: 'rgba(232,232,248,0.50)', lineHeight: 1.55, marginBottom: 3 }}>
-                {s.label}
-              </div>
-              <div style={{ fontFamily: ZH, fontSize: 9, color: '#2a2a4a', lineHeight: 1.5 }}>
-                {s.sub}
-              </div>
-            </div>
-          ))}
-        </motion.div>
       </div>
 
       {/* ── Scattered decorations — right zone ── */}
@@ -428,64 +384,91 @@ function TierGroup({ tier, position, rawX, rawY }) {
 }
 
 /* ── Scene 1: SCALE ── */
-function SceneScale({ rawX, rawY, smoothX, smoothY }) {
+// Three key stats, each annotating a visible area of the debris cloud
+const SCALE_ANNOTS = [
+  {
+    value: '28,000', unit: 'km/h',
+    label: '平均碰撞速度',
+    sub: '子弹速度的 10 倍，无法提前预警',
+    color: '#c8d0f8',
+    // Selection box [x, y, w, h] in SVG % coords (viewBox 0 0 100 100, preserveAspectRatio none)
+    box: [37, 17, 9, 13],
+    // Polyline: box left-mid → elbow → terminal dot near number
+    // Number at top:8%, left:7% → terminal at (5.5, 11)
+    pts: [[37, 23.5], [5.5, 23.5], [5.5, 11]],
+    numPos: { top: '7%', left: '7%' },
+  },
+  {
+    value: '~1.3亿', unit: '',
+    label: '在轨碎片总量',
+    sub: '大多小于 1 mm，无法追踪，无法规避',
+    color: '#8b9fff',
+    // Box at right-center area (MEO/diffuse cloud)
+    box: [67, 40, 9, 12],
+    // Number at top:43%, left:7% → terminal at (5.5, 46)
+    pts: [[67, 46], [5.5, 46]],
+    numPos: { top: '42%', left: '7%' },
+  },
+  {
+    value: '36,500+', unit: '',
+    label: '可追踪目标',
+    sub: '雷达编目在册，卫星需主动规避',
+    color: '#f87171',
+    // Box at lower-center debris area
+    box: [48, 62, 9, 11],
+    // Number at top:70%, left:7% → terminal at (5.5, 73)
+    pts: [[48, 67.5], [5.5, 67.5], [5.5, 73]],
+    numPos: { top: '69%', left: '7%' },
+  },
+]
+
+function SceneScale() {
   return (
-    <div style={{ position: 'absolute', inset: 0 }}>
+    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
 
-      {/* Header block */}
-      <div style={{ position: 'absolute', top: '4%', left: '4%', zIndex: 2, pointerEvents: 'none' }}>
-        <div style={{
-          fontFamily: LEX, fontSize: 8, fontWeight: 700,
-          color: 'rgba(107,127,255,0.5)', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 10,
-        }}>
-          01 · SCALE / 规模
-        </div>
-        <div style={{
-          fontFamily: ZH, fontSize: 'clamp(22px,2.8vw,34px)', fontWeight: 700,
-          color: '#e8e8f8', lineHeight: 1.2, marginBottom: 8,
-        }}>
-          三类碎片，<br />三种截然不同的威胁。
-        </div>
-        <div style={{ fontFamily: ZH, fontSize: 12, color: '#484878', lineHeight: 1.75, maxWidth: 260 }}>
-          尺寸决定能否追踪、预警和清除。
-        </div>
+      {/* Section tag */}
+      <div style={{
+        position: 'absolute', top: '4%', left: '4%', zIndex: 10,
+        fontFamily: LEX, fontSize: 8, fontWeight: 700,
+        color: 'rgba(107,127,255,0.5)', letterSpacing: '0.18em', textTransform: 'uppercase',
+      }}>
+        01 · SCALE / 规模
       </div>
 
-      {/* Cursor spotlight */}
-      <motion.div style={{
-        position: 'absolute', pointerEvents: 'none',
-        width: 360, height: 360, borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(255,255,255,0.035) 0%, transparent 70%)',
-        transform: 'translate(-50%,-50%)',
-        left: smoothX, top: smoothY,
-      }} />
-
-      <TierGroup tier={SIZE_TIERS[0]} position={{ top: '26%', left: '5%' }} rawX={rawX} rawY={rawY} />
-      <TierGroup tier={SIZE_TIERS[1]} position={{ top: '44%', left: '50%', transform: 'translateX(-50%)' }} rawX={rawX} rawY={rawY} />
-      <TierGroup tier={SIZE_TIERS[2]} position={{ top: '26%', right: '4%' }} rawX={rawX} rawY={rawY} />
-
-      {/* Hairline */}
-      <div style={{ position: 'absolute', top: '66%', left: 0, right: 0, height: 1, background: 'rgba(107,127,255,0.08)' }} />
-
-      {/* Speed block */}
+      {/* Left text block — fills the clear left zone */}
       <div style={{
-        position: 'absolute', top: '72%', left: '50%', transform: 'translateX(-50%)',
-        display: 'flex', alignItems: 'baseline', gap: 14, whiteSpace: 'nowrap',
+        position: 'absolute', left: '4%', top: '16%', width: '34%', zIndex: 10,
       }}>
-        <span style={{ fontFamily: MONO, fontSize: 64, fontWeight: 700, color: '#e8e8f8', letterSpacing: '-0.03em', lineHeight: 1 }}>
-          28,000
-        </span>
-        <span style={{ fontFamily: LEX, fontSize: 9, fontWeight: 700, color: '#6b7fff', letterSpacing: '0.14em', textTransform: 'uppercase' }}>
-          KM / H
-        </span>
-      </div>
+        {/* H1 */}
+        <div style={{
+          fontFamily: ZH, fontSize: 'clamp(26px,3.2vw,42px)', fontWeight: 700,
+          color: '#e8e8f8', lineHeight: 1.22, marginBottom: 22,
+        }}>
+          轨道碎片不是假设，<br />是已成事实的威胁。
+        </div>
 
-      <div style={{
-        position: 'absolute', top: '84%', left: '50%', transform: 'translateX(-50%)',
-        fontFamily: ZH, fontSize: 13, color: '#484878',
-        maxWidth: 440, textAlign: 'center', lineHeight: 1.8, whiteSpace: 'nowrap',
-      }}>
-        一颗 1 cm 的碎片动能相当于一枚手榴弹——子弹速度的 10 倍，无法提前预警。
+        {/* Hairline */}
+        <div style={{
+          height: 1, background: 'linear-gradient(to right, rgba(107,127,255,0.35), transparent)',
+          marginBottom: 20,
+        }} />
+
+        {/* Body */}
+        <div style={{
+          fontFamily: ZH, fontSize: 13, color: 'rgba(232,232,248,0.42)',
+          lineHeight: 2.0, marginBottom: 18,
+        }}>
+          速度让每次碰撞具有毁灭性，<br />
+          数量让规避几乎不可能，<br />
+          不可见性让预警成为奢望。
+        </div>
+
+        {/* Fine print */}
+        <div style={{
+          fontFamily: ZH, fontSize: 11, color: '#484878', lineHeight: 1.75,
+        }}>
+          自 1957 年持续累积，目前尚无有效的批量清除方案。
+        </div>
       </div>
     </div>
   )
@@ -1342,7 +1325,7 @@ export default function M1({ onComplete }) {
   const renderScene = () => {
     switch (sceneIdx) {
       case 0: return <SceneHero normX={normX} normY={normY} />
-      case 1: return <SceneScale rawX={rawX} rawY={rawY} smoothX={smoothX} smoothY={smoothY} />
+      case 1: return <SceneScale />
       case 2: return <SceneSources />
       case 3: return <SceneCountries />
       case 4: return <SceneTrend />
@@ -1366,13 +1349,13 @@ export default function M1({ onComplete }) {
       overflow: 'hidden', cursor: 'none', background: '#04040f',
     }}>
 
-      {/* Persistent Earth backdrop — stays on scene 0, fades gently on navigate */}
+      {/* Persistent Earth backdrop — full on scenes 0+1, fades from scene 2 */}
       <motion.div
-        animate={{ opacity: sceneIdx === 0 ? 1 : 0 }}
-        transition={{ duration: sceneIdx === 0 ? 0.9 : 0.55, ease: [0.16, 1, 0.3, 1] }}
+        animate={{ opacity: sceneIdx <= 1 ? 1 : 0 }}
+        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
         style={{ position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none' }}
       >
-        <DebrisEarth />
+        <DebrisEarth showAnnotations={sceneIdx === 1} />
       </motion.div>
 
       <AnimatePresence mode="wait" custom={direction}>
