@@ -1,7 +1,10 @@
 import { useRef, Suspense } from 'react'
 import { Canvas, useFrame, useLoader } from '@react-three/fiber'
-import { Html, Line } from '@react-three/drei'
+import { Text, Html, Line, Billboard } from '@react-three/drei'
 import * as THREE from 'three'
+
+const MONO_FONT = '/fonts/SpaceMono-Bold.woff2'
+const CJK_FONT  = '/fonts/NotoSansSC-subset.woff2'
 
 // 3D corner-tick targeting frame — 8 corners each with 3-axis ticks
 function TargetBox({ size, color, opacity = 0.88 }) {
@@ -9,7 +12,6 @@ function TargetBox({ size, color, opacity = 0.88 }) {
   const hw = w / 2, hh = h / 2, hd = d / 2
   const t = Math.min(hw, hh, hd) * 0.52
 
-  // [corner x,y,z] [x-sign] [y-sign] [z-sign (inward)]
   const corners = [
     [-hw,  hh,  hd,  1, -1, -1],
     [ hw,  hh,  hd, -1, -1, -1],
@@ -25,7 +27,6 @@ function TargetBox({ size, color, opacity = 0.88 }) {
     <>
       {corners.map(([cx, cy, cz, sx, sy, sz], i) => (
         <group key={i}>
-          {/* X + Y tick — L-shape in XY plane */}
           <Line
             points={[
               [cx + sx * t, cy, cz],
@@ -37,7 +38,6 @@ function TargetBox({ size, color, opacity = 0.88 }) {
             transparent
             opacity={opacity}
           />
-          {/* Z tick — depth axis */}
           <Line
             points={[
               [cx, cy, cz],
@@ -54,11 +54,7 @@ function TargetBox({ size, color, opacity = 0.88 }) {
   )
 }
 
-const ZH   = "'PingFang SC', 'Microsoft YaHei', sans-serif"
-const MONO = "'Space Mono', monospace"
-const LEX  = "'Lexend', sans-serif"
-
-// Pre-generated at module level — stable across renders, no recomputation
+// Pre-generated at module level — stable across renders
 const N = 2000
 const DEBRIS = Array.from({ length: N }, () => {
   const layer = Math.random()
@@ -88,42 +84,84 @@ const DEBRIS = Array.from({ length: N }, () => {
   }
 })
 
-// Annotation targets — in debrisRef local space (rotate with debris, occluded by Earth)
 const ANNOTS = [
   {
-    value: '28,000', unit: 'km/h',
+    value: '28,000', unit: ' km/h', valueFont: MONO_FONT,
     label: '平均碰撞速度', sub: '子弹速度的 10 倍',
     color: '#c8d0f8',
-    boxPos:   [-1.0, 1.15, 0.95],  // LEO upper-left-front, r ≈ 1.74
-    labelPos: [-2.0,  1.65, 0.95], // label further out
+    boxPos:   [-1.0, 1.15, 0.95],
+    labelPos: [-2.0, 1.65, 0.95],
     boxSize:  [0.30, 0.20, 0.20],
   },
   {
-    value: '~1.3亿', unit: '',
+    value: '~1.3亿', unit: '', valueFont: CJK_FONT,
     label: '在轨碎片总量', sub: '大多无法追踪',
     color: '#8b9fff',
-    boxPos:   [2.1, 0.25, 1.75],   // MEO right-front, r ≈ 2.83
-    labelPos: [3.05, 0.45, 1.75],  // label further right
+    boxPos:   [2.1,  0.25, 1.75],
+    labelPos: [3.05, 0.45, 1.75],
     boxSize:  [0.32, 0.22, 0.22],
   },
   {
-    value: '36,500+', unit: '',
+    value: '36,500+', unit: '', valueFont: MONO_FONT,
     label: '可追踪目标', sub: '雷达编目在册',
     color: '#f87171',
-    boxPos:   [-0.55, -1.42, 0.92],  // LEO lower-front, r ≈ 1.77
-    labelPos: [-1.3,  -2.0,  0.92],  // label lower-left
-    boxSize:  [0.28, 0.20, 0.20],
+    boxPos:   [-0.55, -1.42, 0.92],
+    labelPos: [-1.3,  -2.0,  0.92],
+    boxSize:  [0.28,  0.20,  0.20],
   },
 ]
 
 function EarthScene({ showAnnotations }) {
-  const earthRef  = useRef()
-  const debrisRef = useRef()
-  const earthTex  = useLoader(THREE.TextureLoader, '/earth_borders.png')
+  const earthRef    = useRef()
+  const debrisRef   = useRef()
+  const earthTex    = useLoader(THREE.TextureLoader, '/earth_borders.png')
 
-  useFrame((_, delta) => {
+  // Refs for 3D Text meshes (value) — fillOpacity set directly, no re-render
+  const valueRefs   = useRef([null, null, null])
+  // Refs for HTML label divs — style.opacity set directly
+  const labelDivRefs = useRef([null, null, null])
+
+  // Reusable vectors — avoid GC per frame
+  const _ec = useRef(new THREE.Vector3())
+  const _lp = useRef(new THREE.Vector3())
+  const _tl = useRef(new THREE.Vector3())
+  const _te = useRef(new THREE.Vector3())
+  const _cp = useRef(new THREE.Vector3())
+
+  useFrame((state, delta) => {
     if (earthRef.current)  earthRef.current.rotation.y  += delta * 0.055
     if (debrisRef.current) debrisRef.current.rotation.y += delta * 0.018
+
+    if (!showAnnotations || !debrisRef.current || !earthRef.current) return
+    earthRef.current.getWorldPosition(_ec.current)
+    const R     = 1.0
+    const camera = state.camera
+
+    ANNOTS.forEach((a, i) => {
+      _lp.current.set(...a.labelPos).applyMatrix4(debrisRef.current.matrixWorld)
+      _tl.current.copy(_lp.current).sub(camera.position)
+      const distToLabel = _tl.current.length()
+      _tl.current.normalize()
+
+      _te.current.copy(_ec.current).sub(camera.position)
+      const tEarth = _te.current.dot(_tl.current)
+      _cp.current.copy(camera.position).addScaledVector(_tl.current, tEarth)
+      const perpDist = _cp.current.distanceTo(_ec.current)
+
+      let occ = 1
+      if (tEarth > 0 && tEarth < distToLabel) {
+        const inner = R * 0.76
+        const outer = R * 1.06
+        if (perpDist <= inner)      occ = 0
+        else if (perpDist < outer)  occ = (perpDist - inner) / (outer - inner)
+      }
+
+      // 3D Text — direct property mutation, no React re-render
+      if (valueRefs.current[i]) valueRefs.current[i].fillOpacity = occ
+
+      // HTML labels — direct DOM mutation
+      if (labelDivRefs.current[i]) labelDivRefs.current[i].style.opacity = occ
+    })
   })
 
   return (
@@ -160,7 +198,7 @@ function EarthScene({ showAnnotations }) {
         <meshBasicMaterial color="#6b7fff" transparent opacity={0.07} />
       </mesh>
 
-      {/* Debris field + annotation boxes — all rotate together */}
+      {/* Debris + annotations — all rotate together */}
       <group ref={debrisRef}>
         {DEBRIS.map((d, i) => (
           <mesh key={i} position={d.pos} rotation={d.rot} scale={d.scale}>
@@ -169,15 +207,14 @@ function EarthScene({ showAnnotations }) {
           </mesh>
         ))}
 
-        {/* Annotations: rendered when scene 1 is active, occluded by Earth */}
         {showAnnotations && ANNOTS.map((a, i) => (
           <group key={`annot-${i}`}>
-            {/* Corner-tick targeting frame */}
+            {/* 3D corner-tick targeting frame */}
             <group position={a.boxPos}>
               <TargetBox size={a.boxSize} color={a.color} />
             </group>
 
-            {/* Connector line: box → label */}
+            {/* Connector line */}
             <Line
               points={[a.boxPos, a.labelPos]}
               color={a.color}
@@ -186,30 +223,48 @@ function EarthScene({ showAnnotations }) {
               opacity={0.55}
             />
 
-            {/* HTML label — occlude=true raycasts against all scene meshes */}
+            {/* Value: 默认内置字体(无加载/无Suspense)，outlineWidth 模拟加粗 */}
+            <Billboard position={a.labelPos}>
+              <Text
+                ref={el => { valueRefs.current[i] = el }}
+                anchorX="left"
+                anchorY="top"
+                fontSize={0.44}
+                color={a.color}
+                outlineWidth="3.5%"
+                outlineColor={a.color}
+                fillOpacity={1}
+              >
+                {a.value}{a.unit}
+              </Text>
+            </Billboard>
+
+            {/* Chinese label + sub: Html with useFrame opacity — rendered below value */}
             <Html
-              position={a.labelPos}
-              occlude
+              position={[a.labelPos[0], a.labelPos[1] - 0.58, a.labelPos[2]]}
               distanceFactor={10}
               style={{ pointerEvents: 'none', userSelect: 'none' }}
             >
-              <div style={{ transform: 'translateY(-50%)', whiteSpace: 'nowrap' }}>
+              <div
+                ref={el => { labelDivRefs.current[i] = el }}
+                style={{ whiteSpace: 'nowrap', transition: 'opacity 0.1s linear' }}
+              >
                 <div style={{
-                  fontFamily: MONO, fontSize: 52, fontWeight: 700,
-                  color: a.color, letterSpacing: '-0.02em', lineHeight: 1,
-                  display: 'flex', alignItems: 'baseline', gap: 6,
+                  fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif",
+                  fontSize: 16, fontWeight: 500,
+                  color: 'rgba(232,232,248,0.88)',
+                  textShadow: '0 1px 8px rgba(4,4,15,0.95)',
+                  lineHeight: 1.4,
                 }}>
-                  {a.value}
-                  {a.unit && (
-                    <span style={{ fontFamily: LEX, fontSize: 13, color: a.color, letterSpacing: '0.10em', opacity: 0.8 }}>
-                      {a.unit}
-                    </span>
-                  )}
-                </div>
-                <div style={{ fontFamily: ZH, fontSize: 15, color: 'rgba(232,232,248,0.60)', marginTop: 6, lineHeight: 1.4 }}>
                   {a.label}
                 </div>
-                <div style={{ fontFamily: ZH, fontSize: 12, color: 'rgba(107,127,255,0.45)', marginTop: 3 }}>
+                <div style={{
+                  fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif",
+                  fontSize: 13,
+                  color: 'rgba(180,190,255,0.72)',
+                  textShadow: '0 1px 6px rgba(4,4,15,0.95)',
+                  marginTop: 3,
+                }}>
                   {a.sub}
                 </div>
               </div>
