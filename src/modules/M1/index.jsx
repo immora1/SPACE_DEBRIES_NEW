@@ -755,6 +755,7 @@ const RING_SEGS = (() => {
 function SceneCountries() {
   const hovIdxRef  = useRef(-1)
   const detailRefs = useRef([null, null, null, null])
+  const rowRefs    = useRef([null, null, null, null])
   const cNameRef   = useRef(null)
   const cCountRef  = useRef(null)
   const cPctRef    = useRef(null)
@@ -767,6 +768,13 @@ function SceneCountries() {
       const on = idx >= 0 && j === idx
       el.style.opacity   = on ? '1'   : '0'
       el.style.maxHeight = on ? '80px': '0'
+    })
+    rowRefs.current.forEach((el, j) => {
+      if (!el) return
+      const c  = RING_SEGS[j].color
+      const on = idx >= 0 && j === idx
+      el.style.background = on ? `${c}0d` : 'transparent'
+      el.style.boxShadow  = on ? `inset 3px 0 0 ${c}` : 'none'
     })
     if (cNameRef.current)
       cNameRef.current.textContent = idx < 0 ? 'TOTAL TRACKED' : RING_SEGS[idx].name
@@ -783,14 +791,7 @@ function SceneCountries() {
   return (
     <div style={{ position: 'absolute', inset: 0 }}>
 
-      {/* Ghost watermark */}
-      <div style={{
-        position: 'absolute', top: '50%', right: '3%', transform: 'translateY(-50%)',
-        fontFamily: MONO, fontWeight: 700, fontSize: 'clamp(90px,13vw,170px)',
-        color: 'rgba(107,127,255,0.025)', userSelect: 'none', pointerEvents: 'none',
-      }}>96%</div>
-
-      {/* Left panel — header + legend */}
+      {/* Left panel */}
       <div style={{
         position: 'absolute', top: 0, left: 0, bottom: 0, width: '36%',
         display: 'flex', flexDirection: 'column', justifyContent: 'center',
@@ -811,65 +812,95 @@ function SceneCountries() {
         </div>
         <div style={{
           fontFamily: ZH, fontSize: 13, color: '#484878',
-          lineHeight: 1.75, maxWidth: 320, marginBottom: 40, pointerEvents: 'none',
+          lineHeight: 1.75, maxWidth: 320, marginBottom: 36, pointerEvents: 'none',
         }}>
           现行国际法律框架无法强制任何国家清理本国碎片。
         </div>
 
-        {/* Legend rows */}
-        {RING_SEGS.map((seg, i) => (
-          <div key={seg.name}
-            style={{ marginBottom: 26, cursor: 'default' }}
-            onMouseEnter={() => applyHover(i)}
-            onMouseLeave={() => applyHover(-1)}
-          >
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-              <div style={{
-                width: 3, height: 36, background: seg.color, flexShrink: 0, marginTop: 2,
-              }} />
-              <div style={{ flex: 1 }}>
+        {/* Bar chart — all 4 rows share a common scale with vertical endpoint lines */}
+        <div style={{ position: 'relative' }}>
+
+          {/* Vertical line at each country's bar endpoint — spans all rows */}
+          {RING_SEGS.map((seg, i) => (
+            <div key={`vl-${i}`} style={{
+              position: 'absolute', zIndex: 1, pointerEvents: 'none',
+              left: `${(seg.count / RING_SEGS[0].count) * 100}%`,
+              top: 0, bottom: 32, width: 1,
+              background: `${seg.color}55`,
+            }} />
+          ))}
+
+          {RING_SEGS.map((seg, i) => (
+            <div key={seg.name}
+              ref={el => { rowRefs.current[i] = el }}
+              style={{
+                paddingTop: 12, paddingBottom: 12, cursor: 'pointer',
+                borderTop: '1px solid rgba(107,127,255,0.10)',
+                borderBottom: i === RING_SEGS.length - 1 ? '1px solid rgba(107,127,255,0.10)' : 'none',
+                transition: 'background 0.22s ease, box-shadow 0.22s ease',
+              }}
+              onMouseEnter={() => applyHover(i)}
+              onMouseLeave={() => applyHover(-1)}
+            >
+              {/* Country header row — index + name */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, paddingLeft: 16 }}>
+                <span style={{
+                  fontFamily: MONO, fontSize: 10, fontWeight: 700,
+                  color: seg.color, opacity: 0.7,
+                }}>{String(i + 1).padStart(2, '0')}</span>
+                <span style={{
+                  fontFamily: LEX, fontSize: 11, fontWeight: 700,
+                  color: seg.color, letterSpacing: '0.10em', textTransform: 'uppercase',
+                }}>{seg.name}</span>
+              </div>
+
+              {/* Bar — flat ends, no track */}
+              <div style={{ height: 4, marginBottom: 9 }}>
                 <div style={{
-                  fontFamily: LEX, fontSize: 9, fontWeight: 700,
-                  color: seg.color, letterSpacing: '0.13em',
-                  textTransform: 'uppercase', marginBottom: 4,
-                }}>{seg.name}</div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 6 }}>
-                  <span style={{
-                    fontFamily: MONO, fontSize: 30, fontWeight: 700,
-                    color: '#e8e8f8', letterSpacing: '-0.03em',
-                  }}>{seg.count.toLocaleString()}</span>
-                  <span style={{
-                    fontFamily: LEX, fontSize: 9,
-                    color: 'rgba(107,127,255,0.5)',
-                  }}>{(seg.pct * 100).toFixed(1)}%</span>
-                </div>
-                {/* Proportion bar */}
-                <div style={{
-                  height: 2, width: `${Math.round(seg.pct * 220)}px`,
-                  background: seg.color, opacity: 0.4,
+                  height: '100%',
+                  width: `${(seg.count / RING_SEGS[0].count) * 100}%`,
+                  background: seg.color,
+                  boxShadow: `0 0 8px ${seg.color}77`,
                 }} />
               </div>
+
+              {/* Count + percentage — indented to avoid vertical line overlap */}
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, paddingLeft: 16 }}>
+                <span style={{
+                  fontFamily: MONO, fontSize: 28, fontWeight: 700,
+                  color: '#e8e8f8', letterSpacing: '-0.03em',
+                }}>{seg.count.toLocaleString()}</span>
+                <span style={{
+                  fontFamily: MONO, fontSize: 17, fontWeight: 700, color: seg.color,
+                }}>{(seg.pct * 100).toFixed(1)}%</span>
+              </div>
+
+              {/* Detail — revealed on hover */}
+              <div
+                ref={el => { detailRefs.current[i] = el }}
+                style={{
+                  marginTop: 8, paddingLeft: 16,
+                  fontFamily: ZH, fontSize: 12, color: 'rgba(232,232,248,0.5)',
+                  lineHeight: 1.85, maxWidth: 320,
+                  opacity: 0, maxHeight: 0, overflow: 'hidden',
+                  transition: 'opacity 0.3s ease, max-height 0.35s ease',
+                }}
+              >{seg.detail}</div>
             </div>
-            {/* Detail — revealed on hover */}
-            <div
-              ref={el => { detailRefs.current[i] = el }}
-              style={{
-                paddingLeft: 17, marginTop: 6,
-                fontFamily: ZH, fontSize: 12, color: 'rgba(232,232,248,0.55)',
-                lineHeight: 1.85, maxWidth: 320,
-                opacity: 0, maxHeight: 0, overflow: 'hidden',
-                transition: 'opacity 0.3s ease, max-height 0.35s ease',
-              }}
-            >{seg.detail}</div>
-          </div>
-        ))}
+          ))}
+        </div>
+
+        {/* Interaction affordance footer */}
+        <div style={{
+          marginTop: 14, fontFamily: LEX, fontSize: 7.5,
+          color: 'rgba(107,127,255,0.28)', letterSpacing: '0.14em', textTransform: 'uppercase',
+          pointerEvents: 'none',
+        }}>⊙ 悬停查看历史详情</div>
       </div>
 
-      {/* 3D top-down Earth — wider panel to reduce visual split */}
+      {/* 3D Earth — right panel */}
       <div style={{ position: 'absolute', right: 0, top: 0, width: '68%', height: '100%' }}>
         <DebrisEarthCountries hovIdxRef={hovIdxRef} />
-
-        {/* Center info overlay */}
         <div style={{
           position: 'absolute', top: '50%', left: '50%',
           transform: 'translate(-50%, -50%)',
@@ -891,6 +922,7 @@ function SceneCountries() {
           }}>OBJECTS IN ORBIT</div>
         </div>
       </div>
+
     </div>
   )
 }

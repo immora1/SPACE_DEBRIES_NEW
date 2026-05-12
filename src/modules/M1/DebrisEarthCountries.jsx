@@ -143,6 +143,7 @@ function Scene({ hovIdxRef }) {
             hovIdxRef={hovIdxRef}
           />
         ))}
+
       </group>
     </group>
   )
