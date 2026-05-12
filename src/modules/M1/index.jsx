@@ -4,6 +4,7 @@ import useAppStore from '../../store/useAppStore'
 import { generateMaterialFeedback } from '../../services/ai'
 import SatelliteModel from './SatelliteModel'
 import DebrisEarth from './DebrisEarth'
+import DebrisEarthCountries from './DebrisEarthCountries'
 
 const ZH   = "'PingFang SC', 'Microsoft YaHei', sans-serif"
 const MONO = "'Space Mono', monospace"
@@ -123,7 +124,7 @@ const COUNTRIES = [
 const SOURCES = [
   {
     img: '/source_1.png',
-    video: '/jimeng-2026-05-12-1489-生成产生这个太空垃圾过程的视频.mp4',
+    video: '/Vedio-卫星残骸.mp4',
     title: '火箭残骸', label: '01 · ROCKET STAGE',
     meta: [
       { k: '在轨数量',  v: '>2,000 件' },
@@ -135,6 +136,7 @@ const SOURCES = [
   },
   {
     img: '/source_2.png',
+    video: '/Video-报废卫星.mp4',
     title: '废弃卫星', label: '02 · DEFUNCT SAT',
     meta: [
       { k: '在轨总量',  v: '~3,000 颗' },
@@ -146,6 +148,7 @@ const SOURCES = [
   },
   {
     img: '/source_3.png',
+    video: '/Video-操作遗留.mp4',
     title: '操作遗留', label: '03 · LEGACY',
     meta: [
       { k: '已编目遗留', v: '数万件' },
@@ -504,6 +507,7 @@ function SceneSources() {
   const overlayRefs  = useRef([null, null, null])
   const descRefs     = useRef([null, null, null])
   const detailRefs   = useRef([null, null, null])
+  const metaRefs     = useRef([null, null, null])
   const headlineRef  = useRef(null)
   const videoRefs    = useRef([null, null, null])
 
@@ -533,7 +537,12 @@ function SceneSources() {
       headlineRef.current.style.transform =
         `translate(-50%,-50%) translateY(${idx < 0 ? 0 : -8}px)`
     }
-    // Play video on hover, pause on leave
+    metaRefs.current.forEach((el, j) => {
+      if (!el) return
+      const active = idx >= 0 && j === idx
+      el.style.opacity = active ? '1' : '0'
+      el.style.transform = active ? 'translateY(0)' : 'translateY(-4px)'
+    })
     videoRefs.current.forEach((el, j) => {
       if (!el) return
       if (idx >= 0 && j === idx) {
@@ -597,7 +606,6 @@ function SceneSources() {
               ref={el => { videoRefs.current[i] = el }}
               src={src.video}
               muted
-              loop
               playsInline
               preload="metadata"
               style={{
@@ -654,11 +662,16 @@ function SceneSources() {
             {src.label}
           </div>
 
-          {/* Meta row — 3 data items */}
-          <div style={{
-            position: 'absolute', top: 12, right: 18,
-            display: 'flex', gap: 28, alignItems: 'flex-start',
-          }}>
+          {/* Meta row — hidden by default, revealed on hover */}
+          <div
+            ref={el => { metaRefs.current[i] = el }}
+            style={{
+              position: 'absolute', top: 12, right: 18,
+              display: 'flex', gap: 28, alignItems: 'flex-start',
+              opacity: 0, transform: 'translateY(-4px)',
+              transition: 'opacity 0.35s ease, transform 0.35s ease',
+            }}
+          >
             {src.meta.map((m, mi) => (
               <div key={mi} style={{ textAlign: 'right' }}>
                 <div style={{
@@ -722,94 +735,162 @@ function SceneSources() {
 }
 
 /* ── Scene 3: COUNTRIES ── */
-const COL_CFG = [
-  { left: '8%',  fontSize: 64 },
-  { left: '30%', fontSize: 56 },
-  { left: '56%', fontSize: 46 },
-  { left: '76%', fontSize: 40 },
-]
+const COUNTRY_COLORS = ['#f87171', '#6b7fff', '#fbbf24', '#8b9fff']
+const TOTAL_DEBRIS   = COUNTRIES.reduce((s, c) => s + c.count, 0)
+
+const RING_SEGS = (() => {
+  let cum = -Math.PI / 2
+  const gap = 0.028
+  return COUNTRIES.map((c, i) => {
+    const pct  = c.count / TOTAL_DEBRIS
+    const span = pct * 2 * Math.PI - gap
+    const mid  = cum + span / 2
+    const seg  = { ...c, pct, start: cum, end: cum + span, mid, color: COUNTRY_COLORS[i] }
+    cum += span + gap
+    return seg
+  })
+})()
+
 
 function SceneCountries() {
-  const [hovIdx, setHovIdx] = useState(null)
-  const maxCount = Math.max(...COUNTRIES.map(c => c.count))
+  const hovIdxRef  = useRef(-1)
+  const detailRefs = useRef([null, null, null, null])
+  const cNameRef   = useRef(null)
+  const cCountRef  = useRef(null)
+  const cPctRef    = useRef(null)
+
+  const applyHover = useCallback((idx) => {
+    hovIdxRef.current = idx
+
+    detailRefs.current.forEach((el, j) => {
+      if (!el) return
+      const on = idx >= 0 && j === idx
+      el.style.opacity   = on ? '1'   : '0'
+      el.style.maxHeight = on ? '80px': '0'
+    })
+    if (cNameRef.current)
+      cNameRef.current.textContent = idx < 0 ? 'TOTAL TRACKED' : RING_SEGS[idx].name
+    if (cCountRef.current)
+      cCountRef.current.textContent = idx < 0
+        ? TOTAL_DEBRIS.toLocaleString()
+        : RING_SEGS[idx].count.toLocaleString()
+    if (cPctRef.current)
+      cPctRef.current.textContent = idx < 0
+        ? 'OBJECTS IN ORBIT'
+        : `${(RING_SEGS[idx].pct * 100).toFixed(1)}% OF TOTAL`
+  }, [])
 
   return (
     <div style={{ position: 'absolute', inset: 0 }}>
 
       {/* Ghost watermark */}
       <div style={{
-        position: 'absolute', top: '42%', left: '50%', transform: 'translate(-50%,-50%)',
-        fontFamily: MONO, fontWeight: 700, fontSize: 'clamp(120px,18vw,200px)',
-        color: 'rgba(107,127,255,0.03)', userSelect: 'none', pointerEvents: 'none', whiteSpace: 'nowrap',
-      }}>
-        96%
-      </div>
+        position: 'absolute', top: '50%', right: '3%', transform: 'translateY(-50%)',
+        fontFamily: MONO, fontWeight: 700, fontSize: 'clamp(90px,13vw,170px)',
+        color: 'rgba(107,127,255,0.025)', userSelect: 'none', pointerEvents: 'none',
+      }}>96%</div>
 
-      {/* Header block */}
-      <div style={{ position: 'absolute', top: '3%', left: '4%', zIndex: 2, pointerEvents: 'none' }}>
+      {/* Left panel — header + legend */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0, bottom: 0, width: '36%',
+        display: 'flex', flexDirection: 'column', justifyContent: 'center',
+        padding: '0 4% 0 5%',
+      }}>
         <div style={{
           fontFamily: LEX, fontSize: 8, fontWeight: 700,
-          color: 'rgba(107,127,255,0.5)', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 10,
+          color: 'rgba(107,127,255,0.5)', letterSpacing: '0.18em',
+          textTransform: 'uppercase', marginBottom: 14, pointerEvents: 'none',
         }}>
           03 · CONTRIBUTORS / 各国贡献
         </div>
         <div style={{
-          fontFamily: ZH, fontSize: 'clamp(22px,2.8vw,34px)', fontWeight: 700,
-          color: '#e8e8f8', lineHeight: 1.2, marginBottom: 8,
+          fontFamily: ZH, fontSize: 'clamp(22px,2.4vw,34px)', fontWeight: 700,
+          color: '#e8e8f8', lineHeight: 1.22, marginBottom: 8, pointerEvents: 'none',
         }}>
           三国贡献了全球 96% 的碎片。
         </div>
-        <div style={{ fontFamily: ZH, fontSize: 12, color: '#484878', lineHeight: 1.75, maxWidth: 320 }}>
+        <div style={{
+          fontFamily: ZH, fontSize: 13, color: '#484878',
+          lineHeight: 1.75, maxWidth: 320, marginBottom: 40, pointerEvents: 'none',
+        }}>
           现行国际法律框架无法强制任何国家清理本国碎片。
         </div>
+
+        {/* Legend rows */}
+        {RING_SEGS.map((seg, i) => (
+          <div key={seg.name}
+            style={{ marginBottom: 26, cursor: 'default' }}
+            onMouseEnter={() => applyHover(i)}
+            onMouseLeave={() => applyHover(-1)}
+          >
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+              <div style={{
+                width: 3, height: 36, background: seg.color, flexShrink: 0, marginTop: 2,
+              }} />
+              <div style={{ flex: 1 }}>
+                <div style={{
+                  fontFamily: LEX, fontSize: 9, fontWeight: 700,
+                  color: seg.color, letterSpacing: '0.13em',
+                  textTransform: 'uppercase', marginBottom: 4,
+                }}>{seg.name}</div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 6 }}>
+                  <span style={{
+                    fontFamily: MONO, fontSize: 30, fontWeight: 700,
+                    color: '#e8e8f8', letterSpacing: '-0.03em',
+                  }}>{seg.count.toLocaleString()}</span>
+                  <span style={{
+                    fontFamily: LEX, fontSize: 9,
+                    color: 'rgba(107,127,255,0.5)',
+                  }}>{(seg.pct * 100).toFixed(1)}%</span>
+                </div>
+                {/* Proportion bar */}
+                <div style={{
+                  height: 2, width: `${Math.round(seg.pct * 220)}px`,
+                  background: seg.color, opacity: 0.4,
+                }} />
+              </div>
+            </div>
+            {/* Detail — revealed on hover */}
+            <div
+              ref={el => { detailRefs.current[i] = el }}
+              style={{
+                paddingLeft: 17, marginTop: 6,
+                fontFamily: ZH, fontSize: 12, color: 'rgba(232,232,248,0.55)',
+                lineHeight: 1.85, maxWidth: 320,
+                opacity: 0, maxHeight: 0, overflow: 'hidden',
+                transition: 'opacity 0.3s ease, max-height 0.35s ease',
+              }}
+            >{seg.detail}</div>
+          </div>
+        ))}
       </div>
 
-      {COUNTRIES.map((c, i) => {
-        const col = COL_CFG[i]
-        const barH = `${(c.count / maxCount) * 38}vh`
-        return (
-          <div key={c.name}
-            onMouseEnter={() => setHovIdx(i)} onMouseLeave={() => setHovIdx(null)}
-            style={{ position: 'absolute', left: col.left, top: 0, bottom: 0, width: 260 }}
-          >
-            <div style={{
-              position: 'absolute', top: '24%',
-              fontFamily: LEX, fontSize: 8, fontWeight: 700, color: '#484878',
-              letterSpacing: '0.14em', textTransform: 'uppercase', whiteSpace: 'nowrap',
-            }}>
-              {c.name}
-            </div>
-            <div style={{
-              position: 'absolute', top: '30%',
-              fontFamily: MONO, fontWeight: 700, fontSize: col.fontSize,
-              color: 'rgba(107,127,255,0.85)', lineHeight: 1, letterSpacing: '-0.03em', whiteSpace: 'nowrap',
-            }}>
-              {c.count.toLocaleString()}
-            </div>
-            <motion.div
-              animate={{ opacity: hovIdx === i ? 1 : 0 }}
-              transition={{ duration: 0.25 }}
-              style={{
-                position: 'absolute', top: '50%',
-                fontFamily: ZH, fontSize: 11, color: 'rgba(232,232,248,0.55)',
-                maxWidth: 200, lineHeight: 1.75,
-              }}
-            >
-              {c.detail}
-            </motion.div>
-            <motion.div
-              initial={{ scaleY: 0 }} animate={{ scaleY: 1 }}
-              transition={{ duration: 1.3, ease: [0.16, 1, 0.3, 1], delay: i * 0.12 }}
-              style={{
-                position: 'absolute', bottom: 0, left: 30,
-                width: 1, height: barH, transformOrigin: 'bottom',
-                background: 'linear-gradient(to top, rgba(107,127,255,0.4), transparent)',
-                pointerEvents: 'none',
-              }}
-            />
-          </div>
-        )
-      })}
+      {/* 3D top-down Earth — wider panel to reduce visual split */}
+      <div style={{ position: 'absolute', right: 0, top: 0, width: '68%', height: '100%' }}>
+        <DebrisEarthCountries hovIdxRef={hovIdxRef} />
+
+        {/* Center info overlay */}
+        <div style={{
+          position: 'absolute', top: '50%', left: '50%',
+          transform: 'translate(-50%, -50%)',
+          textAlign: 'center', pointerEvents: 'none', zIndex: 10,
+        }}>
+          <div ref={cNameRef} style={{
+            fontFamily: LEX, fontSize: 8, fontWeight: 700,
+            color: 'rgba(107,127,255,0.55)', letterSpacing: '0.16em',
+            textTransform: 'uppercase', marginBottom: 6,
+          }}>TOTAL TRACKED</div>
+          <div ref={cCountRef} style={{
+            fontFamily: MONO, fontSize: 26, fontWeight: 700,
+            color: '#e8e8f8', letterSpacing: '-0.03em',
+          }}>{TOTAL_DEBRIS.toLocaleString()}</div>
+          <div ref={cPctRef} style={{
+            fontFamily: LEX, fontSize: 7.5,
+            color: 'rgba(107,127,255,0.38)', letterSpacing: '0.1em',
+            marginTop: 4,
+          }}>OBJECTS IN ORBIT</div>
+        </div>
+      </div>
     </div>
   )
 }
