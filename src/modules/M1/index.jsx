@@ -122,16 +122,38 @@ const COUNTRIES = [
 
 const SOURCES = [
   {
-    img: '/source_1.png', title: '失效卫星', tag: 'DEFUNCT', stat: '~3,000 颗 在轨',
-    desc: '失去姿态控制的金属残骸，在轨道上无序翻滚，无法操控，无法清除。大型失效卫星本身也是潜在碰撞目标。',
+    img: '/source_1.png',
+    video: '/jimeng-2026-05-12-1489-生成产生这个太空垃圾过程的视频.mp4',
+    title: '火箭残骸', label: '01 · ROCKET STAGE',
+    meta: [
+      { k: '在轨数量',  v: '>2,000 件' },
+      { k: '危害等级',  v: '极高',   color: '#f87171' },
+      { k: '轨道寿命',  v: '数十至数百年' },
+    ],
+    desc: '每次发射后被抛弃的上面级火箭是单体最大的轨道碎片来源。残余推进剂遇热膨胀会引发在轨自爆，毫秒间释放数百件新弹片——碰撞与爆炸级联效应的主要触发机制正源于此。',
+    detail: '苏联 Zenit 上面级长达 9 米，至今漂浮于 LEO。2007 年中国反卫试验在 850 km 轨道带制造了超 3,500 件可追踪碎片，是史上最大单次人为增量事件，至今仍是 ISS 规避机动的主要威胁源之一。',
   },
   {
-    img: '/source_2.png', title: '碰撞与爆炸', tag: 'COLLISION', stat: '历史最大单次来源',
-    desc: '最致命的增量来源。一次碰撞在毫秒之间产生数千个新弹片，每一片都是下一次碰撞的种子——这正是凯斯勒效应的起点。',
+    img: '/source_2.png',
+    title: '废弃卫星', label: '02 · DEFUNCT SAT',
+    meta: [
+      { k: '在轨总量',  v: '~3,000 颗' },
+      { k: '危害等级',  v: '中等',   color: '#fbbf24' },
+      { k: '主要分布',  v: 'LEO · GEO' },
+    ],
+    desc: '失去姿态控制的金属残骸在轨道上无序翻滚，无法操控，无法清除。大型废弃卫星本身就是潜在碰撞目标——2009 年铱星 33 与报废的 Cosmos 2251 相撞，单次产生超 2,000 件可追踪碎片。',
+    detail: '欧空局 Envisat 重达 8 吨，2012 年通讯中断后仍以 800 km 高度每 98 分钟绕地一周，无法机动规避。LEO 区域超过 3,000 颗已失效卫星中，数百颗体积超过一辆汽车，任何一次碰撞都可触发凯斯勒效应链式反应。',
   },
   {
-    img: '/source_3.png', title: '操作性遗留', tag: 'OPERATIONAL', stat: '每次任务都在增加',
-    desc: '丢失的手套、螺栓、镜头盖，乃至分离的火箭级段。人类每一次进入太空都会留下些什么，这是工程流程无法消除的副产品。',
+    img: '/source_3.png',
+    title: '操作遗留', label: '03 · LEGACY',
+    meta: [
+      { k: '已编目遗留', v: '数万件' },
+      { k: '危害等级',   v: '低至中',  color: '#34d399' },
+      { k: '增速',       v: '每次任务 +数百' },
+    ],
+    desc: '丢失的手套、螺栓、镜头盖，乃至分离的火箭级段——人类每一次进入太空都会留下些什么。这不是事故，而是现有工程流程无法消除的结构性副产品，且随任务频率加速积累。',
+    detail: '1965 年 Ed White 太空行走时丢失一只手套，此类遗失至今仍在发生。ISS 各次 EVA 已记录逾 100 件工具及硬件遗失。油漆碎片以 7 km/s 撞击玻璃的冲击力等同于一颗子弹，是低轨航天器表面损伤的首要来源。',
   },
 ]
 
@@ -475,19 +497,66 @@ function SceneScale() {
 }
 
 /* ── Scene 2: SOURCES ── */
+// Zero React state for hover — all DOM mutations via refs + CSS transitions only.
+// This eliminates re-renders on every mouse enter/leave (the main lag cause).
 function SceneSources() {
-  const [hov, setHov] = useState(null)
+  const panelRefs    = useRef([null, null, null])
+  const overlayRefs  = useRef([null, null, null])
+  const descRefs     = useRef([null, null, null])
+  const detailRefs   = useRef([null, null, null])
+  const headlineRef  = useRef(null)
+  const videoRefs    = useRef([null, null, null])
+
+  const applyHover = useCallback((idx) => {
+    panelRefs.current.forEach((el, j) => {
+      if (!el) return
+      el.style.flex = idx < 0 ? '1' : j === idx ? '3' : '0.65'
+    })
+    overlayRefs.current.forEach((el, j) => {
+      if (!el) return
+      el.style.opacity = idx < 0 ? '0.42' : j === idx ? '0' : '0.62'
+    })
+    descRefs.current.forEach((el, j) => {
+      if (!el) return
+      const active = idx >= 0 && j === idx
+      el.style.opacity = active ? '1' : '0'
+      el.style.transform = active ? 'translateY(0)' : 'translateY(12px)'
+    })
+    detailRefs.current.forEach((el, j) => {
+      if (!el) return
+      const active = idx >= 0 && j === idx
+      el.style.opacity = active ? '0.88' : '0'
+      el.style.transform = active ? 'translateY(0)' : 'translateY(8px)'
+    })
+    if (headlineRef.current) {
+      headlineRef.current.style.opacity = idx < 0 ? '1' : '0'
+      headlineRef.current.style.transform =
+        `translate(-50%,-50%) translateY(${idx < 0 ? 0 : -8}px)`
+    }
+    // Play video on hover, pause on leave
+    videoRefs.current.forEach((el, j) => {
+      if (!el) return
+      if (idx >= 0 && j === idx) {
+        el.currentTime = 0
+        el.play().catch(() => {})
+      } else {
+        el.pause()
+      }
+    })
+  }, [])
 
   return (
-    <div style={{ position: 'absolute', inset: 0, display: 'flex' }}>
+    <div style={{ position: 'absolute', inset: 0, display: 'flex', overflow: 'hidden' }}>
 
-      {/* Chapter headline — fades out when a panel is hovered */}
-      <motion.div
-        animate={{ opacity: hov === null ? 1 : 0, y: hov === null ? 0 : -8 }}
-        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      {/* Chapter headline */}
+      <div
+        ref={headlineRef}
         style={{
-          position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
+          position: 'absolute', top: '50%', left: '50%',
+          transform: 'translate(-50%,-50%)',
           zIndex: 20, pointerEvents: 'none', textAlign: 'center',
+          opacity: 1,
+          transition: 'opacity 0.4s ease, transform 0.4s ease',
         }}
       >
         <div style={{
@@ -507,62 +576,146 @@ function SceneSources() {
         }}>
           失效卫星、碰撞碎片、操作性遗留——三种来源，持续积累。
         </div>
-      </motion.div>
+      </div>
 
       {SOURCES.map((src, i) => (
-        <motion.div key={i}
-          onMouseEnter={() => setHov(i)} onMouseLeave={() => setHov(null)}
-          animate={{ flex: hov === i ? 3 : hov !== null ? 0.7 : 1 }}
-          transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
-          style={{ overflow: 'hidden', position: 'relative', cursor: 'none' }}
+        <div
+          key={i}
+          ref={el => { panelRefs.current[i] = el }}
+          onMouseEnter={() => applyHover(i)}
+          onMouseLeave={() => applyHover(-1)}
+          style={{
+            flex: 1, overflow: 'hidden', position: 'relative',
+            cursor: 'none', minWidth: 0,
+            // CSS transition on flex — browser handles it, no JS loop
+            transition: 'flex 0.55s cubic-bezier(0.16,1,0.3,1)',
+          }}
         >
-          <img src={src.img} alt={src.title} style={{
-            position: 'absolute', inset: 0, width: '100%', height: '100%',
-            objectFit: 'cover',
-            filter: `brightness(${hov === i ? 0.42 : 0.28}) saturate(0.30) hue-rotate(190deg)`,
-            transform: hov === i ? 'scale(1.04)' : 'scale(1)',
-            transition: 'transform 0.65s ease, filter 0.5s ease',
-          }} />
+          {/* Background — video if available, otherwise static image */}
+          {src.video ? (
+            <video
+              ref={el => { videoRefs.current[i] = el }}
+              src={src.video}
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              style={{
+                position: 'absolute', inset: 0,
+                width: '100%', height: '100%',
+                objectFit: 'cover',
+                filter: 'grayscale(0.88) brightness(0.5)',
+              }}
+            />
+          ) : (
+            <div style={{
+              position: 'absolute', inset: 0,
+              backgroundImage: `url(${src.img})`,
+              backgroundSize: 'cover', backgroundPosition: 'center',
+              filter: 'grayscale(0.92) brightness(0.55)',
+            }} />
+          )}
 
+          {/* Blue tint overlay — static, GPU layer cached */}
           <div style={{
             position: 'absolute', inset: 0,
-            background: 'linear-gradient(to top, rgba(4,4,15,0.92) 0%, rgba(4,4,15,0.20) 60%, transparent 100%)',
+            background: 'rgba(20, 35, 160, 0.28)',
+          }} />
+
+          {/* Brightness overlay — only this animates (opacity = compositor only) */}
+          <div
+            ref={el => { overlayRefs.current[i] = el }}
+            style={{
+              position: 'absolute', inset: 0,
+              background: '#04040f',
+              opacity: 0.42,
+              transition: 'opacity 0.45s ease',
+            }}
+          />
+
+          {/* Bottom gradient */}
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(to top, rgba(4,4,15,0.96) 0%, rgba(4,4,15,0.18) 52%, transparent 100%)',
+            pointerEvents: 'none',
           }} />
 
           {i < SOURCES.length - 1 && (
             <div style={{ position: 'absolute', top: 0, bottom: 0, right: 0, width: 1, background: 'rgba(107,127,255,0.12)' }} />
           )}
 
+          {/* Category label */}
           <div style={{
-            position: 'absolute', top: 20, left: 18,
+            position: 'absolute', top: 18, left: 18,
             fontFamily: LEX, fontSize: 7.5, fontWeight: 700,
             color: 'rgba(107,127,255,0.7)', border: '1px solid rgba(107,127,255,0.35)',
-            padding: '3px 7px', letterSpacing: '0.12em', textTransform: 'uppercase',
+            padding: '3px 8px', letterSpacing: '0.14em', textTransform: 'uppercase',
           }}>
-            {src.tag}
+            {src.label}
           </div>
 
+          {/* Meta row — 3 data items */}
           <div style={{
-            position: 'absolute', top: 20, right: 18,
-            fontFamily: MONO, fontSize: 8, color: 'rgba(232,232,248,0.35)', letterSpacing: '0.04em',
+            position: 'absolute', top: 12, right: 18,
+            display: 'flex', gap: 28, alignItems: 'flex-start',
           }}>
-            {src.stat}
+            {src.meta.map((m, mi) => (
+              <div key={mi} style={{ textAlign: 'right' }}>
+                <div style={{
+                  fontFamily: LEX, fontSize: 7, fontWeight: 600,
+                  color: 'rgba(107,127,255,0.45)', letterSpacing: '0.1em',
+                  textTransform: 'uppercase', marginBottom: 4,
+                }}>
+                  {m.k}
+                </div>
+                <div style={{
+                  fontFamily: MONO, fontSize: 11, fontWeight: 700,
+                  color: m.color ?? 'rgba(232,232,248,0.72)',
+                  letterSpacing: '0.04em',
+                }}>
+                  {m.v}
+                </div>
+              </div>
+            ))}
           </div>
 
+          {/* Bottom content */}
           <div style={{ position: 'absolute', bottom: 32, left: 20, right: 20 }}>
-            <div style={{ fontFamily: ZH, fontSize: 26, fontWeight: 700, color: '#e8e8f8', marginBottom: 10, lineHeight: 1.25 }}>
+            <div style={{
+              fontFamily: ZH, fontSize: 26, fontWeight: 700,
+              color: '#e8e8f8', marginBottom: 12, lineHeight: 1.25,
+            }}>
               {src.title}
             </div>
-            <motion.div
-              animate={{ opacity: hov === i ? 1 : 0, y: hov === i ? 0 : 14 }}
-              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-              style={{ fontFamily: ZH, fontSize: 12, color: 'rgba(232,232,248,0.60)', lineHeight: 1.85 }}
+
+            {/* desc — CSS transition, no Framer Motion */}
+            <div
+              ref={el => { descRefs.current[i] = el }}
+              style={{
+                fontFamily: ZH, fontSize: 13, color: 'rgba(232,232,248,0.72)',
+                lineHeight: 1.85, marginBottom: 14,
+                opacity: 0, transform: 'translateY(12px)',
+                transition: 'opacity 0.38s ease, transform 0.38s ease',
+              }}
             >
               {src.desc}
-            </motion.div>
-          </div>
+            </div>
 
-        </motion.div>
+            {/* detail — staggered via transition-delay */}
+            <div
+              ref={el => { detailRefs.current[i] = el }}
+              style={{
+                fontFamily: ZH, fontSize: 11, color: 'rgba(180,190,255,0.52)',
+                lineHeight: 1.8,
+                borderLeft: '2px solid rgba(107,127,255,0.28)', paddingLeft: 10,
+                opacity: 0, transform: 'translateY(8px)',
+                transition: 'opacity 0.38s 0.07s ease, transform 0.38s 0.07s ease',
+              }}
+            >
+              {src.detail}
+            </div>
+          </div>
+        </div>
       ))}
     </div>
   )
