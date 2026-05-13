@@ -88,13 +88,21 @@ const TREND = [
   { year: 1980, count: 5000  }, { year: 1990, count: 8000  },
   { year: 2000, count: 10000 }, { year: 2007, count: 14000 },
   { year: 2009, count: 19000 }, { year: 2015, count: 23000 },
-  { year: 2021, count: 36200 }, { year: 2025, count: 45000 },
+  { year: 2021, count: 36200 }, { year: 2026, count: 46000 },
 ]
 
 const TREND_EVENTS = {
   2007: { label: '风云一号C', detail: '中国反卫星武器测试，单次制造碎片最多的人为事件。', delta: '+3,500' },
   2009: { label: '铱星-33 × Cosmos-2251', detail: '首次大型卫星间高速碰撞，凯斯勒效应的现实验证。', delta: '+2,000' },
 }
+
+const TIMELINE_EVENTS = [
+  { year: 1978, label: 'Kosmos 954 坠落', delta: '首次核污染', color: '#fbbf24', raise: 0 },
+  { year: 1996, label: 'Cerise 首例碰撞', delta: '人类历史首次', color: '#a78bfa', raise: 0 },
+  { year: 2007, label: '风云一号C', delta: '+3,500', color: '#f87171', raise: 0 },
+  { year: 2009, label: '铱星-33 × Cosmos', delta: '+2,000', color: '#6b7fff', raise: 56 },
+  { year: 2021, label: 'Starlink 扩张', delta: '+4,000', color: '#34d399', raise: 0 },
+]
 
 const SIZE_TIERS = [
   {
@@ -941,8 +949,10 @@ function trendCountAtYear(year) {
 }
 
 function trendBirthYear(idx, total) {
-  const maxCount  = TREND[TREND.length - 1].count
-  const target    = (idx / total) * maxCount
+  const maxCount = TREND[TREND.length - 1].count
+  // Square-root distribution: early years get proportionally more particles
+  // so 1990 (count=8000/46000≈17%) shows ~42% of particles instead of 17%
+  const target = Math.pow(idx / total, 2) * maxCount
   if (target <= 0) return 1957
   if (target <= TREND[0].count) return 1957 + (target / TREND[0].count) * (TREND[0].year - 1957)
   if (target >= maxCount) return TREND[TREND.length - 1].year
@@ -955,18 +965,70 @@ function trendBirthYear(idx, total) {
   return TREND[TREND.length - 1].year
 }
 
+const SAT_TYPES = ['rect', 'rect', 'round', 'round', 'station', 'cube', 'cube', 'cylinder']
+
+function drawSatelliteShape(ctx, type) {
+  if (type === 'rect') {
+    ctx.fillRect(-7, -2, 14, 4)
+    ctx.beginPath()
+    ctx.moveTo(-3, -2); ctx.lineTo(-3, -7); ctx.moveTo(-3, 2); ctx.lineTo(-3, 7)
+    ctx.moveTo( 3, -2); ctx.lineTo( 3, -7); ctx.moveTo( 3, 2); ctx.lineTo( 3, 7)
+    ctx.moveTo(-6.5, -5.5); ctx.lineTo(6.5, -5.5)
+    ctx.moveTo(-6.5,  5.5); ctx.lineTo(6.5,  5.5)
+    ctx.stroke()
+  } else if (type === 'round') {
+    ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fill()
+    ctx.beginPath()
+    ctx.moveTo(-1.5, -4); ctx.lineTo(-1.5, -8); ctx.moveTo(1.5, -4); ctx.lineTo(1.5, -8)
+    ctx.moveTo(-1.5,  4); ctx.lineTo(-1.5,  8); ctx.moveTo(1.5,  4); ctx.lineTo(1.5,  8)
+    ctx.moveTo(-4, -6.5); ctx.lineTo(4, -6.5)
+    ctx.moveTo(-4,  6.5); ctx.lineTo(4,  6.5)
+    ctx.stroke()
+  } else if (type === 'station') {
+    ctx.fillRect(-14, -1.2, 28, 2.4)   // truss
+    ctx.fillRect(-4.5, -4, 9, 8)       // central hab
+    ctx.beginPath()
+    // Left solar arrays
+    ctx.moveTo(-12, -1.2); ctx.lineTo(-12, -6); ctx.moveTo(-12, 1.2); ctx.lineTo(-12, 6)
+    ctx.moveTo( -8, -1.2); ctx.lineTo( -8, -6); ctx.moveTo( -8, 1.2); ctx.lineTo( -8, 6)
+    // Right solar arrays
+    ctx.moveTo(  8, -1.2); ctx.lineTo(  8, -6); ctx.moveTo(  8, 1.2); ctx.lineTo(  8, 6)
+    ctx.moveTo( 12, -1.2); ctx.lineTo( 12, -6); ctx.moveTo( 12, 1.2); ctx.lineTo( 12, 6)
+    ctx.moveTo(-14, -4.8); ctx.lineTo(-5, -4.8); ctx.moveTo(-14, 4.8); ctx.lineTo(-5, 4.8)
+    ctx.moveTo(  5, -4.8); ctx.lineTo(14, -4.8); ctx.moveTo(  5, 4.8); ctx.lineTo(14, 4.8)
+    ctx.stroke()
+  } else if (type === 'cube') {
+    ctx.fillRect(-3.5, -3.5, 7, 7)
+    ctx.beginPath()
+    ctx.moveTo(-1.2, -3.5); ctx.lineTo(-1.2, -7.5)
+    ctx.moveTo( 1.2, -3.5); ctx.lineTo( 1.2, -7.5)
+    ctx.moveTo(-3.2, -6); ctx.lineTo(3.2, -6)
+    ctx.stroke()
+  } else {   // cylinder
+    ctx.fillRect(-11, -2, 22, 4)
+    ctx.beginPath()
+    ctx.moveTo( 7, -1); ctx.lineTo(13, -5)
+    ctx.moveTo( 7,  1); ctx.lineTo(13,  5)
+    ctx.moveTo(-7, -1); ctx.lineTo(-12, 0)
+    ctx.stroke()
+  }
+}
+
 /* ── Scene 4: TREND — canvas particle accumulation ── */
 function SceneTrend() {
-  const canvasRef       = useRef()
-  const sceneRef        = useRef()
-  const yearRef         = useRef(1960)
-  const isUserScrub     = useRef(false)
-  const lastStateUpd    = useRef(0)
+  const canvasRef     = useRef()
+  const sceneRef      = useRef()
+  const yearRef       = useRef(1960)
+  const isUserScrub   = useRef(false)
+  const lastStateUpd  = useRef(0)
+  const driftRef      = useRef(0)
+  const satellitesRef = useRef([])
+  const spawnAccumRef = useRef(0)
   const [displayYear,  setDisplayYear]  = useState(1960)
   const [displayCount, setDisplayCount] = useState(100)
 
   const particles = useMemo(() => {
-    const N = 320
+    const N = 1200
     let seed = 12345
     const lcg = () => {
       seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0
@@ -975,9 +1037,14 @@ function SceneTrend() {
     return Array.from({ length: N }, (_, i) => ({
       birthYear:   trendBirthYear(i, N),
       x:           lcg(),
-      y:           0.14 + lcg() * 0.64,
-      size:        0.8 + lcg() * 2.2,
-      baseOpacity: 0.22 + lcg() * 0.58,
+      y:           0.01 + lcg() * 0.98,
+      size:        1.2 + lcg() * 2.8,
+      baseOpacity: 0.35 + lcg() * 0.55,
+      glow:        lcg() < 0.18,
+    })).map(p => ({
+      ...p,
+      // Larger (closer) particles drift faster; smaller (farther) drift slower — parallax
+      driftMult: 0.82 + ((p.size - 1.2) / 2.8) * 0.36,
     }))
   }, [])
 
@@ -992,33 +1059,141 @@ function SceneTrend() {
     const ro = new ResizeObserver(resize)
     ro.observe(canvas)
 
-    let rafId
-    const draw = () => {
+    let rafId, lastFrameTime = performance.now()
+    const draw = (now = performance.now()) => {
+      const dt = Math.min((now - lastFrameTime) / 1000, 0.05)
+      lastFrameTime = now
+      // Slow leftward drift — 0.7% of screen width per second (base)
+      driftRef.current = (driftRef.current + 0.007 * dt) % 1
+      const drift = driftRef.current
+
       const year = yearRef.current
       ctx.clearRect(0, 0, canvas.width, canvas.height)
+      ctx.shadowBlur = 0
       for (const p of particles) {
         if (p.birthYear > year) continue
         const fade  = Math.min(1, (year - p.birthYear) / 2.5)
         const alpha = p.baseOpacity * fade
+        // Per-particle drift speed — larger (closer) particles move faster
+        const ex = ((p.x - drift * p.driftMult) % 1 + 1) % 1
+        if (p.glow) {
+          ctx.shadowBlur  = 7
+          ctx.shadowColor = `rgba(107,127,255,${(alpha * 0.8).toFixed(3)})`
+        } else {
+          ctx.shadowBlur = 0
+        }
         ctx.beginPath()
-        ctx.arc(p.x * canvas.width, p.y * canvas.height, p.size, 0, Math.PI * 2)
+        ctx.arc(ex * canvas.width, p.y * canvas.height, p.size, 0, Math.PI * 2)
         ctx.fillStyle = `rgba(107,127,255,${alpha.toFixed(3)})`
         ctx.fill()
       }
-      const now = performance.now()
-      if (now - lastStateUpd.current > 66) {
-        lastStateUpd.current = now
-        const y = Math.min(2025, Math.max(1957, year))
-        setDisplayYear(Math.floor(y))
-        setDisplayCount(Math.round(trendCountAtYear(y)))
+      ctx.shadowBlur = 0
+
+      /* ── Satellites ── */
+      const cw = canvas.width, ch = canvas.height
+      const spawnRate = 0.025 + Math.pow(Math.max(0, year - 1960) / (2026 - 1960), 1.4) * 0.48
+      spawnAccumRef.current += spawnRate * dt
+      while (spawnAccumRef.current >= 1 && satellitesRef.current.length < 10) {
+        spawnAccumRef.current -= 1
+        const speed = 90 + Math.random() * 70
+        const roll  = Math.random()
+        let sx, sy, svx, svy
+        if (roll < 0.65) {
+          const a = (Math.random() * 22 - 11) * Math.PI / 180
+          sx = cw + 20 + Math.random() * 40; sy = Math.random() * ch
+          svx = -speed * Math.cos(a); svy = speed * Math.sin(a)
+        } else if (roll < 0.82) {
+          sx = cw * (0.55 + Math.random() * 0.45); sy = -18
+          svx = -(speed * (0.82 + Math.random() * 0.18)); svy = speed * (0.12 + Math.random() * 0.22)
+        } else {
+          sx = cw * (0.55 + Math.random() * 0.45); sy = ch + 18
+          svx = -(speed * (0.82 + Math.random() * 0.18)); svy = -(speed * (0.12 + Math.random() * 0.22))
+        }
+        satellitesRef.current.push({
+          x: sx, y: sy, vx: svx, vy: svy, opacity: 0,
+          size: 0.65 + Math.random() * 0.55,
+          type: SAT_TYPES[Math.floor(Math.random() * SAT_TYPES.length)],
+          trail: [], trailAlpha: 0, bodyGone: false,
+        })
+      }
+      // Keep satellites until their lingering trail fully fades
+      satellitesRef.current = satellitesRef.current.filter(s => s.trailAlpha > 0.005 || !s.bodyGone)
+      const fadeEdge = 90
+      for (const sat of satellitesRef.current) {
+        if (!sat.bodyGone) {
+          // Record trail point before moving (max 90 points ≈ ~1.5s of travel)
+          sat.trail.push({ x: sat.x, y: sat.y })
+          if (sat.trail.length > 90) sat.trail.shift()
+          sat.x += sat.vx * dt; sat.y += sat.vy * dt
+          const rF = sat.x > cw - fadeEdge ? Math.max(0, (cw - sat.x) / fadeEdge) : 1
+          const lF = sat.x < fadeEdge      ? Math.max(0, sat.x / fadeEdge)        : 1
+          const tF = sat.y < fadeEdge      ? Math.max(0, sat.y / fadeEdge)        : 1
+          const bF = sat.y > ch - fadeEdge ? Math.max(0, (ch - sat.y) / fadeEdge) : 1
+          sat.opacity = Math.min(rF, lF, tF, bF)
+          // Mark body as gone once fully off-screen
+          if (sat.x < -120 || sat.x > cw + 120 || sat.y < -120 || sat.y > ch + 120) {
+            sat.bodyGone = true
+          }
+          // Trail alpha tracks body while alive
+          sat.trailAlpha = sat.opacity
+        } else {
+          // Body gone — trail lingers and fades at 0.38/s (≈2.6s fade-out)
+          sat.trailAlpha = Math.max(0, sat.trailAlpha - 0.38 * dt)
+        }
+
+        // Draw trail
+        if (sat.trail.length >= 2) {
+          const t0 = sat.trail[0]
+          const tEnd = sat.bodyGone ? sat.trail[sat.trail.length - 1] : { x: sat.x, y: sat.y }
+          const grad = ctx.createLinearGradient(t0.x, t0.y, tEnd.x, tEnd.y)
+          grad.addColorStop(0, 'rgba(140,160,255,0)')
+          grad.addColorStop(0.55, `rgba(160,185,255,${(sat.trailAlpha * 0.20).toFixed(3)})`)
+          grad.addColorStop(1,    `rgba(210,225,255,${(sat.trailAlpha * 0.60).toFixed(3)})`)
+          ctx.beginPath()
+          ctx.moveTo(t0.x, t0.y)
+          for (let ti = 1; ti < sat.trail.length; ti++) ctx.lineTo(sat.trail[ti].x, sat.trail[ti].y)
+          if (!sat.bodyGone) ctx.lineTo(sat.x, sat.y)
+          ctx.strokeStyle = grad
+          ctx.lineWidth = 1.5 * sat.size
+          ctx.shadowBlur = 0
+          ctx.stroke()
+        }
+
+        // Draw satellite body (only while still on screen)
+        if (!sat.bodyGone && sat.opacity > 0.01) {
+          const angle = Math.atan2(sat.vy, sat.vx)
+          ctx.save()
+          ctx.globalAlpha = sat.opacity
+          ctx.translate(sat.x, sat.y)
+          ctx.rotate(angle)
+          ctx.scale(sat.size, sat.size)
+          ctx.shadowBlur = 10; ctx.shadowColor = 'rgba(210,225,255,0.9)'
+          ctx.fillStyle   = 'rgba(235,242,255,1)'
+          ctx.strokeStyle = 'rgba(107,127,255,0.88)'
+          ctx.lineWidth   = 1.2
+          drawSatelliteShape(ctx, sat.type)
+          ctx.restore()
+        }
+      }
+      ctx.globalAlpha = 1; ctx.shadowBlur = 0
+
+      // State update: throttled only during autoplay; scrub updates are handled in handleMouseMove
+      if (!isUserScrub.current) {
+        const now = performance.now()
+        if (now - lastStateUpd.current > 66) {
+          lastStateUpd.current = now
+          const y = Math.min(2026, Math.max(1957, year))
+          setDisplayYear(Math.floor(y))
+          setDisplayCount(Math.round(trendCountAtYear(y)))
+        }
       }
       rafId = requestAnimationFrame(draw)
     }
-    rafId = requestAnimationFrame(draw)
+    rafId = requestAnimationFrame(ts => draw(ts))
     return () => { cancelAnimationFrame(rafId); ro.disconnect() }
   }, [particles])
 
-  /* Autoplay 1960 → 2025 in 4s, stops on first mousemove */
+  /* Autoplay 1960 → 2026 in 4s, stops on first mousemove */
   useEffect(() => {
     const dur = 4000, start = performance.now()
     let rafId
@@ -1026,9 +1201,9 @@ function SceneTrend() {
       if (isUserScrub.current) return
       const t  = Math.min(1, (now - start) / dur)
       const et = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
-      yearRef.current = 1960 + et * (2025 - 1960)
+      yearRef.current = 1960 + et * (2026 - 1960)
       if (t < 1) rafId = requestAnimationFrame(tick)
-      else yearRef.current = 2025
+      else yearRef.current = 2026
     }
     rafId = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(rafId)
@@ -1038,11 +1213,14 @@ function SceneTrend() {
     if (!sceneRef.current) return
     isUserScrub.current = true
     const rect = sceneRef.current.getBoundingClientRect()
-    yearRef.current = 1960 + Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * (2025 - 1960)
+    const t = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+    const y = 1960 + t * (2026 - 1960)
+    yearRef.current = y
+    // Update display state synchronously on scrub so count always matches year
+    setDisplayYear(Math.floor(y))
+    setDisplayCount(Math.round(trendCountAtYear(y)))
   }, [])
 
-  const show2007 = displayYear >= 2007
-  const show2009 = displayYear >= 2009
 
   return (
     <div ref={sceneRef} style={{ position: 'absolute', inset: 0 }} onMouseMove={handleMouseMove}>
@@ -1079,9 +1257,9 @@ function SceneTrend() {
       {/* Particle canvas */}
       <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 2 }} />
 
-      {/* Count readout */}
+      {/* Count readout + persistent hint */}
       <div style={{
-        position: 'absolute', bottom: '18%', left: '50%', transform: 'translateX(-50%)',
+        position: 'absolute', bottom: '10%', left: '50%', transform: 'translateX(-50%)',
         textAlign: 'center', pointerEvents: 'none', zIndex: 10,
       }}>
         <div style={{
@@ -1094,90 +1272,98 @@ function SceneTrend() {
           fontFamily: LEX, fontSize: 8, fontWeight: 700, color: '#6b7fff',
           letterSpacing: '0.14em', textTransform: 'uppercase', marginTop: 6,
         }}>
-          TRACKED OBJECTS
+          跟踪对象
+        </div>
+
+        {/* Interaction hint — permanent, lives below the count label */}
+        <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+          {/* Track rail with bouncing dot */}
+          <div style={{ position: 'relative', width: 160, height: 2 }}>
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(107,127,255,0.35)', borderRadius: 1 }} />
+            <div style={{ position: 'absolute', left: -3, top: '50%',
+              width: 5, height: 5, borderLeft: '1.5px solid rgba(107,127,255,0.55)', borderBottom: '1.5px solid rgba(107,127,255,0.55)',
+              transform: 'translateY(-50%) rotate(45deg)' }} />
+            <div style={{ position: 'absolute', right: -3, top: '50%',
+              width: 5, height: 5, borderRight: '1.5px solid rgba(107,127,255,0.55)', borderTop: '1.5px solid rgba(107,127,255,0.55)',
+              transform: 'translateY(-50%) rotate(45deg)' }} />
+            <motion.div
+              animate={{ left: ['8%', '88%', '8%'] }}
+              transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+              style={{
+                position: 'absolute', top: '50%', transform: 'translate(-50%, -50%)',
+                width: 6, height: 6, borderRadius: '50%',
+                background: '#6b7fff', boxShadow: '0 0 8px rgba(107,127,255,0.8)',
+              }}
+            />
+          </div>
+          <div style={{
+            fontFamily: LEX, fontSize: 11, fontWeight: 600,
+            color: 'rgba(140,160,255,0.8)', letterSpacing: '0.06em', whiteSpace: 'nowrap',
+          }}>
+            横向移动鼠标，穿越历史时间轴
+          </div>
         </div>
       </div>
 
-      {/* Year axis */}
+      {/* Year axis + timeline event markers */}
       <div style={{
-        position: 'absolute', bottom: '6%', left: '4%', right: '4%',
-        display: 'flex', justifyContent: 'space-between',
-        pointerEvents: 'none', zIndex: 10,
+        position: 'absolute', bottom: '3%', left: '4%', right: '4%',
+        zIndex: 10, pointerEvents: 'none',
       }}>
-        {[1960, 1970, 1980, 1990, 2000, 2007, 2009, 2015, 2025].map(y => (
-          <div key={y} style={{
-            fontFamily: MONO, fontSize: 8, letterSpacing: '0.04em',
-            color: (y === 2007 || y === 2009) ? 'rgba(107,127,255,0.55)' : '#2a2a4a',
-          }}>
-            {y}
-          </div>
-        ))}
-      </div>
+        {/* Event callout cards — anchored by year position */}
+        <AnimatePresence>
+          {TIMELINE_EVENTS.map(ev => {
+            if (displayYear < ev.year) return null
+            const pct = (ev.year - 1960) / (2026 - 1960) * 100
+            const tickH = 8 + (ev.raise || 0)
+            return (
+              <motion.div key={ev.year}
+                initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                transition={{ duration: 0.4 }}
+                style={{
+                  position: 'absolute',
+                  bottom: 22 + (ev.raise || 0),
+                  left: `${pct}%`,
+                  transform: 'translateX(-50%)',
+                  display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
+                }}
+              >
+                <div style={{
+                  borderLeft: `1.5px solid ${ev.color}`,
+                  paddingLeft: 6, paddingBottom: 3, whiteSpace: 'nowrap',
+                }}>
+                  <div style={{
+                    fontFamily: LEX, fontSize: 7, fontWeight: 700,
+                    color: ev.color, letterSpacing: '0.10em', textTransform: 'uppercase',
+                  }}>
+                    {ev.year} · {ev.delta}
+                  </div>
+                  <div style={{
+                    fontFamily: ZH, fontSize: 10, color: 'rgba(232,232,248,0.65)',
+                    marginTop: 2, lineHeight: 1.4,
+                  }}>
+                    {ev.label}
+                  </div>
+                </div>
+                <div style={{ width: 1, height: tickH, background: `${ev.color}55` }} />
+              </motion.div>
+            )
+          })}
+        </AnimatePresence>
 
-      {/* Instruction */}
-      <div style={{
-        position: 'absolute', bottom: '2%', left: '50%', transform: 'translateX(-50%)',
-        fontFamily: LEX, fontSize: 8, color: '#2a2a4a',
-        letterSpacing: '0.08em', whiteSpace: 'nowrap', pointerEvents: 'none', zIndex: 10,
-      }}>
-        ← 移动鼠标穿越时间轴 →
+        {/* Year label row */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {[1960, 1970, 1980, 1990, 2000, 2007, 2009, 2015, 2026].map(y => (
+            <div key={y} style={{
+              fontFamily: MONO, fontSize: 10, letterSpacing: '0.06em',
+              color: (y === 2007 || y === 2009) ? 'rgba(107,127,255,1)' : 'rgba(180,190,220,0.75)',
+              fontWeight: (y === 2007 || y === 2009) ? 700 : 500,
+            }}>
+              {y}
+            </div>
+          ))}
+        </div>
       </div>
-
-      {/* Event cards */}
-      <AnimatePresence>
-        {show2007 && (
-          <motion.div key="ev2007"
-            initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}
-            transition={{ duration: 0.45 }}
-            style={{
-              position: 'absolute', top: '38%', left: '4%',
-              borderLeft: '2px solid rgba(248,113,113,0.55)', paddingLeft: 12,
-              pointerEvents: 'none', zIndex: 10, maxWidth: 240,
-            }}>
-            <div style={{
-              fontFamily: LEX, fontSize: 7.5, fontWeight: 700, color: '#f87171',
-              letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 5,
-            }}>
-              2007 · {TREND_EVENTS[2007].delta}
-            </div>
-            <div style={{
-              fontFamily: MONO, fontSize: 10, fontWeight: 700,
-              color: 'rgba(232,232,248,0.72)', marginBottom: 5, lineHeight: 1.4,
-            }}>
-              {TREND_EVENTS[2007].label}
-            </div>
-            <div style={{ fontFamily: ZH, fontSize: 11, color: '#484878', lineHeight: 1.7 }}>
-              {TREND_EVENTS[2007].detail}
-            </div>
-          </motion.div>
-        )}
-        {show2009 && (
-          <motion.div key="ev2009"
-            initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}
-            transition={{ duration: 0.45, delay: 0.15 }}
-            style={{
-              position: 'absolute', top: '38%', right: '4%',
-              borderRight: '2px solid rgba(107,127,255,0.55)', paddingRight: 12,
-              textAlign: 'right', pointerEvents: 'none', zIndex: 10, maxWidth: 240,
-            }}>
-            <div style={{
-              fontFamily: LEX, fontSize: 7.5, fontWeight: 700, color: '#6b7fff',
-              letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 5,
-            }}>
-              2009 · {TREND_EVENTS[2009].delta}
-            </div>
-            <div style={{
-              fontFamily: MONO, fontSize: 10, fontWeight: 700,
-              color: 'rgba(232,232,248,0.72)', marginBottom: 5, lineHeight: 1.4,
-            }}>
-              {TREND_EVENTS[2009].label}
-            </div>
-            <div style={{ fontFamily: ZH, fontSize: 11, color: '#484878', lineHeight: 1.7 }}>
-              {TREND_EVENTS[2009].detail}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   )
 }
