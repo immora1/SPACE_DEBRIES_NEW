@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 const EASE = [0.16, 1, 0.3, 1]
 
 const ModuleWrapper = forwardRef(function ModuleWrapper(
-  { isUnlocked, connector, children },
+  { isUnlocked, connector, children, noAnimation },
   ref
 ) {
   if (!isUnlocked) return null
@@ -12,7 +12,7 @@ const ModuleWrapper = forwardRef(function ModuleWrapper(
   return (
     <div ref={ref}>
       <motion.div
-        initial={{ opacity: 0, y: 40 }}
+        initial={{ opacity: 0, y: noAnimation ? 0 : 40 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: EASE }}
       >

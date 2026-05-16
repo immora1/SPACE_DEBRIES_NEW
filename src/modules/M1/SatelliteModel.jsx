@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
-import { OrbitControls } from '@react-three/drei'
+import { OrbitControls, useGLTF, Center } from '@react-three/drei'
 import * as THREE from 'three'
 
 // Reads plain refs (updated via MotionValue.on('change')) — runs outside React render cycle
@@ -211,22 +211,153 @@ function BackgroundPlanet() {
 }
 
 // ── Full assembly
-function Satellite({ selections }) {
+function Satellite({ selections, activePart }) {
   const groupRef = useRef()
   useFrame((_, delta) => {
     if (groupRef.current) groupRef.current.rotation.y += delta * 0.20
   })
   return (
     <group ref={groupRef} rotation={[0.14, 0.3, 0]}>
-      <Body           active={!!selections.frame} />
-      <Insulation     active={!!selections.insulation} />
-      <SolarPanels    active={!!selections.solar} />
-      <PropulsionTank active={!!selections.propulsion} />
+      <Body           active={!!selections.frame      || activePart === 'frame'} />
+      <Insulation     active={!!selections.insulation || activePart === 'insulation'} />
+      <SolarPanels    active={!!selections.solar      || activePart === 'solar'} />
+      <PropulsionTank active={!!selections.propulsion || activePart === 'propulsion'} />
     </group>
   )
 }
 
-export default function SatelliteModel({ selections = {}, height = 480, fill = false, mouseXRef, mouseYRef }) {
+// ── Part accent colours (mirrored from index.jsx) ──────────────────────────
+const GLB_PART_ACCENT = {
+  frame:      '#6b7fff',
+  solar:      '#38bdf8',
+  insulation: '#fbbf24',
+  propulsion: '#34d399',
+}
+
+// Name-pattern matching (try first, then fall back to spatial)
+const NAME_PATTERNS = {
+  solar:      ['solar', 'panel', 'wing', 'array', 'photovolt', 'pv'],
+  propulsion: ['propuls', 'engine', 'thruster', 'nozzle', 'tank', 'motor'],
+  insulation: ['insul', 'thermal', 'blanket', 'mli', 'skin', 'shield', 'coat'],
+  frame:      ['body', 'frame', 'struct', 'hull', 'bus', 'main', 'sat'],
+}
+
+function classifyByName(name) {
+  const n = (name || '').toLowerCase()
+  for (const [part, pats] of Object.entries(NAME_PATTERNS)) {
+    if (pats.some(p => n.includes(p))) return part
+  }
+  return null
+}
+
+function classifyBySpatial(meshCenter, meshSize, sceneCenter, sceneSize) {
+  const rx       = (meshCenter.x - sceneCenter.x) / (sceneSize.x || 1)
+  const ry       = (meshCenter.y - sceneCenter.y) / (sceneSize.y || 1)
+  const relWidth = meshSize.x / (sceneSize.x || 1)
+  // Solar: wide X span or far from centre in X
+  if (meshSize.x / sceneSize.x > 0.32 || Math.abs(rx) > 0.28) return 'solar'
+  // Propulsion: narrow AND well below centre — strict to avoid body cylinder misclassification
+  if (ry < -0.30 && relWidth < 0.22) return 'propulsion'
+  // Insulation: thin in at least one axis
+  const minDim = Math.min(meshSize.x, meshSize.y, meshSize.z)
+  if (minDim / Math.max(sceneSize.x, sceneSize.y, sceneSize.z) < 0.02) return 'insulation'
+  return 'frame'
+}
+
+// ── GLB satellite model for material selection scene ──────────────────────────
+function GLBScene({ activePart = 'frame' }) {
+  const { scene } = useGLTF('/simple_satellite_low_poly_free.glb')
+  const clonedScene  = useRef(null)
+  const partMeshes   = useRef({ frame: [], solar: [], insulation: [], propulsion: [] })
+  const tCol         = useRef(new THREE.Color())
+
+  if (!clonedScene.current) {
+    const cloned = scene.clone(true)
+
+    cloned.traverse(obj => {
+      if (!obj.isMesh) return
+      obj.material = Array.isArray(obj.material)
+        ? obj.material.map(m => m.clone())
+        : obj.material.clone()
+    })
+
+    const sceneBbox   = new THREE.Box3().setFromObject(cloned)
+    const sceneCenter = sceneBbox.getCenter(new THREE.Vector3())
+    const sceneSize   = sceneBbox.getSize(new THREE.Vector3())
+
+    cloned.traverse(obj => {
+      if (!obj.isMesh) return
+      const bbox       = new THREE.Box3().setFromObject(obj)
+      const meshCenter = bbox.getCenter(new THREE.Vector3())
+      const meshSize   = bbox.getSize(new THREE.Vector3())
+      const part       = classifyByName(obj.name) ||
+        classifyBySpatial(meshCenter, meshSize, sceneCenter, sceneSize)
+      partMeshes.current[part].push(obj)
+    })
+
+    clonedScene.current = cloned
+  }
+
+  useFrame(() => {
+    for (const [part, meshes] of Object.entries(partMeshes.current)) {
+      const isActive  = part === activePart
+      const accentHex = GLB_PART_ACCENT[activePart] ?? '#6b7fff'
+      tCol.current.set(isActive ? accentHex : '#000000')
+      for (const mesh of meshes) {
+        const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+        for (const mat of mats) {
+          if (!mat.emissive) continue
+          mat.emissive.lerp(tCol.current, 0.06)
+          mat.emissiveIntensity += ((isActive ? 0.72 : 0) - mat.emissiveIntensity) * 0.06
+        }
+      }
+    }
+  })
+
+  return (
+    <group rotation={[0.1, 0, 0]}>
+      <Center>
+        <primitive object={clonedScene.current} />
+      </Center>
+    </group>
+  )
+}
+
+export function GLBSatelliteModel({ accent = '#6b7fff', activePart = 'frame' }) {
+  return (
+    <div style={{ width: '100%', height: '100%' }}>
+      <Canvas
+        camera={{ position: [0, 0.6, 4.8], fov: 36 }}
+        dpr={[1, 1.5]}
+        gl={{ antialias: true, alpha: true }}
+        style={{ background: 'transparent', width: '100%', height: '100%' }}
+      >
+        <ambientLight intensity={0.22} />
+        <directionalLight position={[4, 6, 3]}   intensity={1.4} color="#c0d0ff" />
+        <directionalLight position={[-3, -2, -5]} intensity={0.20} color="#1a1060" />
+        <pointLight position={[-4, 3, 2]} intensity={1.1} color={accent} distance={16} />
+        <pointLight position={[3, -2, 4]} intensity={0.5} color="#ffffff" distance={10} />
+
+        <BackgroundPlanet />
+        <GLBScene activePart={activePart} />
+
+        <OrbitControls
+          autoRotate
+          autoRotateSpeed={1.4}
+          enableZoom
+          minDistance={2.2}
+          maxDistance={9.0}
+          enablePan={false}
+          maxPolarAngle={Math.PI * 0.78}
+          minPolarAngle={Math.PI * 0.18}
+          zoomSpeed={0.6}
+        />
+      </Canvas>
+    </div>
+  )
+}
+
+export default function SatelliteModel({ selections = {}, height = 480, fill = false, mouseXRef, mouseYRef, activePart }) {
   const containerStyle = fill
     ? { width: '100%', height: '100%' }
     : { height, background: 'transparent' }
@@ -250,15 +381,17 @@ export default function SatelliteModel({ selections = {}, height = 480, fill = f
         <BackgroundPlanet />
         <OrbitalRing />
         <OrbitalRing2 />
-        <Satellite selections={selections} />
+        <Satellite selections={selections} activePart={activePart} />
 
-        <OrbitControls
-          enableZoom={false}
-          enablePan={false}
-          maxPolarAngle={Math.PI * 0.72}
-          minPolarAngle={Math.PI * 0.28}
-        />
-        {mouseXRef && mouseYRef && <CameraRig mouseX={mouseXRef} mouseY={mouseYRef} />}
+        {mouseXRef && mouseYRef
+          ? <CameraRig mouseX={mouseXRef} mouseY={mouseYRef} />
+          : <OrbitControls
+              enableZoom={false}
+              enablePan={false}
+              maxPolarAngle={Math.PI * 0.72}
+              minPolarAngle={Math.PI * 0.28}
+            />
+        }
       </Canvas>
     </div>
   )

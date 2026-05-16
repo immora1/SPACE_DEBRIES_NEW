@@ -144,7 +144,7 @@ function OptionalModuleCard({ Component, isVisible }) {
 // ── 模块顺序 + 衔接句 ───────────────────────────────────────────────────────
 const MODULES = [
   { id: 'entrance', Component: Entrance, connector: null },
-  { id: 'm1',       Component: M1,       connector: '因为那件事，平行宇宙的你，也开始对太空垃圾感兴趣。' },
+  { id: 'm1',       Component: M1,       connector: null },
   { id: 'm2',       Component: M2,       connector: '旅行总有终点，那些留下来的，我们总是忘了还有机会。' },
   { id: 'm3',       Component: M3,       connector: '不是没有人做过这个决定，是做了这个决定的人，已经不在了。' },
   { id: 'm4',       Component: M4,       connector: null },
@@ -161,7 +161,9 @@ export default function App() {
   } = useAppStore()
 
   const moduleRefs = useRef({})
-  const prevUnlockedLen = useRef(unlockedModules.length)
+
+  // Always start at top on mount
+  useEffect(() => { window.scrollTo(0, 0) }, [])
 
   // M7 完成后显示 M8 可选卡片
   const showM8 = completedModules.includes('m7')
@@ -171,7 +173,7 @@ export default function App() {
     return () => { document.body.style.overflow = '' }
   }, [scrollLocked])
 
-  // 兼容新增模块：补解锁
+  // 兼容新增模块：静默补解锁，不触发滚动
   useEffect(() => {
     MODULES.forEach((module, idx) => {
       const next = MODULES[idx + 1]
@@ -181,22 +183,16 @@ export default function App() {
     })
   }, [completedModules, unlockedModules, unlockModule])
 
-  // 新模块解锁后自动滚动
-  useEffect(() => {
-    if (unlockedModules.length > prevUnlockedLen.current) {
-      const newId = unlockedModules[unlockedModules.length - 1]
-      setTimeout(() => {
-        moduleRefs.current[newId]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      }, 150)
-    }
-    prevUnlockedLen.current = unlockedModules.length
-  }, [unlockedModules])
-
+  // 滚动逻辑只在用户主动完成模块时触发，避免刷新时 persist 加载触发误滚
   function handleComplete(currentId) {
     markModuleComplete(currentId)
     const idx = MODULES.findIndex((m) => m.id === currentId)
     if (idx !== -1 && idx < MODULES.length - 1) {
-      unlockModule(MODULES[idx + 1].id)
+      const nextId = MODULES[idx + 1].id
+      unlockModule(nextId)
+      setTimeout(() => {
+        moduleRefs.current[nextId]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 150)
     }
   }
 
@@ -209,6 +205,7 @@ export default function App() {
           <ModuleWrapper
             isUnlocked={unlockedModules.includes(id)}
             connector={connector}
+            noAnimation={id === 'm1'}
             ref={(el) => { moduleRefs.current[id] = el }}
           >
             <Component onComplete={() => handleComplete(id)} />

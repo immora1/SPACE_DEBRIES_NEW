@@ -99,7 +99,25 @@ const useAppStore = create(
         scrollLocked: false,
       }),
     }),
-    { name: 'space-debris-state', version: 2 }
+    {
+      name: 'space-debris-state',
+      version: 2,
+      // Don't persist navigation state — always restart from Entrance on refresh
+      partialize: (s) => ({
+        user:                s.user,
+        satellite:           s.satellite,
+        materials:           s.materials,
+        mission:             s.mission,
+        clickedHistoryEvents: s.clickedHistoryEvents,
+        damageLevel:         s.damageLevel,
+        gameResult:          s.gameResult,
+        debrisGenerated:     s.debrisGenerated,
+        storyOutline:        s.storyOutline,
+        storyChapters:       s.storyChapters,
+        preTest:             s.preTest,
+        postTest:            s.postTest,
+      }),
+    }
   )
 )
 

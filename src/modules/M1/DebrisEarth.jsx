@@ -89,27 +89,31 @@ const ANNOTS = [
     value: '28,000', unit: ' km/h', valueFont: MONO_FONT,
     label: '平均碰撞速度', sub: '子弹速度的 10 倍',
     color: '#c8d0f8',
-    boxPos:   [-1.0, 1.15, 0.95],
-    labelPos: [-2.0, 1.65, 0.95],
-    boxSize:  [0.30, 0.20, 0.20],
+    boxPos:   [-1.0,  1.15,  0.95],
+    labelPos: [-2.0,  1.65,  0.95],
+    boxSize:  [0.30,  0.20,  0.20],
+    dir: -1,   // shoulder extends in -x direction, text anchors right
   },
   {
     value: '~1.3亿', unit: '', valueFont: CJK_FONT,
     label: '在轨碎片总量', sub: '大多无法追踪',
     color: '#8b9fff',
-    boxPos:   [2.1,  0.25, 1.75],
-    labelPos: [3.05, 0.45, 1.75],
-    boxSize:  [0.32, 0.22, 0.22],
+    boxPos:   [ 2.1,  0.25,  1.75],
+    labelPos: [ 3.05, 0.45,  1.75],
+    boxSize:  [0.32,  0.22,  0.22],
+    dir: 1,    // shoulder extends in +x direction, text anchors left
   },
   {
     value: '36,500+', unit: '', valueFont: MONO_FONT,
     label: '可追踪目标', sub: '雷达编目在册',
     color: '#f87171',
-    boxPos:   [-0.55, -1.42, 0.92],
-    labelPos: [-1.3,  -2.0,  0.92],
+    boxPos:   [-0.55, -1.42,  0.92],
+    labelPos: [-1.3,  -2.0,   0.92],
     boxSize:  [0.28,  0.20,  0.20],
+    dir: -1,   // shoulder extends in -x direction, text anchors right
   },
 ]
+
 
 function EarthScene({ showAnnotations }) {
   const earthRef    = useRef()
@@ -214,21 +218,27 @@ function EarthScene({ showAnnotations }) {
               <TargetBox size={a.boxSize} color={a.color} />
             </group>
 
-            {/* Connector line */}
+            {/* Connector line: debris region → terminus dot */}
             <Line
               points={[a.boxPos, a.labelPos]}
               color={a.color}
-              lineWidth={2.5}
+              lineWidth={1.6}
               transparent
-              opacity={0.55}
+              opacity={0.42}
             />
 
-            {/* Value: 默认内置字体(无加载/无Suspense)，outlineWidth 模拟加粗 */}
+            {/* Terminus dot — visible anchor where line ends and number begins */}
+            <mesh position={a.labelPos}>
+              <sphereGeometry args={[0.038, 8, 8]} />
+              <meshBasicMaterial color={a.color} transparent opacity={0.88} />
+            </mesh>
+
+            {/* Value — Billboard at labelPos, vertically centered on terminus dot */}
             <Billboard position={a.labelPos}>
               <Text
                 ref={el => { valueRefs.current[i] = el }}
-                anchorX="left"
-                anchorY="top"
+                anchorX={a.dir > 0 ? 'left' : 'right'}
+                anchorY="middle"
                 fontSize={0.44}
                 color={a.color}
                 outlineWidth="3.5%"
@@ -239,20 +249,23 @@ function EarthScene({ showAnnotations }) {
               </Text>
             </Billboard>
 
-            {/* Chinese label + sub: Html with useFrame opacity — rendered below value */}
+            {/* Label + sub — Html at SAME XZ as labelPos so it tracks with the number */}
             <Html
-              position={[a.labelPos[0], a.labelPos[1] - 0.58, a.labelPos[2]]}
+              position={[a.labelPos[0], a.labelPos[1] - 0.38, a.labelPos[2]]}
               distanceFactor={10}
               style={{ pointerEvents: 'none', userSelect: 'none' }}
             >
               <div
                 ref={el => { labelDivRefs.current[i] = el }}
-                style={{ whiteSpace: 'nowrap', transition: 'opacity 0.1s linear' }}
+                style={{
+                  whiteSpace: 'nowrap', transition: 'opacity 0.1s linear',
+                  textAlign: a.dir > 0 ? 'left' : 'right',
+                }}
               >
                 <div style={{
                   fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif",
-                  fontSize: 16, fontWeight: 500,
-                  color: 'rgba(232,232,248,0.88)',
+                  fontSize: 15, fontWeight: 500,
+                  color: 'rgba(232,232,248,0.85)',
                   textShadow: '0 1px 8px rgba(4,4,15,0.95)',
                   lineHeight: 1.4,
                 }}>
@@ -260,8 +273,8 @@ function EarthScene({ showAnnotations }) {
                 </div>
                 <div style={{
                   fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif",
-                  fontSize: 13,
-                  color: 'rgba(180,190,255,0.72)',
+                  fontSize: 12,
+                  color: 'rgba(180,190,255,0.68)',
                   textShadow: '0 1px 6px rgba(4,4,15,0.95)',
                   marginTop: 3,
                 }}>

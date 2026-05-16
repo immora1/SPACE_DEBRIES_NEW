@@ -1,10 +1,24 @@
-import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import React, { useState, useCallback, useEffect, useRef, useMemo, Suspense } from 'react'
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion'
 import useAppStore from '../../store/useAppStore'
 import { generateMaterialFeedback } from '../../services/ai'
-import SatelliteModel from './SatelliteModel'
+import SatelliteModel, { GLBSatelliteModel } from './SatelliteModel'
 import DebrisEarth from './DebrisEarth'
 import DebrisEarthCountries from './DebrisEarthCountries'
+import { useGLTF } from '@react-three/drei'
+
+// Preload GLB as soon as M1 is imported — ensures asset is cached before scene 5 renders
+useGLTF.preload('/simple_satellite_low_poly_free.glb')
+
+// Catch WebGL / asset errors locally so they don't unmount the entire M1
+class CanvasErrorBoundary extends React.Component {
+  state = { err: null }
+  static getDerivedStateFromError(err) { return { err } }
+  render() {
+    if (this.state.err) return this.props.fallback ?? null
+    return this.props.children
+  }
+}
 
 const ZH   = "'PingFang SC', 'Microsoft YaHei', sans-serif"
 const MONO = "'Space Mono', monospace"
@@ -362,7 +376,7 @@ function SceneHero({ normX, normY }) {
 }
 
 /* ── TierGroup (Scene 1) ── */
-function TierGroup({ tier, position, rawX, rawY }) {
+function TierGroup({ tier, position, rawX, rawY, delay = 0, easing }) {
   const [near, setNear] = useState(false)
   const ref = useRef()
 
@@ -372,89 +386,81 @@ function TierGroup({ tier, position, rawX, rawY }) {
       const r = ref.current.getBoundingClientRect()
       const cx = r.left + r.width / 2, cy = r.top + r.height / 2
       const dx = rawX.get() - cx, dy = rawY.get() - cy
-      setNear(Math.sqrt(dx * dx + dy * dy) < 200)
+      setNear(Math.sqrt(dx * dx + dy * dy) < 240)
     }
     const unsubX = rawX.on('change', check)
     const unsubY = rawY.on('change', check)
     return () => { unsubX(); unsubY() }
   }, [rawX, rawY])
 
+  const entryTransition = easing ? { ...easing, delay } : { duration: 0.65, delay }
+
   return (
-    <div ref={ref} style={{ position: 'absolute', maxWidth: 280, ...position }}>
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={entryTransition}
+      style={{ position: 'absolute', maxWidth: 310, ...position }}
+    >
+
+      {/* Size class label */}
       <div style={{
-        fontFamily: LEX, fontSize: 9, fontWeight: 700, color: tier.color,
-        letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 6,
+        fontFamily: LEX, fontSize: 8, fontWeight: 700, color: tier.color,
+        letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8, opacity: 0.7,
       }}>
         {tier.size}
       </div>
-      <div style={{
-        fontFamily: MONO, fontSize: 72, fontWeight: 700, color: tier.color,
-        letterSpacing: '-0.04em', lineHeight: 1, marginBottom: 10,
-      }}>
-        {tier.count}
+
+      {/* Accent-bar + count row — bar stretches to match count height via alignItems:stretch */}
+      <div style={{ display: 'flex', alignItems: 'stretch', marginBottom: 8 }}>
+        <motion.div
+          animate={{ opacity: near ? 1 : 0.28, scaleY: near ? 1 : 0.6 }}
+          transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+          style={{
+            width: 3, marginRight: 14, borderRadius: 2, flexShrink: 0,
+            background: `linear-gradient(to bottom, ${tier.color}, ${tier.color}33)`,
+            transformOrigin: 'top',
+          }}
+        />
+        <div style={{
+          fontFamily: MONO, fontSize: 'clamp(44px,5.6vw,70px)', fontWeight: 700,
+          color: tier.color, letterSpacing: '-0.04em', lineHeight: 1,
+        }}>
+          {tier.count}
+        </div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+
+      {/* Label + badge */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, paddingLeft: 17 }}>
         <span style={{ fontFamily: ZH, fontSize: 12, color: 'rgba(232,232,248,0.45)' }}>
           {tier.label}
         </span>
         <span style={{
-          fontFamily: LEX, fontSize: 7.5, fontWeight: 700, color: tier.color,
-          border: `1px solid ${tier.color}55`, padding: '2px 7px',
+          fontFamily: LEX, fontSize: 7, fontWeight: 700, color: tier.color,
+          border: `1px solid ${tier.color}44`, padding: '2px 6px',
           letterSpacing: '0.10em', textTransform: 'uppercase',
         }}>
           {tier.badge}
         </span>
       </div>
+
+      {/* Proximity-revealed description */}
       <motion.div
-        animate={{ opacity: near ? 1 : 0, y: near ? 0 : 10 }}
+        animate={{ opacity: near ? 1 : 0, y: near ? 0 : 8 }}
         transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-        style={{ fontSize: 12, fontFamily: ZH, color: 'rgba(232,232,248,0.60)', lineHeight: 1.85 }}
+        style={{
+          fontSize: 11, fontFamily: ZH, color: 'rgba(232,232,248,0.55)',
+          lineHeight: 1.85, maxWidth: 270, paddingLeft: 17,
+        }}
       >
         {tier.desc}
       </motion.div>
-    </div>
+    </motion.div>
   )
 }
 
 /* ── Scene 1: SCALE ── */
-// Three key stats, each annotating a visible area of the debris cloud
-const SCALE_ANNOTS = [
-  {
-    value: '28,000', unit: 'km/h',
-    label: '平均碰撞速度',
-    sub: '子弹速度的 10 倍，无法提前预警',
-    color: '#c8d0f8',
-    // Selection box [x, y, w, h] in SVG % coords (viewBox 0 0 100 100, preserveAspectRatio none)
-    box: [37, 17, 9, 13],
-    // Polyline: box left-mid → elbow → terminal dot near number
-    // Number at top:8%, left:7% → terminal at (5.5, 11)
-    pts: [[37, 23.5], [5.5, 23.5], [5.5, 11]],
-    numPos: { top: '7%', left: '7%' },
-  },
-  {
-    value: '~1.3亿', unit: '',
-    label: '在轨碎片总量',
-    sub: '大多小于 1 mm，无法追踪，无法规避',
-    color: '#8b9fff',
-    // Box at right-center area (MEO/diffuse cloud)
-    box: [67, 40, 9, 12],
-    // Number at top:43%, left:7% → terminal at (5.5, 46)
-    pts: [[67, 46], [5.5, 46]],
-    numPos: { top: '42%', left: '7%' },
-  },
-  {
-    value: '36,500+', unit: '',
-    label: '可追踪目标',
-    sub: '雷达编目在册，卫星需主动规避',
-    color: '#f87171',
-    // Box at lower-center debris area
-    box: [48, 62, 9, 11],
-    // Number at top:70%, left:7% → terminal at (5.5, 73)
-    pts: [[48, 67.5], [5.5, 67.5], [5.5, 73]],
-    numPos: { top: '69%', left: '7%' },
-  },
-]
-
 function SceneScale() {
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
@@ -468,41 +474,33 @@ function SceneScale() {
         01 · SCALE / 规模
       </div>
 
-      {/* Left text block — fills the clear left zone */}
+      {/* Left context block */}
       <div style={{
-        position: 'absolute', left: '4%', top: '16%', width: '34%', zIndex: 10,
+        position: 'absolute', left: '4%', top: '16%', width: '30%', zIndex: 10,
       }}>
-        {/* H1 */}
         <div style={{
-          fontFamily: ZH, fontSize: 'clamp(26px,3.2vw,42px)', fontWeight: 700,
-          color: '#e8e8f8', lineHeight: 1.22, marginBottom: 22,
+          fontFamily: ZH, fontSize: 'clamp(24px,2.8vw,38px)', fontWeight: 700,
+          color: '#e8e8f8', lineHeight: 1.22, marginBottom: 20,
         }}>
           轨道碎片不是假设，<br />是已成事实的威胁。
         </div>
-
-        {/* Hairline */}
         <div style={{
           height: 1, background: 'linear-gradient(to right, rgba(107,127,255,0.35), transparent)',
-          marginBottom: 20,
+          marginBottom: 18,
         }} />
-
-        {/* Body */}
         <div style={{
           fontFamily: ZH, fontSize: 13, color: 'rgba(232,232,248,0.42)',
-          lineHeight: 2.0, marginBottom: 18,
+          lineHeight: 2.0, marginBottom: 16,
         }}>
           速度让每次碰撞具有毁灭性，<br />
           数量让规避几乎不可能，<br />
           不可见性让预警成为奢望。
         </div>
-
-        {/* Fine print */}
-        <div style={{
-          fontFamily: ZH, fontSize: 11, color: '#484878', lineHeight: 1.75,
-        }}>
+        <div style={{ fontFamily: ZH, fontSize: 11, color: '#484878', lineHeight: 1.75 }}>
           自 1957 年持续累积，目前尚无有效的批量清除方案。
         </div>
       </div>
+
     </div>
   )
 }
@@ -511,13 +509,92 @@ function SceneScale() {
 // Zero React state for hover — all DOM mutations via refs + CSS transitions only.
 // This eliminates re-renders on every mouse enter/leave (the main lag cause).
 function SceneSources() {
-  const panelRefs    = useRef([null, null, null])
-  const overlayRefs  = useRef([null, null, null])
-  const descRefs     = useRef([null, null, null])
-  const detailRefs   = useRef([null, null, null])
-  const metaRefs     = useRef([null, null, null])
-  const headlineRef  = useRef(null)
-  const videoRefs    = useRef([null, null, null])
+  const panelRefs     = useRef([null, null, null])
+  const overlayRefs   = useRef([null, null, null])
+  const descRefs      = useRef([null, null, null])
+  const detailRefs    = useRef([null, null, null])
+  const metaRefs      = useRef([null, null, null])
+  const headlineRef   = useRef(null)
+  const videoRefs     = useRef([null, null, null])
+  const canvasRefs    = useRef([null, null, null])
+  const numberDivRefs = useRef([null, null, null])
+  const ripplesRef    = useRef([[], [], []])
+  const lastPosRef    = useRef([{x:0,y:0},{x:0,y:0},{x:0,y:0}])
+  const rafRef        = useRef(null)
+
+  // Canvas dot-grid + ripple RAF loop
+  useEffect(() => {
+    const DOT_GAP   = 24
+    const DOT_R     = 1.4
+    const DOT_COLOR = 'rgba(107,127,255,0.22)'
+    const dims      = [{w:0,h:0},{w:0,h:0},{w:0,h:0}]
+
+    const observers = canvasRefs.current.map((canvas, i) => {
+      if (!canvas) return null
+      const panel = panelRefs.current[i]
+      if (!panel) return null
+      const ro = new ResizeObserver(entries => {
+        for (const entry of entries) {
+          const { width, height } = entry.contentRect
+          const dpr = window.devicePixelRatio || 1
+          canvas.width  = Math.round(width  * dpr)
+          canvas.height = Math.round(height * dpr)
+          canvas.style.width  = width  + 'px'
+          canvas.style.height = height + 'px'
+          dims[i] = { w: width, h: height }
+        }
+      })
+      ro.observe(panel)
+      return ro
+    })
+
+    const draw = () => {
+      const now = performance.now()
+      canvasRefs.current.forEach((canvas, i) => {
+        if (!canvas) return
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return
+        const { w, h } = dims[i]
+        if (!w || !h) return
+        const dpr = window.devicePixelRatio || 1
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+        ctx.save()
+        ctx.scale(dpr, dpr)
+
+        // Expire ripples older than 1.2 s
+        ripplesRef.current[i] = ripplesRef.current[i].filter(r => (now - r.born) < 1200)
+
+        const ripples = ripplesRef.current[i]
+        for (let x = DOT_GAP / 2; x < w; x += DOT_GAP) {
+          for (let y = DOT_GAP / 2; y < h; y += DOT_GAP) {
+            let scale = 1
+            for (const r of ripples) {
+              const age      = (now - r.born) / 1000
+              const waveFront = age * 220
+              const dist     = Math.hypot(x - r.x, y - r.y)
+              const diff     = Math.abs(dist - waveFront)
+              if (diff < 38) {
+                const intensity = (1 - diff / 38) * Math.exp(-age * 2.2)
+                scale += intensity * 2.8
+              }
+            }
+            ctx.beginPath()
+            ctx.arc(x, y, DOT_R * scale, 0, Math.PI * 2)
+            ctx.fillStyle = DOT_COLOR
+            ctx.fill()
+          }
+        }
+        ctx.restore()
+      })
+      rafRef.current = requestAnimationFrame(draw)
+    }
+
+    rafRef.current = requestAnimationFrame(draw)
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+      observers.forEach(ro => ro && ro.disconnect())
+    }
+  }, [])
 
   const applyHover = useCallback((idx) => {
     panelRefs.current.forEach((el, j) => {
@@ -560,6 +637,33 @@ function SceneSources() {
         el.pause()
       }
     })
+    // Dot grid: show on hovered panel, hidden otherwise
+    canvasRefs.current.forEach((el, j) => {
+      if (!el) return
+      el.style.opacity = (idx >= 0 && j === idx) ? '1' : '0'
+    })
+    // Ghost number: hide on hovered panel, show on others
+    numberDivRefs.current.forEach((el, j) => {
+      if (!el) return
+      if (idx < 0)        el.style.opacity = '1'
+      else if (j === idx) el.style.opacity = '0'
+      else                el.style.opacity = '0.6'
+    })
+  }, [])
+
+  const handleMouseMove = useCallback((e, i) => {
+    const panel = panelRefs.current[i]
+    if (!panel) return
+    const rect = panel.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    const last = lastPosRef.current[i]
+    const dx = x - last.x, dy = y - last.y
+    if (dx * dx + dy * dy > 16) {
+      ripplesRef.current[i].push({ x, y, born: performance.now() })
+      if (ripplesRef.current[i].length > 10) ripplesRef.current[i].shift()
+    }
+    lastPosRef.current[i] = { x, y }
   }, [])
 
   return (
@@ -600,11 +704,11 @@ function SceneSources() {
           key={i}
           ref={el => { panelRefs.current[i] = el }}
           onMouseEnter={() => applyHover(i)}
-          onMouseLeave={() => applyHover(-1)}
+          onMouseLeave={() => { applyHover(-1); lastPosRef.current[i] = {x:0,y:0} }}
+          onMouseMove={(e) => handleMouseMove(e, i)}
           style={{
             flex: 1, overflow: 'hidden', position: 'relative',
             cursor: 'none', minWidth: 0,
-            // CSS transition on flex — browser handles it, no JS loop
             transition: 'flex 0.55s cubic-bezier(0.16,1,0.3,1)',
           }}
         >
@@ -648,6 +752,33 @@ function SceneSources() {
               transition: 'opacity 0.45s ease',
             }}
           />
+
+          {/* Dot grid canvas — hidden by default, appears on hover with ripple */}
+          <canvas
+            ref={el => { canvasRefs.current[i] = el }}
+            style={{
+              position: 'absolute', inset: 0,
+              pointerEvents: 'none',
+              opacity: 0,
+              transition: 'opacity 0.45s ease',
+            }}
+          />
+
+          {/* Ghost panel number — large faded index, fades when panel is focused */}
+          <div
+            ref={el => { numberDivRefs.current[i] = el }}
+            style={{
+              position: 'absolute', top: '50%', left: '50%',
+              transform: 'translate(-50%,-50%)',
+              fontFamily: MONO, fontSize: 'clamp(64px,9vw,114px)',
+              fontWeight: 700, color: 'rgba(107,127,255,0.08)',
+              userSelect: 'none', pointerEvents: 'none',
+              letterSpacing: '-0.04em', lineHeight: 1,
+              transition: 'opacity 0.45s ease',
+            }}
+          >
+            {String(i + 1).padStart(2, '0')}
+          </div>
 
           {/* Bottom gradient */}
           <div style={{
@@ -1371,20 +1502,134 @@ function SceneTrend() {
 /* ── Survival probability by risk level (re-entry ground reach) ── */
 const SURVIVE_PCT = { high: 85, medium: 44, low: 11 }
 
+/* ── Atmospheric gradient backgrounds per option ── */
+const OPT_GRADIENT = {
+  frame:      [
+    'radial-gradient(ellipse at 25% 60%, #0d2035 0%, #040c18 75%)',   // aluminum — cold blue
+    'radial-gradient(ellipse at 75% 40%, #120828 0%, #060313 75%)',   // titanium — deep purple
+    'radial-gradient(ellipse at 50% 75%, #081510 0%, #040d08 75%)',   // cfrp — dark teal
+  ],
+  solar:      [
+    'radial-gradient(ellipse at 40% 30%, #081e30 0%, #040c18 75%)',   // silicon — space blue
+    'radial-gradient(ellipse at 60% 70%, #1c0c04 0%, #0d0602 75%)',   // gaas — ember
+    'radial-gradient(ellipse at 35% 55%, #041818 0%, #020c0c 75%)',   // flexible — deep teal
+  ],
+  insulation: [
+    'radial-gradient(ellipse at 50% 25%, #101820 0%, #060c14 75%)',   // mli — blue-gray
+    'radial-gradient(ellipse at 65% 65%, #151208 0%, #0a0a05 75%)',   // honeycomb — warm
+    'radial-gradient(ellipse at 30% 50%, #1a1406 0%, #0c0a03 75%)',   // kevlar — amber
+  ],
+  propulsion: [
+    'radial-gradient(ellipse at 50% 40%, #220808 0%, #100404 75%)',   // ti_tank — danger red
+    'radial-gradient(ellipse at 45% 60%, #060c18 0%, #030810 75%)',   // al_tank — safe blue
+    'radial-gradient(ellipse at 55% 40%, #1c0e04 0%, #0d0802 75%)',   // copv — amber
+  ],
+}
+
+/* ── Satellite schematic — always-accurate 2-D diagram showing the active part ── */
+function PartSchematic({ activePart }) {
+  const accent = PART_ACCENT[activePart] ?? '#6b7fff'
+  const dim    = 'rgba(107,127,255,0.18)'
+  const dimFill = 'rgba(107,127,255,0.03)'
+
+  const c  = (part) => activePart === part ? accent         : dim
+  const f  = (part) => activePart === part ? accent + '1a'  : dimFill
+  const sw = (part) => activePart === part ? 1.5            : 0.7
+
+  return (
+    <div style={{ pointerEvents: 'none' }}>
+      <svg viewBox="0 0 118 64" width={118} height={64} style={{ overflow: 'visible' }}>
+        {/* ── Left solar panel ── */}
+        <rect x="1" y="20" width="24" height="20" rx="2"
+          fill={f('solar')} stroke={c('solar')} strokeWidth={sw('solar')} />
+        {/* inner cell lines */}
+        {[6,11,16,21].map(x => (
+          <line key={x} x1={x} y1="20" x2={x} y2="40"
+            stroke={c('solar')} strokeWidth={0.4} opacity={activePart==='solar'?0.6:0.2}/>
+        ))}
+        {/* left boom */}
+        <line x1="25" y1="30" x2="33" y2="30"
+          stroke={c('solar')} strokeWidth={sw('solar')} />
+
+        {/* ── Insulation (outer shell) ── */}
+        <rect x="33" y="14" width="52" height="32" rx="6"
+          fill={f('insulation')} stroke={c('insulation')} strokeWidth={sw('insulation')} />
+
+        {/* ── Frame / body (inner) ── */}
+        <rect x="37" y="18" width="44" height="24" rx="4"
+          fill={f('frame')} stroke={c('frame')} strokeWidth={sw('frame')} />
+        {/* panel lines on body */}
+        {[46,55,64,73].map(x => (
+          <line key={x} x1={x} y1="18" x2={x} y2="42"
+            stroke={c('frame')} strokeWidth={0.4} opacity={activePart==='frame'?0.5:0.15}/>
+        ))}
+
+        {/* ── Propulsion nozzle ── */}
+        <line x1="59" y1="46" x2="59" y2="51"
+          stroke={c('propulsion')} strokeWidth={sw('propulsion')} />
+        <polygon points="59,51 51,62 67,62"
+          fill={f('propulsion')} stroke={c('propulsion')} strokeWidth={sw('propulsion')} />
+
+        {/* ── Right boom ── */}
+        <line x1="85" y1="30" x2="93" y2="30"
+          stroke={c('solar')} strokeWidth={sw('solar')} />
+        {/* ── Right solar panel ── */}
+        <rect x="93" y="20" width="24" height="20" rx="2"
+          fill={f('solar')} stroke={c('solar')} strokeWidth={sw('solar')} />
+        {[99,104,109,114].map(x => (
+          <line key={x} x1={x} y1="20" x2={x} y2="40"
+            stroke={c('solar')} strokeWidth={0.4} opacity={activePart==='solar'?0.6:0.2}/>
+        ))}
+
+        {/* ── Active part glow pulse ── */}
+        {activePart === 'frame' && (
+          <rect x="37" y="18" width="44" height="24" rx="4"
+            fill="none" stroke={accent} strokeWidth={2.5} opacity={0.18} />
+        )}
+        {activePart === 'solar' && (
+          <>
+            <rect x="1" y="20" width="24" height="20" rx="2" fill="none" stroke={accent} strokeWidth={2.5} opacity={0.18}/>
+            <rect x="93" y="20" width="24" height="20" rx="2" fill="none" stroke={accent} strokeWidth={2.5} opacity={0.18}/>
+          </>
+        )}
+        {activePart === 'insulation' && (
+          <rect x="33" y="14" width="52" height="32" rx="6" fill="none" stroke={accent} strokeWidth={2.5} opacity={0.18}/>
+        )}
+        {activePart === 'propulsion' && (
+          <polygon points="59,51 51,62 67,62" fill="none" stroke={accent} strokeWidth={2.5} opacity={0.18}/>
+        )}
+      </svg>
+
+      {/* part label */}
+      <div style={{
+        marginTop: 5,
+        fontFamily: "'Space Mono', monospace",
+        fontSize: 7, letterSpacing: '0.14em', textTransform: 'uppercase',
+        color: accent, textAlign: 'center',
+      }}>
+        {PARTS.find(p => p.id === activePart)?.labelEn ?? ''}
+      </div>
+    </div>
+  )
+}
+
 /* ── Scene 5: MATERIAL SELECTION ── */
 function SceneMaterial({ satellite, user, storyOutline, materials, setMaterialPart, onComplete, mouseXRef, mouseYRef }) {
-  const [openPartId, setOpenPartId] = useState(PARTS[0].id)
-  const [aiState,    setAiState]    = useState('idle')
-  const [feedback,   setFeedback]   = useState('')
+  const [partIdx,  setPartIdx]  = useState(0)
+  const [hov,      setHov]      = useState(null)
+  const [aiState,  setAiState]  = useState('idle')
+  const [feedback, setFeedback] = useState('')
 
-  const selectedCount = Object.values(materials).filter(Boolean).length
-  const allDone = selectedCount === 4
+  const activePart    = PARTS[partIdx]
+  const accent        = PART_ACCENT[activePart.id]
+  const safeMatls     = materials ?? {}
+  const selectedCount = Object.values(safeMatls).filter(Boolean).length
+  const allDone       = selectedCount === 4
 
-  function handleSelect(partId, optId) {
-    setMaterialPart(partId, optId)
-    const idx = PARTS.findIndex(p => p.id === partId)
-    if (idx < PARTS.length - 1) setTimeout(() => setOpenPartId(PARTS[idx + 1].id), 320)
-  }
+  const goToPart = useCallback((idx) => {
+    setPartIdx(Math.max(0, Math.min(PARTS.length - 1, idx)))
+    setHov(null)
+  }, [])
 
   async function handleGenerateFeedback() {
     if (!allDone || aiState !== 'idle') return
@@ -1393,302 +1638,343 @@ function SceneMaterial({ satellite, user, storyOutline, materials, setMaterialPa
       const result = await generateMaterialFeedback({ materials, satellite, user, storyOutline })
       setFeedback(result.feedback ?? '')
       setAiState('done')
-    } catch {
-      setAiState('error')
-    }
+    } catch { setAiState('error') }
   }
 
-  return (
-    <div style={{ position: 'absolute', inset: 0, display: 'flex' }}>
+  const gradients = OPT_GRADIENT[activePart.id] ?? []
 
-      {/* Left: 3D model — slightly wider */}
-      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '54%' }}>
-        <SatelliteModel selections={materials} fill mouseXRef={mouseXRef} mouseYRef={mouseYRef} />
+  return (
+    <div style={{ position: 'absolute', inset: 0, background: '#02030e', display: 'flex' }}>
+
+      {/* ── LEFT: 3D GLB model (45% width) ── */}
+      <div style={{ position: 'relative', width: '45%', flexShrink: 0, height: '100%', background: '#02030e' }}>
+        <CanvasErrorBoundary fallback={
+          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <SatelliteModel fill selections={materials} activePart={null} />
+          </div>
+        }>
+          <Suspense fallback={<div style={{ width: '100%', height: '100%', background: '#02030e' }} />}>
+            <GLBSatelliteModel accent={accent} activePart={activePart.id} />
+          </Suspense>
+        </CanvasErrorBoundary>
+
+        {/* Part info overlay at bottom-left of model */}
+        <div style={{ position: 'absolute', bottom: 56, left: 28, pointerEvents: 'none' }}>
+          <motion.div key={activePart.id}
+            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35 }}
+          >
+            <div style={{ fontFamily: MONO, fontSize: 7, color: `${accent}55`, letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 6 }}>
+              {String(partIdx + 1).padStart(2, '0')} · {PARTS.length} &nbsp;|&nbsp; {activePart.labelEn}
+            </div>
+            <div style={{ fontFamily: ZH, fontSize: 'clamp(18px, 2vw, 26px)', fontWeight: 700, color: accent, lineHeight: 1.1 }}>
+              {activePart.label}
+            </div>
+            <div style={{ fontFamily: ZH, fontSize: 11, color: 'rgba(232,232,248,0.32)', marginTop: 6, maxWidth: 240, lineHeight: 1.7 }}>
+              {activePart.desc}
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Part progress dots - bottom center of model panel */}
+        <div style={{
+          position: 'absolute', bottom: 22, left: 0, right: 0,
+          display: 'flex', justifyContent: 'center', gap: 8, pointerEvents: 'all',
+        }}>
+          {PARTS.map((p, i) => (
+            <motion.div key={p.id}
+              onClick={() => goToPart(i)}
+              animate={{
+                width: i === partIdx ? 24 : 6,
+                background: i === partIdx
+                  ? PART_ACCENT[p.id]
+                  : safeMatls[p.id] ? PART_ACCENT[p.id] + '80' : 'rgba(255,255,255,0.12)',
+              }}
+              transition={{ duration: 0.25 }}
+              style={{ height: 2, borderRadius: 1, cursor: 'pointer' }}
+            />
+          ))}
+        </div>
+
+        {/* ── Satellite schematic overlay (top-right of model panel) ── */}
+        <motion.div
+          key={activePart.id}
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35 }}
+          style={{
+            position: 'absolute', top: 18, right: 18, zIndex: 10,
+            pointerEvents: 'none',
+            padding: '10px 12px',
+            background: 'rgba(2,3,14,0.72)',
+            border: `1px solid ${accent}28`,
+            backdropFilter: 'blur(8px)',
+          }}
+        >
+          <PartSchematic activePart={activePart.id} />
+        </motion.div>
+
+        {/* Vertical divider */}
+        <div style={{
+          position: 'absolute', top: 0, right: 0, bottom: 0, width: 1,
+          background: 'linear-gradient(to bottom, transparent, rgba(107,127,255,0.12) 20%, rgba(107,127,255,0.12) 80%, transparent)',
+        }} />
       </div>
 
-      {/* Right: accordion panel */}
-      <div data-scroll-zone="true" style={{
-        position: 'absolute', right: 0, top: 0, bottom: 0, width: '46%',
-        borderLeft: '1px solid #1a1a35',
-        display: 'flex', flexDirection: 'column',
-        overflowY: 'auto',
-      }}>
+      {/* ── RIGHT: column — accordion on top, CTA button below ── */}
+      <div style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column' }}>
 
-        {/* ── Header ── */}
-        <div style={{ padding: '30px 36px 20px', borderBottom: '1px solid #1a1a35', flexShrink: 0 }}>
-          <div style={{
-            fontFamily: LEX, fontSize: 8, fontWeight: 700,
-            color: 'rgba(107,127,255,0.5)', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 6,
-          }}>
-            05 · MATERIAL CONFIG
-          </div>
-          <div style={{ fontFamily: ZH, fontSize: 18, fontWeight: 700, color: '#e8e8f8', lineHeight: 1.35, marginBottom: 5 }}>
-            {satellite?.name ?? '卫星'} · 材料装配
-          </div>
-          <div style={{ fontFamily: ZH, fontSize: 11, color: '#484878', lineHeight: 1.75 }}>
-            材料决定碎片的命运与地面危害。
-          </div>
+        {/* Accordion area */}
+        <div style={{ flex: 1, position: 'relative', display: 'flex', overflow: 'hidden' }}>
+
+        {/* Top label */}
+        <div style={{
+          position: 'absolute', top: 18, left: 18, right: 18, zIndex: 10,
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          pointerEvents: 'none',
+        }}>
+          <span style={{ fontFamily: MONO, fontSize: 7, color: 'rgba(107,127,255,0.22)', letterSpacing: '0.18em', textTransform: 'uppercase' }}>
+            SELECT MATERIAL
+          </span>
+          <span style={{ fontFamily: MONO, fontSize: 7, color: 'rgba(107,127,255,0.22)', letterSpacing: '0.12em' }}>
+            {selectedCount} / 4 CONFIGURED
+          </span>
         </div>
 
-        {/* ── Accordion parts (only when idle) ── */}
-        {aiState === 'idle' && (
-          <div style={{ flex: 1 }}>
-            {PARTS.map((part, idx) => {
-              const isOpen    = openPartId === part.id
-              const isDone    = !!materials[part.id]
-              const selOpt    = part.options.find(o => o.id === materials[part.id])
-              const accent    = PART_ACCENT[part.id]
+        {/* Option panels */}
+        {activePart.options.map((opt, i) => {
+          const isSel    = safeMatls[activePart.id] === opt.id
+          const isHov    = hov === i
+          const isActive = isHov || isSel
+          const riskColor = RISK_COLORS[opt.risk]
 
-              return (
-                <div key={part.id} style={{ borderBottom: '1px solid #1a1a35' }}>
-
-                  {/* Part header row */}
-                  <div
-                    onClick={() => setOpenPartId(isOpen ? null : part.id)}
-                    style={{
-                      padding: '14px 36px', cursor: 'pointer',
-                      borderLeft: `3px solid ${isOpen ? accent : isDone ? accent + '55' : 'transparent'}`,
-                      background: isOpen ? 'rgba(107,127,255,0.03)' : 'transparent',
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      transition: 'background 0.2s, border-color 0.2s',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                      <span style={{
-                        fontFamily: MONO, fontSize: 9, letterSpacing: '0.14em',
-                        color: isOpen ? accent : '#2a2a4a',
-                      }}>
-                        {String(idx + 1).padStart(2, '0')}
-                      </span>
-                      <div>
-                        <div style={{
-                          fontFamily: ZH, fontSize: 12, fontWeight: 700,
-                          color: isOpen ? '#e8e8f8' : isDone ? 'rgba(232,232,248,0.50)' : '#484878',
-                        }}>
-                          {part.label}
-                        </div>
-                        <div style={{ fontFamily: LEX, fontSize: 7, color: '#2a2a4a', letterSpacing: '0.10em', textTransform: 'uppercase' }}>
-                          {part.labelEn}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Right side: done state or prompt */}
-                    {isDone && selOpt && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontFamily: ZH, fontSize: 11, color: accent, letterSpacing: '0.02em' }}>
-                          {selOpt.label}
-                        </span>
-                        <div style={{
-                          width: 5, height: 5, borderRadius: '50%',
-                          background: RISK_COLORS[selOpt.risk],
-                          boxShadow: `0 0 5px ${RISK_COLORS[selOpt.risk]}`,
-                        }} />
-                      </div>
-                    )}
-                    {!isDone && (
-                      <span style={{
-                        fontFamily: LEX, fontSize: 7.5, letterSpacing: '0.08em', textTransform: 'uppercase',
-                        color: isOpen ? accent : '#2a2a4a',
-                      }}>
-                        {isOpen ? 'SELECT ↓' : '—'}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Expanded material options */}
-                  <AnimatePresence initial={false}>
-                    {isOpen && (
-                      <motion.div
-                        key="body"
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.38, ease: [0.16, 1, 0.3, 1] }}
-                        style={{ overflow: 'hidden' }}
-                      >
-                        {/* Part description */}
-                        <div style={{
-                          padding: '10px 36px 10px 39px',
-                          borderLeft: `3px solid ${accent}33`,
-                          background: 'rgba(107,127,255,0.015)',
-                        }}>
-                          <p style={{ fontFamily: ZH, fontSize: 11, color: '#484878', lineHeight: 1.75, margin: 0 }}>
-                            {part.desc}
-                          </p>
-                        </div>
-
-                        {/* Material option rows */}
-                        {part.options.map((opt, oi) => {
-                          const isSel    = materials[part.id] === opt.id
-                          const survPct  = SURVIVE_PCT[opt.risk]
-                          return (
-                            <div
-                              key={opt.id}
-                              onClick={() => handleSelect(part.id, opt.id)}
-                              style={{
-                                padding: '13px 36px 13px 36px',
-                                borderLeft: `3px solid ${isSel ? accent : 'transparent'}`,
-                                borderTop: '1px solid rgba(26,26,53,0.7)',
-                                background: isSel ? `rgba(107,127,255,0.05)` : 'transparent',
-                                cursor: 'pointer', transition: 'all 0.18s',
-                              }}
-                            >
-                              {/* Name row */}
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 7 }}>
-                                <div>
-                                  <span style={{
-                                    fontFamily: ZH, fontSize: 14, fontWeight: 700,
-                                    color: isSel ? '#e8e8f8' : '#8888aa',
-                                  }}>
-                                    {opt.label}
-                                  </span>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2 }}>
-                                  <div style={{
-                                    width: 5, height: 5, borderRadius: '50%',
-                                    background: RISK_COLORS[opt.risk],
-                                    boxShadow: isSel ? `0 0 7px ${RISK_COLORS[opt.risk]}` : 'none',
-                                  }} />
-                                  <span style={{
-                                    fontFamily: LEX, fontSize: 7.5,
-                                    color: RISK_COLORS[opt.risk], letterSpacing: '0.07em', textTransform: 'uppercase',
-                                  }}>
-                                    RISK {RISK_LABEL[opt.risk]}
-                                  </span>
-                                </div>
-                              </div>
-
-                              {/* Survival probability bar */}
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
-                                <span style={{
-                                  fontFamily: LEX, fontSize: 7, color: '#2a2a4a',
-                                  letterSpacing: '0.07em', textTransform: 'uppercase',
-                                  width: 52, flexShrink: 0,
-                                }}>
-                                  SURVIVE
-                                </span>
-                                <div style={{ flex: 1, height: 2, background: '#1a1a35', borderRadius: 1, overflow: 'hidden' }}>
-                                  <motion.div
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${survPct}%` }}
-                                    transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: oi * 0.07 }}
-                                    style={{ height: '100%', background: RISK_COLORS[opt.risk], borderRadius: 1 }}
-                                  />
-                                </div>
-                                <span style={{ fontFamily: MONO, fontSize: 7.5, color: '#484878', width: 24, textAlign: 'right', flexShrink: 0 }}>
-                                  {survPct}%
-                                </span>
-                              </div>
-
-                              {/* EN code + feature text */}
-                              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: isSel ? 7 : 0 }}>
-                                <span style={{ fontFamily: LEX, fontSize: 7, color: '#2a2a4a', letterSpacing: '0.07em', textTransform: 'uppercase', flexShrink: 0 }}>
-                                  {opt.en}
-                                </span>
-                              </div>
-                              <div style={{
-                                fontSize: 11, fontFamily: ZH, lineHeight: 1.7,
-                                color: isSel ? 'rgba(232,232,248,0.65)' : 'rgba(232,232,248,0.22)',
-                                transition: 'color 0.22s',
-                                maxHeight: isSel ? 200 : 0,
-                                overflow: 'hidden',
-                                transition: 'max-height 0.3s ease, color 0.22s',
-                              }}>
-                                {opt.feature}
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              )
-            })}
-          </div>
-        )}
-
-        {/* ── Loading state ── */}
-        {aiState === 'loading' && (
-          <motion.div key="loading"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-            style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 14, padding: '0 36px' }}>
-            <div style={{
-              width: 5, height: 5, borderRadius: '50%', background: '#6b7fff',
-              animation: 'blink 1.2s ease infinite', boxShadow: '0 0 8px #6b7fff', flexShrink: 0,
-            }} />
-            <span style={{ fontFamily: LEX, fontSize: 9, fontWeight: 700, color: '#484878', letterSpacing: '0.14em', textTransform: 'uppercase' }}>
-              ANALYZING MATERIAL CONFIGURATION...
-            </span>
-          </motion.div>
-        )}
-
-        {/* ── Feedback state ── */}
-        {(aiState === 'done' || aiState === 'error') && (
-          <motion.div key="feedback"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}
-            style={{ flex: 1, padding: '24px 36px', borderLeft: '3px solid rgba(107,127,255,0.35)' }}>
-            <div style={{
-              fontFamily: LEX, fontSize: 8, fontWeight: 700, color: '#6b7fff',
-              letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 14,
-            }}>
-              材料档案 · {satellite?.name ?? '卫星'}
-            </div>
-            <p style={{ fontFamily: ZH, fontSize: 13, color: 'rgba(232,232,248,0.80)', lineHeight: 2.0, margin: 0 }}>
-              {aiState === 'done' ? feedback : '材料分析服务暂时不可用，材料组合已记录。'}
-            </p>
-          </motion.div>
-        )}
-
-        {/* ── Action row ── */}
-        <div style={{
-          borderTop: '1px solid #1a1a35', padding: '14px 36px',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-            {PARTS.map(p => (
-              <div key={p.id} style={{
-                width: 6, height: 6, borderRadius: '50%',
-                background: materials[p.id] ? PART_ACCENT[p.id] : 'rgba(255,255,255,0.08)',
-                boxShadow: materials[p.id] ? `0 0 6px ${PART_ACCENT[p.id]}` : 'none',
-                transition: 'all 0.3s',
-              }} />
-            ))}
-            <span style={{ fontFamily: LEX, fontSize: 8, color: '#484878', letterSpacing: '0.10em', textTransform: 'uppercase', marginLeft: 4 }}>
-              {selectedCount} / 4
-            </span>
-          </div>
-
-          {aiState === 'idle' && (
-            <div onClick={allDone ? handleGenerateFeedback : undefined}
-              style={{
-                fontFamily: LEX, fontSize: 9, fontWeight: 600,
-                letterSpacing: '0.12em', textTransform: 'uppercase',
-                padding: '10px 20px', cursor: allDone ? 'pointer' : 'not-allowed',
-                border: `1px solid ${allDone ? 'rgba(107,127,255,0.45)' : 'rgba(255,255,255,0.06)'}`,
-                color: allDone ? '#6b7fff' : '#2a2a4a', transition: 'all 0.25s',
-              }}>
-              {allDone ? '生成材料分析 →' : `还需 ${4 - selectedCount} 个`}
-            </div>
-          )}
-
-          {(aiState === 'done' || aiState === 'error') && (
+          return (
             <motion.div
-              initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.4, delay: 0.3 }}
-              onClick={onComplete}
+              key={activePart.id + '-' + opt.id}
+              animate={{ flex: isHov ? 3.0 : hov !== null ? 0.7 : 1 }}
+              transition={{ duration: 0.62, ease: [0.16, 1, 0.3, 1] }}
+              onMouseEnter={() => setHov(i)}
+              onMouseLeave={() => setHov(null)}
+              onClick={() => {
+                setMaterialPart(activePart.id, opt.id)
+                if (partIdx < PARTS.length - 1) setTimeout(() => goToPart(partIdx + 1), 480)
+              }}
               style={{
-                fontFamily: LEX, fontSize: 9, fontWeight: 600,
-                letterSpacing: '0.12em', textTransform: 'uppercase',
-                padding: '10px 20px', cursor: 'pointer',
-                border: '1px solid rgba(107,127,255,0.45)',
-                color: '#6b7fff', transition: 'all 0.2s',
+                position: 'relative', overflow: 'hidden', cursor: 'pointer',
+                borderRight: i < activePart.options.length - 1 ? '1px solid rgba(107,127,255,0.07)' : 'none',
+              }}
+            >
+              {/* Background gradient */}
+              <motion.div
+                animate={{ scale: isActive ? 1.05 : 1 }}
+                transition={{ duration: 0.62, ease: [0.16, 1, 0.3, 1] }}
+                style={{ position: 'absolute', inset: 0, background: gradients[i] ?? '#04040f' }}
+              />
+
+              {/* Dark vignette overlay */}
+              <div style={{
+                position: 'absolute', inset: 0,
+                background: 'linear-gradient(to top, rgba(2,3,14,0.97) 0%, rgba(2,3,14,0.40) 55%, rgba(2,3,14,0.12) 100%)',
+              }} />
+
+              {/* Selected top glow */}
+              {isSel && (
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  background: `linear-gradient(to bottom, ${accent}1a 0%, transparent 45%)`,
+                  pointerEvents: 'none',
+                }} />
+              )}
+
+              {/* Top-left label */}
+              <div style={{
+                position: 'absolute', top: 46, left: 16,
+                fontFamily: MONO, fontSize: 7.5, fontWeight: 700,
+                color: isActive ? accent : 'rgba(107,127,255,0.25)',
+                letterSpacing: '0.14em', textTransform: 'uppercase',
+                transition: 'color 0.4s',
               }}>
-              进入下一章 →
+                {String(i + 1).padStart(2, '0')} · {opt.en.split(' ')[0]}
+              </div>
+
+              {/* Top-right risk */}
+              <div style={{ position: 'absolute', top: 46, right: 14, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <div style={{
+                  width: 4, height: 4, borderRadius: '50%',
+                  background: isActive ? riskColor : 'rgba(107,127,255,0.18)',
+                  boxShadow: isActive ? `0 0 7px ${riskColor}` : 'none',
+                  transition: 'background 0.4s, box-shadow 0.4s',
+                }} />
+                <span style={{
+                  fontFamily: MONO, fontSize: 7, letterSpacing: '0.09em', textTransform: 'uppercase',
+                  color: isActive ? riskColor : 'rgba(107,127,255,0.15)',
+                  transition: 'color 0.4s',
+                }}>
+                  {RISK_LABEL[opt.risk]}
+                </span>
+              </div>
+
+              {/* Ghost number */}
+              <div style={{
+                position: 'absolute', top: '50%', left: '50%',
+                transform: 'translate(-50%, -60%)',
+                fontFamily: MONO, fontWeight: 700,
+                fontSize: 'clamp(64px, 10vw, 120px)',
+                color: isActive ? `${accent}08` : 'rgba(107,127,255,0.02)',
+                userSelect: 'none', pointerEvents: 'none',
+                lineHeight: 1, letterSpacing: '-0.04em',
+                transition: 'color 0.5s',
+              }}>
+                {String(i + 1).padStart(2, '0')}
+              </div>
+
+              {/* Center content (on hover) */}
+              <motion.div
+                animate={{ opacity: isHov ? 1 : 0, y: isHov ? 0 : 14 }}
+                transition={{ duration: 0.38, ease: [0.16, 1, 0.3, 1] }}
+                style={{
+                  position: 'absolute', top: '36%', left: 16, right: 16,
+                  textAlign: 'center', pointerEvents: 'none',
+                }}
+              >
+                <div style={{ fontFamily: MONO, fontSize: 6.5, color: `${accent}55`, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 8 }}>
+                  RE-ENTRY PROFILE
+                </div>
+                <div style={{ fontFamily: ZH, fontSize: 'clamp(12px, 1.2vw, 15px)', color: 'rgba(232,232,248,0.68)', lineHeight: 1.85 }}>
+                  {opt.shortFeature}
+                </div>
+              </motion.div>
+
+              {/* Bottom: EN code + material name */}
+              <div style={{ position: 'absolute', bottom: 52, left: 16, right: 12 }}>
+                <motion.div
+                  animate={{ opacity: isActive ? 1 : 0, y: isActive ? 0 : 10 }}
+                  transition={{ duration: 0.35 }}
+                  style={{ fontFamily: MONO, fontSize: 6.5, letterSpacing: '0.09em', textTransform: 'uppercase', color: `${accent}55`, marginBottom: 7 }}
+                >
+                  {opt.en}
+                </motion.div>
+                <div style={{
+                  fontFamily: ZH, fontWeight: 700,
+                  fontSize: isActive ? 'clamp(18px, 2vw, 26px)' : 'clamp(13px, 1.3vw, 18px)',
+                  color: isSel ? accent : '#e8e8f8',
+                  lineHeight: 1.1, transition: 'font-size 0.4s, color 0.3s',
+                }}>
+                  {isSel ? '✦ ' : ''}{opt.label}
+                </div>
+              </div>
+
+              {/* Selected bottom bar */}
+              {isSel && (
+                <div style={{
+                  position: 'absolute', bottom: 0, left: 0, right: 0, height: 2,
+                  background: `linear-gradient(to right, transparent, ${accent}, transparent)`,
+                }} />
+              )}
+            </motion.div>
+          )
+        })}
+
+        </div>{/* end accordion */}
+
+        {/* ── CTA button — sits in flow below accordion, no overlap ever ── */}
+        <AnimatePresence>
+          {allDone && aiState === 'idle' && (
+            <motion.div
+              key="gen-cta"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 64 }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+              onClick={handleGenerateFeedback}
+              whileHover={{ background: 'rgba(107,127,255,0.18)' }}
+              style={{
+                flexShrink: 0, overflow: 'hidden',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 18,
+                borderTop: '1px solid rgba(107,127,255,0.28)',
+                background: 'rgba(107,127,255,0.10)',
+                cursor: 'pointer',
+              }}
+            >
+              <span style={{
+                fontFamily: MONO, fontSize: 12, fontWeight: 700,
+                color: '#c8ccff', letterSpacing: '0.22em', textTransform: 'uppercase',
+              }}>
+                GENERATE ANALYSIS
+              </span>
+              <motion.span
+                animate={{ x: [0, 5, 0] }}
+                transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+                style={{ fontFamily: MONO, fontSize: 18, color: '#6b7fff', lineHeight: 1 }}
+              >
+                →
+              </motion.span>
             </motion.div>
           )}
-        </div>
+        </AnimatePresence>
+
+        {/* AI overlay */}
+        {aiState !== 'idle' && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            transition={{ duration: 0.45 }}
+            style={{
+              position: 'absolute', inset: 0, zIndex: 50,
+              background: 'rgba(2,3,14,0.94)', backdropFilter: 'blur(20px)',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              padding: '40px 32px',
+            }}
+          >
+            {aiState === 'loading' && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+                <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#6b7fff', animation: 'blink 1.2s ease infinite', boxShadow: '0 0 10px #6b7fff' }} />
+                <span style={{ fontFamily: MONO, fontSize: 8, color: 'rgba(107,127,255,0.55)', letterSpacing: '0.18em', textTransform: 'uppercase' }}>
+                  ANALYZING RE-ENTRY PROFILE...
+                </span>
+              </div>
+            )}
+
+            {(aiState === 'done' || aiState === 'error') && (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} style={{ width: '100%' }}>
+                <div style={{ display: 'flex', gap: 0, marginBottom: 24, paddingBottom: 16, borderBottom: '1px solid rgba(107,127,255,0.08)' }}>
+                  {PARTS.map((p, pi) => {
+                    const sel = p.options.find(o => o.id === safeMatls[p.id])
+                    if (!sel) return null
+                    return (
+                      <div key={p.id} style={{ flex: 1, paddingRight: 14, paddingLeft: pi > 0 ? 14 : 0, borderRight: pi < PARTS.length - 1 ? '1px solid rgba(107,127,255,0.07)' : 'none' }}>
+                        <div style={{ fontFamily: MONO, fontSize: 6, color: 'rgba(107,127,255,0.28)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 5 }}>
+                          {p.labelEn}
+                        </div>
+                        <div style={{ fontFamily: ZH, fontSize: 11, fontWeight: 700, color: PART_ACCENT[p.id] }}>
+                          {sel.label}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+                <p style={{ fontFamily: ZH, fontSize: 12, color: 'rgba(232,232,248,0.68)', lineHeight: 2.0, margin: '0 0 24px', borderLeft: '2px solid rgba(107,127,255,0.2)', paddingLeft: 14 }}>
+                  {aiState === 'done' ? feedback : '材料分析服务暂时不可用，材料组合已记录。'}
+                </p>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <motion.div
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}
+                    onClick={onComplete}
+                    onMouseEnter={e => { e.currentTarget.style.background='rgba(107,127,255,0.14)'; e.currentTarget.style.borderColor='rgba(107,127,255,0.7)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background='rgba(107,127,255,0.06)'; e.currentTarget.style.borderColor='rgba(107,127,255,0.40)' }}
+                    style={{
+                      fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase',
+                      padding: '10px 22px', cursor: 'pointer',
+                      border: '1px solid rgba(107,127,255,0.40)', color: '#6b7fff',
+                      background: 'rgba(107,127,255,0.06)', transition: 'background 0.2s, border-color 0.2s',
+                    }}
+                  >
+                    NEXT CHAPTER →
+                  </motion.div>
+                </div>
+              </motion.div>
+            )}
+          </motion.div>
+        )}
       </div>
     </div>
   )
@@ -1701,18 +1987,13 @@ export default function M1({ onComplete }) {
   const storyOutline     = useAppStore(s => s.storyOutline)
   const materials        = useAppStore(s => s.materials)
   const setMaterialPart  = useAppStore(s => s.setMaterialPart)
-  const setScrollLocked  = useAppStore(s => s.setScrollLocked)
 
-  const [completed, setCompleted] = useState(false)
+  const [released,  setReleased]  = useState(false)
   const [sceneIdx,  setSceneIdx]  = useState(0)
   const [direction, setDirection] = useState(1)
   const containerRef = useRef()
   const TOTAL = 6
 
-  useEffect(() => {
-    setScrollLocked(true)
-    return () => setScrollLocked(false)
-  }, [setScrollLocked])
 
   /* Mouse tracking */
   const rawX    = useMotionValue(0)
@@ -1748,7 +2029,9 @@ export default function M1({ onComplete }) {
     const el = containerRef.current
     const lastWheel = { t: 0 }
     const onWheel = e => {
+      if (released) return
       if (sceneIdx === 5 && e.target.closest('[data-scroll-zone]')) return
+      if (sceneIdx === 0 && e.deltaY < 0 && e.deltaX === 0) return
       e.preventDefault()
       const now = Date.now()
       if (now - lastWheel.t < 1100) return
@@ -1766,11 +2049,10 @@ export default function M1({ onComplete }) {
       el?.removeEventListener('wheel', onWheel)
       window.removeEventListener('keydown', onKey)
     }
-  }, [sceneIdx, goTo])
+  }, [sceneIdx, goTo, released])
 
   function handleComplete() {
-    setScrollLocked(false)
-    setCompleted(true)
+    setReleased(true)
     onComplete()
   }
 
@@ -1793,22 +2075,27 @@ export default function M1({ onComplete }) {
     }
   }
 
-  if (completed) return null
-
   return (
     <div ref={containerRef} style={{
-      position: 'fixed', inset: 0, zIndex: 100,
+      height: '100vh', position: 'relative',
       overflow: 'hidden', cursor: 'none', background: '#04040f',
     }}>
 
-      {/* Persistent Earth backdrop — full on scenes 0+1, fades from scene 2 */}
-      <motion.div
-        animate={{ opacity: sceneIdx <= 1 ? 1 : 0 }}
-        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-        style={{ position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none' }}
-      >
-        <DebrisEarth showAnnotations={sceneIdx === 1} />
-      </motion.div>
+      {/* Persistent Earth backdrop — unmount when not visible to free the WebGL context */}
+      <AnimatePresence>
+        {sceneIdx <= 1 && (
+          <motion.div
+            key="earth-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+            style={{ position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none' }}
+          >
+            <DebrisEarth showAnnotations={sceneIdx === 1} />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence mode="wait" custom={direction}>
         <motion.div
