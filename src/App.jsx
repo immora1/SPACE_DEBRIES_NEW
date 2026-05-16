@@ -144,8 +144,8 @@ function OptionalModuleCard({ Component, isVisible }) {
 // ── 模块顺序 + 衔接句 ───────────────────────────────────────────────────────
 const MODULES = [
   { id: 'entrance', Component: Entrance, connector: null },
-  { id: 'm1',       Component: M1,       connector: null },
-  { id: 'm2',       Component: M2,       connector: '旅行总有终点，那些留下来的，我们总是忘了还有机会。' },
+  { id: 'm1',       Component: M1,       connector: null, archDivider: '#04040f' },
+  { id: 'm2',       Component: M2,       connector: null, archDivider: { color: '#04040f', flip: true } },
   { id: 'm3',       Component: M3,       connector: '不是没有人做过这个决定，是做了这个决定的人，已经不在了。' },
   { id: 'm4',       Component: M4,       connector: null },
   { id: 'm5',       Component: M5,       connector: '旅行结束了，那些留下来的，我们总是忘了还有机会处理。' },
@@ -200,11 +200,12 @@ export default function App() {
     <div style={{ minHeight: '100vh' }}>
       <ProgressBar completed={completedModules.length} total={MODULES.length} />
 
-      {MODULES.map(({ id, Component, connector }) => (
+      {MODULES.map(({ id, Component, connector, archDivider }) => (
         <Suspense key={id} fallback={<ModuleLoader />}>
           <ModuleWrapper
             isUnlocked={unlockedModules.includes(id)}
             connector={connector}
+            archDivider={archDivider}
             noAnimation={id === 'm1'}
             ref={(el) => { moduleRefs.current[id] = el }}
           >
