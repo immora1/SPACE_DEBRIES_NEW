@@ -184,14 +184,17 @@ export default function App() {
   }, [completedModules, unlockedModules, unlockModule])
 
   // 滚动逻辑只在用户主动完成模块时触发，避免刷新时 persist 加载触发误滚
-  function handleComplete(currentId) {
+  function handleComplete(currentId, options = {}) {
     markModuleComplete(currentId)
     const idx = MODULES.findIndex((m) => m.id === currentId)
     if (idx !== -1 && idx < MODULES.length - 1) {
       const nextId = MODULES[idx + 1].id
       unlockModule(nextId)
+      if (options.autoScroll === false) return
       setTimeout(() => {
-        moduleRefs.current[nextId]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        const nextEl = moduleRefs.current[nextId]
+        const scrollTarget = nextEl?.querySelector?.('[data-module-scroll-target]') ?? nextEl
+        scrollTarget?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       }, 150)
     }
   }
@@ -207,9 +210,10 @@ export default function App() {
             connector={connector}
             archDivider={archDivider}
             noAnimation={id === 'm1'}
+            mouseReactive={id === 'entrance' || id === 'm1' || id === 'm2'}
             ref={(el) => { moduleRefs.current[id] = el }}
           >
-            <Component onComplete={() => handleComplete(id)} />
+            <Component onComplete={(options) => handleComplete(id, options)} />
           </ModuleWrapper>
         </Suspense>
       ))}

@@ -2000,6 +2000,7 @@ export default function M1({ onComplete }) {
   const isInViewRef    = useRef(false)
   const sceneIdxRef    = useRef(0)
   const releasedRef    = useRef(false)
+  const releaseToNextRef = useRef(null)
   const m1CompletedRef = useRef(completedModules.includes('m1'))
 
   useEffect(() => { sceneIdxRef.current = sceneIdx }, [sceneIdx])
@@ -2119,6 +2120,11 @@ export default function M1({ onComplete }) {
       })
     }
 
+    releaseToNextRef.current = () => {
+      const elTop = getAbsTop()
+      unlockFromM1(elTop + (containerRef.current?.offsetHeight ?? window.innerHeight))
+    }
+
     // scroll 兜底：极速滑动导致 wheel 漏网时，scroll 事件仍能 snap 回 M1
     const onScroll = () => {
       if (locked || unlocking) return
@@ -2128,8 +2134,8 @@ export default function M1({ onComplete }) {
       const currentScrollY = window.scrollY
       const scrollDir = currentScrollY >= prevScrollY ? 'down' : 'up'
       prevScrollY = currentScrollY
-      // M1 在视口内（底部 > 0 确保 M1 仍有像素在屏幕上，防止在 M2 时误触发）
-      if (rect.top < window.innerHeight && rect.bottom > 0) {
+      const closeEnoughToSnap = rect.top <= 96 && rect.bottom >= window.innerHeight * 0.55
+      if (closeEnoughToSnap) {
         lockToM1(scrollDir)
       }
     }
@@ -2215,13 +2221,16 @@ export default function M1({ onComplete }) {
       window.removeEventListener('scroll',  onScroll)
       window.removeEventListener('wheel',   onWheel)
       window.removeEventListener('keydown', onKey)
+      releaseToNextRef.current = null
       document.body.style.overflow = ''
     }
   }, [])
 
   function handleComplete() {
     setReleased(true)
-    onComplete()
+    releasedRef.current = true
+    onComplete({ autoScroll: false })
+    requestAnimationFrame(() => releaseToNextRef.current?.())
   }
 
   const renderScene = () => {
@@ -2244,7 +2253,7 @@ export default function M1({ onComplete }) {
   }
 
   return (
-    <div ref={containerRef} style={{
+    <div ref={containerRef} data-module-scroll-target style={{
       height: '100vh', position: 'relative',
       overflow: 'hidden', cursor: 'none', background: '#04040f',
     }}>
