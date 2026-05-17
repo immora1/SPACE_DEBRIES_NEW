@@ -307,4 +307,131 @@ functions/
 
 ---
 
-*最后更新：2026-05-04*
+---
+
+## P011 · M1 滚动拦截失效：用户可直接从 Entrance 滑过 M1 到达 M2
+
+**类型：** 交互 / 事件系统  
+**发现时间：** 2026-05-17  
+**严重程度：** 高（核心交互破损，M1 强制材料选择形同虚设）
+
+### 问题描述
+
+M1 设计为"沉浸式场景墙"——用户滚动到 M1 时页面必须锁定，只能横向切换 6 个场景，完成材料选择后才能继续向下滚动到 M2。实际测试中，用户可以直接从 Entrance 快速下滑，完全绕过 M1 到达 M2。
+
+---
+
+### 第一版方案（失败）：IntersectionObserver + wheel listener on container
+
+```js
+// 失败写法
+useEffect(() => {
+  const observer = new IntersectionObserver(entries => {
+    const entry = entries[0]
+    if (entry.isIntersecting) {
+      setIsInView(true)
+      document.body.style.overflow = 'hidden'
+    }
+  }, { threshold: 0.5 })
+  observer.observe(containerRef.current)
+  containerRef.current.addEventListener('wheel', onWheel)
+}, [])
+```
+
+**失败原因：**
+
+1. **IntersectionObserver 是异步的。** 回调在浏览器空闲时才触发，不在事件循环的同步路径上。用户快速滑动时，M1 已经进入并离开视口，回调还没触发，`isInView` 永远是 false。
+2. **wheel listener 挂在 container 上，而非 window。** 当 M1 不在视口内时，用户的滚动事件压根不会冒泡到 M1 的 container，监听没有任何意义。
+3. **`threshold: 0.5` 太高。** 需要 M1 有 50% 进入视口才触发，对快速滑动无效。
+
+---
+
+### 第二版方案（失败）：同步 getBoundingClientRect + window 级 wheel listener
+
+```js
+// 失败写法
+const onWheel = e => {
+  const rect = el.getBoundingClientRect()
+  if (!locked && rect.top < window.innerHeight && rect.bottom > 0) {
+    e.preventDefault()
+    locked = true
+    window.scrollTo({ top: el.offsetTop, behavior: 'instant' })
+    document.body.style.overflow = 'hidden'
+  }
+  if (locked) e.preventDefault()
+}
+window.addEventListener('wheel', onWheel, { passive: false })
+```
+
+**失败原因：**
+
+单靠"M1 已进入视口"检测太晚。trackpad 动量滑动时，单次 wheel 事件的 `deltaY` 可高达 200–400px，完全可以在一次事件内从"M1 在视口下方 300px"跳到"M1 已在视口上方"，中间没有任何一次事件触发"M1 在视口内"的判断，锁定永远不会发生。
+
+此外：
+- `window.scrollTo({ behavior: 'instant' })` 在部分浏览器兼容性问题，导致 snap 不生效
+- `el.offsetTop` 取值依赖 offsetParent 链，如果有非 static 祖先则偏差
+
+---
+
+### 第三版方案（成功）：双重防御 — 提前锁 + scroll 事件兜底
+
+**核心思路：** 不等 M1 "已进入视口"才锁，而是当本次 wheel 事件的 delta **足以让 M1 进入视口**时就提前锁定；同时用 `scroll` 事件作为兜底，极端情况下 snap 回来。
+
+```js
+// wheel 事件：提前锁定
+const approaching = delta > 0
+  && rect.top > 0
+  && rect.top < window.innerHeight + absDelta + 200  // M1 将在本次 delta 后进入视口
+
+if (approaching || inView) {
+  e.preventDefault()   // 阻止本次 delta 被应用
+  lockToM1()           // 锁定 + snap to M1 top
+}
+
+// scroll 事件兜底：极速滑动漏网时
+const onScroll = () => {
+  if (locked || unlocking || m1CompletedRef.current) return
+  const rect = el.getBoundingClientRect()
+  // M1 在视口内，或刚被滑过（底部距视口不超过半屏）
+  if (rect.top < window.innerHeight && rect.bottom > -window.innerHeight * 0.5) {
+    lockToM1()  // snap 回 M1
+  }
+}
+window.addEventListener('scroll', onScroll, { passive: true })
+```
+
+**关键改进点对比：**
+
+| 问题 | 旧方案 | 新方案 |
+|------|--------|--------|
+| 检测时机 | M1 已进入视口才锁（太晚） | M1 将要进入视口就锁（提前） |
+| 极速滑动 | 无兜底，直接漏过 | scroll 事件补救 snap |
+| 滚动位置计算 | `el.offsetTop`（可能偏差） | `getBoundingClientRect().top + window.scrollY`（精确） |
+| 滚动 API | `scrollTo({ behavior: 'instant' })`（兼容性风险） | `window.scrollTo(0, top)`（全浏览器兼容） |
+| 解锁后重锁 | 无保护，scroll 兜底可能立刻重锁 | `unlocking` flag + 700ms 冷却期 |
+| 已完成 M1 刷新 | 重新进入 M1 会被锁 | `m1CompletedRef`（从 store 初始化）跳过锁定 |
+
+**解锁逻辑（精确位置计算）：**
+```js
+// 向上滚动（Scene 0）→ 回到 Entrance
+unlockFromM1(getAbsTop() - window.innerHeight)
+
+// 向下滚动（Scene 5，材料完成）→ 进入 M2
+unlockFromM1(getAbsTop() + containerRef.current.offsetHeight)
+```
+
+**防重复锁定：**
+```js
+// 初始化时从 store 读取完成状态
+const m1CompletedRef = useRef(completedModules.includes('m1'))
+// 实时同步
+useEffect(() => { m1CompletedRef.current = completedModules.includes('m1') }, [completedModules])
+```
+
+### 根本教训
+
+> **浏览器滚动拦截的核心规则：** `passive: false` 的 wheel listener + `e.preventDefault()` 是唯一能同步阻断滚动的手段。IntersectionObserver 是异步的，永远不能用于"需要在滚动发生前拦截"的场景。检测时机必须"提前"，而非"已经发生后补救"。
+
+---
+
+*最后更新：2026-05-17*

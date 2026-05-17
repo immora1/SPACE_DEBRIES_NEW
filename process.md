@@ -281,7 +281,49 @@ SPACE_DEBRIES_NEW/
 
 ---
 
-## 九、关键规则备忘
+## 九、M1 完整范式重设计（场景式沉浸体验）
+
+**完成时间：** 2026-05-17
+
+### 改动背景
+
+原 M1 采用居中列式卡片布局，用户反馈体验单调，缺乏沉浸感。参考 pieterkoopt.nl 和 terminal-industries.com 风格，彻底重建为全视口场景系统。
+
+### 架构变更
+
+**`src/modules/M1/index.jsx` — 完整重写**
+
+- 根容器：`height: 100vh, overflow: hidden`，6 个场景绝对定位叠加
+- 场景切换：`AnimatePresence mode="wait"` + 自定义 `x/blur` 过渡变体
+- 全局鼠标系统：`useMotionValue` + `useSpring` 分离 raw（光标点）和 smooth（悬停环/视差）
+- 自定义光标：6px 白点 + 32px accent 圆环，`position: fixed, pointerEvents: none`
+- 底部场景导航：6 个横线指示器，当前场景展开为 28px 发光段
+
+**6 个场景内容**
+
+| 场景 | 内容 | 交互 |
+|------|------|------|
+| 0 HERO | 全屏文字散布 + 幽灵"28000"视差 | 纯欣赏 |
+| 1 SCALE | 三个碎片层级组 + 接近光标时显示描述 | 接近触发 |
+| 2 SOURCES | 全视口横向手风琴（来源图片组） | 悬停展开 |
+| 3 COUNTRIES | 多国贡献圆环图 + 悬停列表 | 悬停高亮 |
+| 4 TREND | SVG 粒子时间轴（1957→2026） | 横向鼠标刮擦 |
+| 5 MATERIAL | 3D 卫星GLB + 右侧手风琴选材 | 点击选择 + AI反馈 |
+
+**`src/components/ModuleWrapper.jsx` — ArchDivider 梯形分隔器**
+
+- 两个独立方向的 SVG 梯形路径：
+  - Entrance→M1：`M200,0 H1240 L1440,80 H0 Z`（窄上宽下）
+  - M1→M2：`M0,0 H1440 L1200,80 H240 Z`（宽上窄下）
+- `flip` prop 控制方向，支持 `archDivider: { color, flip }` 对象格式
+
+### M1 滚动拦截系统（历经两版迭代）
+
+详见 problem.md P011。
+
+---
+
+## 十一、关键规则备忘
 
 1. **修改任何文件后必须验证三条 API**（health / test-gpt / satellite），任意失败立即 `git restore`
 2. **Functions 中禁止用 node-fetch / proxiedFetch**，CF Workers 直接用原生 `fetch`

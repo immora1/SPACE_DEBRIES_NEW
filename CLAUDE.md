@@ -6,6 +6,11 @@
 
 ## 0. 最重要规则
 
+### 回答语言
+所有回复统一使用中文。
+
+
+
 ### 每次改文件后必须验证 API
 
 ```bash
@@ -288,10 +293,229 @@ preTest/postTest  前后测得分与提升幅度
 
 ---
 
-## 9. 开发优先级
+## 9. UI 风格与交互规范
+
+> 本节描述全站已建立的视觉语言和交互模式。新模块必须与这套体系保持一致，不要引入风格冲突的组件。
+
+### 9.1 色彩系统
+
+全站采用深空蓝紫配色，在 `src/index.css` 的 `@theme` 中定义，直接用变量名引用。
+
+| Token | 值 | 用途 |
+|---|---|---|
+| `--color-void` | `#04040f` | 页面背景（最深） |
+| `--color-surface` | `#08081a` | 卡片/面板背景 |
+| `--color-border` | `#1a1a35` | 默认边框 |
+| `--color-muted` | `#484878` | 次级文字、标签 |
+| `--color-paper` | `#e8e8f8` | 主文字 |
+| `--color-accent` | `#6b7fff` | 蓝紫强调色（主） |
+| `--color-accent2` | `#8b6cf8` | 紫色强调（副） |
+| `--color-success` | `#34d399` | 成功/低风险 |
+| `--color-danger` | `#f87171` | 危险/高风险 |
+| `--color-teal` | `#22d3ee` | 特殊高亮 |
+
+背景用 `radial-gradient` 叠加制造深空星云感，`background-attachment: fixed` 使背景跟随全站固定。
+
+---
+
+### 9.2 字体排版
+
+全站四套字体，各司其职，**不得混用**：
+
+| 字体 | CSS 变量 | 典型 fontSize | 用途 |
+|---|---|---|---|
+| `Space Mono` | `--font-mono` | 7–13px | 数据值、NORAD ID、单位、标签徽章 |
+| `Noto Serif SC` | `--font-serif` | 14–22px | 故事文字、模块标题、引言 |
+| `Noto Sans SC` | `--font-sans` | 11–15px | 正文、描述、提示 |
+| `Lexend` | `--font-lexend` | 7–10px | 章节标签（`01 · SCALE`）、UI 按钮、英文说明 |
+
+**字号规律：**
+- 微型标签（章节标号/徽章）：`7–9px, letterSpacing: 0.12–0.18em, textTransform: uppercase`
+- 正文描述：`11–13px, lineHeight: 1.75–2.0`
+- 模块标题：`clamp(22px, 2.8vw, 34px)`（响应式）
+- 幽灵装饰数字：`clamp(90px, 16vw, 180px)`，`color: rgba(107,127,255,0.03–0.05)`，`userSelect: none`
+
+---
+
+### 9.3 标准动画参数
+
+**统一 easing（全站）：** `[0.16, 1, 0.3, 1]` — 快速加速、缓慢到达，类 spring 感。
+
+```js
+const EASE = [0.16, 1, 0.3, 1]
+// 使用方式
+transition={{ duration: 0.65, ease: EASE }}
+```
+
+**标准 fadeUp 入场：**
+```js
+initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+transition={{ duration: 0.65, ease: EASE }}
+// 多元素错开用 delay: 0.1 * index
+```
+
+**场景切换（M1）：** `AnimatePresence mode="wait"` + blur/x 偏移
+```js
+enter:  (dir) => ({ x: dir * 80, opacity: 0, filter: 'blur(6px)' }),
+show:   { x: 0, opacity: 1, filter: 'blur(0px)', transition: { duration: 0.75 } },
+leave:  (dir) => ({ x: -dir * 80, opacity: 0, filter: 'blur(6px)', transition: { duration: 0.5 } }),
+```
+
+**性能敏感的 hover 动画** 用 CSS transition 而非 Framer Motion（避免 JS 线程占用）：
+```js
+// 不好：Framer Motion animate on hover（高频触发）
+// 好：
+style={{ transition: 'opacity 0.35s ease, transform 0.35s ease' }}
+onMouseEnter={e => { e.currentTarget.style.opacity = '1' }}
+```
+
+---
+
+### 9.4 复用组件类（`src/index.css`）
+
+使用时直接加 className，不重写样式：
+
+| 类名 | 效果 |
+|---|---|
+| `.glass-card` | 半透明玻璃卡：`rgba(8,8,26,0.72)` + `border: 1px solid #1a1a35` + `backdrop-filter: blur(14px)`，hover 时边框变 accent |
+| `.btn-primary` | Space Mono，小号 uppercase，accent 色边框，透明背景，hover 浅 accent 填充 |
+| `.input-line` | 透明背景，仅底部边框，focus 变 accent 色 |
+| `.textarea-box` | 玻璃背景，完整边框，focus 变 accent 色 |
+| `.mono-label` | `Space Mono, 10px, uppercase, #484878` |
+| `.section-tag` | 同 mono-label + 底部 `1px solid #1a1a35` 分割线 |
+| `.gradient-line` | `1px` 渐变分割线（两端透明，中间 accent） |
+| `.story-text` | `Noto Serif SC, 15px, lineHeight 1.9, rgba(232,232,248,0.82)` |
+| `.text-accent-glow` | accent 色 + `text-shadow glow` |
+
+---
+
+### 9.5 交互效果清单
+
+#### 自定义光标（M1 专属）
+M1 内 `cursor: none`，用两个 `position: fixed` div 替代：
+- **白点（6px）**：跟随原始鼠标坐标（`useMotionValue`，无延迟）
+- **圆环（32px）**：跟随弹簧平滑坐标（`useSpring { stiffness: 80, damping: 22 }`，有惯性拖尾）
+
+#### 场景导航点
+6 个横线状按钮（`height: 2px`），当前场景 `animate.width: 28px + background: #6b7fff`，其余 `width: 6px + background: rgba(107,127,255,0.3)`，`transition: 0.3s`。
+
+#### 鼠标视差（M1 Scene 0 幽灵文字）
+```js
+// normX/normY: useTransform(rawX, [0, window.innerWidth], [-1, 1])
+const ghostX = useTransform(normX, [-1, 1], ['-50px', '50px'])
+```
+鼠标从左到右，幽灵数字横移 ±50px，纵移 ±28px。
+
+#### 接近触发（M1 Scene 1 碎片层级）
+碎片描述文字默认不可见，鼠标进入距离 240px 范围内渐入：
+```js
+const unsubX = rawX.on('change', () => {
+  const dist = Math.sqrt((rawX.get()-cx)**2 + (rawY.get()-cy)**2)
+  setNear(dist < 240)
+})
+```
+
+#### 横向手风琴（M1 Scene 2 来源 / Scene 5 材料）
+Flex 容器内子项切换 `flex` 值（`1 → 3`，其余 `0.7`），CSS `transition: flex 0.55s cubic-bezier(0.16,1,0.3,1)` 驱动，无 JS 计算宽度。悬停面板图片 `brightness` 变化，描述文字从 `opacity:0, translateY(12px)` 渐入。
+
+#### Canvas 粒子动画（M1 Scene 4 时间轴）
+`requestAnimationFrame` 循环，在 canvas 上手绘卫星轨迹：
+- 卫星以随机方向飞行，带渐变尾迹（LinearGradient）
+- 边缘 90px 淡出（`fadeEdge` alpha 计算）
+- 离屏后尾迹以 0.38/s 速率衰减（约 2.6s 消失）
+
+#### 鼠标刮擦时间轴（M1 Scene 4）
+`onMouseMove` 计算光标在 scene 内的相对 X 百分比，映射到年份（1960→2026），更新 canvas 动画的 `yearRef`，状态限流（66ms 间隔）更新显示数字。
+
+#### 视差圆环形图（M1 Scene 3 各国）
+纯 SVG 圆弧（`arc` path 手算），悬停行时用 `ref.style.boxShadow` + `ref.style.background` 直接操作 DOM（无 React 重渲）。
+
+#### 加载动画（Entrance）
+三个同心圆 `border-radius: 50%`，用 CSS `animation: ping 1.5s ease-out infinite`，各错开 `0.3s` delay，形成向外扩散的雷达波效果。
+
+#### 顶部进度条
+`position: fixed, top: 0, height: 2px`，宽度 `(completed/total)*100%`，渐变色 `#4e5df0 → #8b6cf8`，`box-shadow: 0 0 8px rgba(107,127,255,0.6)` 发光。
+
+#### 梯形过渡分隔器（ArchDivider）
+两段独立 SVG，覆盖全宽，`preserveAspectRatio="none"` 保证斜线角度不变形：
+- Entrance→M1：`M200,0 H1240 L1440,80 H0 Z`（窄上宽下）
+- M1→M2：`M0,0 H1440 L1200,80 H240 Z`（宽上窄下）
+
+#### 模块间衔接句
+部分模块之间显示一行居中引言（Noto Serif SC，`rgba(232,232,248,0.32)`），上方有渐变分割线 + 小圆点装饰，在 `ModuleWrapper` 的 `connector` prop 中传入。
+
+---
+
+### 9.6 布局规则
+
+- **全视口模块**（M1）：`height: 100vh, overflow: hidden, position: relative`，内部元素全部 `position: absolute`
+- **流式模块**（M2、M3 等）：`minHeight: 100vh`，正常文档流，`padding: 40–80px`
+- **内容宽度上限**：`maxWidth: 1080px, margin: 0 auto`，两侧 `padding: 0 24px`
+- **双栏分割**：左 36% 文字 + 右 64% 可视化，或左 45% 3D + 右 55% 文字
+- **间距节奏**：组件内 `gap: 8/12/16px`，节之间 `margin: 24–48px`，模块间 `padding: 72px`
+
+---
+
+### 9.7 禁止事项
+
+- **不要用纯白背景、白色卡片**——破坏深空氛围
+- **不要用圆角 > 6px 的卡片**——整体风格为直角或极小圆角（2–4px）
+- **不要加 box-shadow 投影（非发光类）**——用 `border` 区分层次，发光用 `0 0 Xpx rgba(accent, opacity)`
+- **不要用彩色实心背景大块**——背景只允许深色半透明（`rgba(8,8,26,0.72)`）
+- **不要用系统默认字体做正文**——必须用上方四套字体之一
+- **不要随意加 `border-radius: 50%` 按钮**——按钮为矩形，带 accent 边框
+- **hover 状态变化幅度要克制**——颜色变化而非位移，不要 `scale(1.1)` 这类夸张效果
+
+---
+
+## 10. 开发优先级
 
 1. 先保证 API 可用，再做页面效果。
 2. 先保证状态流正确，再做动画和视觉。
 3. 先保证知识一致，再增加个性化故事。
 4. 新模块必须读写全局状态，不要做孤立页面。
 5. 旧网站和新网站知识点必须一致；新网站只增加 AI 个性化表达，不改变事实内容。
+
+---
+
+## 11. Karpathy 编码准则
+
+> 来源：https://github.com/multica-ai/andrej-karpathy-skills
+
+**权衡说明：** 这些准则偏向谨慎而非速度。对于简单任务，自行判断是否需要全部执行。
+
+### 先想清楚，再写代码
+
+**不要假设。不要隐藏困惑。主动暴露权衡。**
+
+- 明确陈述假设，不确定时先问清楚。
+- 存在多种解读时，列出来而非默默选一个。
+- 有更简单的方案时，说出来，必要时提出反对。
+- 有任何不清楚的地方，停下来说清楚哪里困惑，然后问。
+
+### 简洁优先
+
+**最少的代码解决问题，不做投机性扩展。**
+
+- 不实现任务以外的功能。
+- 单次使用的代码不做抽象。
+- 没有被要求的"灵活性"或"可配置性"不加。
+- 不为不可能发生的场景写错误处理。
+- 如果 200 行能用 50 行搞定，重写。
+
+### 外科手术式修改
+
+**只改必须改的，只清理自己制造的垃圾。**
+
+- 不顺手优化旁边的代码、注释或格式。
+- 不重构没有问题的东西，保持现有风格。
+- 发现不相关的死代码，提一句——不要直接删。
+- 因自己的修改产生的孤儿（未使用的 import/变量/函数）必须清理。
+
+### 目标驱动执行
+
+**定义可验证的成功标准，循环直到验证通过。**
+
+- "加校验" → "为非法输入写测试，然后让测试通过"
+- "修 bug" → "写出能复现 bug 的测试，然后让测试通过"
+- 多步骤任务先简述计划，每步附上验证方式。

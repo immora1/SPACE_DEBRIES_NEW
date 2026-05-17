@@ -211,6 +211,7 @@ export default function App() {
             archDivider={archDivider}
             noAnimation={id === 'm1'}
             mouseReactive={id === 'entrance' || id === 'm1' || id === 'm2'}
+            moduleId={id}
             ref={(el) => { moduleRefs.current[id] = el }}
           >
             <Component onComplete={(options) => handleComplete(id, options)} />
