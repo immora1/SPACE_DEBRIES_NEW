@@ -173,6 +173,34 @@ export default function App() {
     return () => { document.body.style.overflow = '' }
   }, [scrollLocked])
 
+  // 惯性滚动：wheel 停止后继续滑行一段距离
+  useEffect(() => {
+    let vel = 0
+    let raf = null
+
+    const step = () => {
+      if (Math.abs(vel) < 0.5) { vel = 0; raf = null; return }
+      window.scrollBy(0, vel)
+      vel *= 0.75
+      raf = requestAnimationFrame(step)
+    }
+
+    const onWheel = (e) => {
+      if (document.body.style.overflow === 'hidden') return
+      e.preventDefault()
+      const delta = e.deltaMode === 1 ? e.deltaY * 40 : e.deltaY
+      vel += delta * 0.38
+      vel = Math.max(-400, Math.min(400, vel))
+      if (!raf) raf = requestAnimationFrame(step)
+    }
+
+    window.addEventListener('wheel', onWheel, { passive: false })
+    return () => {
+      window.removeEventListener('wheel', onWheel)
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [])
+
   // 兼容新增模块：静默补解锁，不触发滚动
   useEffect(() => {
     MODULES.forEach((module, idx) => {

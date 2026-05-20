@@ -1004,16 +1004,17 @@ export default function M2({ onComplete }) {
           position: 'sticky',
           top: 0,
           height: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'flex-start',
-          padding: '48px 24px 24px 16px',
           pointerEvents: 'auto',
         }}>
 
-          {/* 3D 地球 */}
-          <div style={{ width: '100%', flexShrink: 0 }}>
+          {/* 3D 地球 — absolute 固定居中，不受下方 UI 影响 */}
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: 'calc(100% - 40px)',
+          }}>
             <OrbitGlobe
               satellite={satellite}
               height={420}
@@ -1022,6 +1023,9 @@ export default function M2({ onComplete }) {
               mission={mission}
             />
           </div>
+
+          {/* 信息面板统一锚定到底部 */}
+          <div style={{ position: 'absolute', bottom: 24, left: 16, right: 24 }}>
 
           {/* ── hover 轨道信息浮层（step 0 专属）── */}
           <AnimatePresence mode="wait">
@@ -1197,6 +1201,7 @@ export default function M2({ onComplete }) {
             </AnimatePresence>
           </div>
 
+          </div>{/* 信息面板 end */}
         </div>
         </div>{/* absolute outer end */}
       </div>
