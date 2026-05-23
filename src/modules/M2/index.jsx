@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import useAppStore from '../../store/useAppStore'
-import { generateMissionStory } from '../../services/ai'
+import { generateMissionStory, generateStoryOutline, generateOpeningStory } from '../../services/ai'
 import OrbitGlobe from './OrbitGlobe'
 
 const EASE = [0.16, 1, 0.3, 1]
@@ -76,9 +76,14 @@ export default function M2({ onComplete }) {
   const satellite       = useAppStore((s) => s.satellite)
   const user            = useAppStore((s) => s.user)
   const storyOutline    = useAppStore((s) => s.storyOutline)
+  const storyChapters   = useAppStore((s) => s.storyChapters)
   const materials       = useAppStore((s) => s.materials)
-  const setMission      = useAppStore((s) => s.setMission)
-  const setStoryChapter = useAppStore((s) => s.setStoryChapter)
+  const setUser         = useAppStore((s) => s.setUser)
+  const setSatellite    = useAppStore((s) => s.setSatellite)
+  const setStoryOutline = useAppStore((s) => s.setStoryOutline)
+  const setMission       = useAppStore((s) => s.setMission)
+  const setStoryChapter  = useAppStore((s) => s.setStoryChapter)
+  const setScrollLocked  = useAppStore((s) => s.setScrollLocked)
 
   const [mission,        setMissionLocal]  = useState(null)
   const [aiState,        setAiState]       = useState('idle')
@@ -88,10 +93,16 @@ export default function M2({ onComplete }) {
   const [hoveredMission, setHoveredMission] = useState(null)
   const [btnHov,         setBtnHov]        = useState(false)
 
-  // 三章节 ref
+  const [formStep,       setFormStep]      = useState('form')
+  const [form,           setForm]          = useState({ name: '', city: '', importantEvent: '' })
+  const [openingStory,   setOpeningStory]  = useState('')
+  const [formError,      setFormError]     = useState(null)
+
+  // 四章节 ref
   const chapterRef0 = useRef(null)
   const chapterRef1 = useRef(null)
   const chapterRef2 = useRef(null)
+  const chapterRef3 = useRef(null)
 
   // 进度条 DOM ref（直接操作，不经 React 状态，保证 60fps 丝滑）
   const indicatorRef = useRef(null)
@@ -101,6 +112,58 @@ export default function M2({ onComplete }) {
   // 折线分隔 DOM ref
   const notchRef     = useRef(null)
 
+  // formStepRef 让滚动 RAF 闭包能读到最新 formStep（避免 stale closure）
+  const formStepRef = useRef(formStep)
+  useEffect(() => { formStepRef.current = formStep }, [formStep])
+
+  async function handleFormSubmit() {
+    const ready = form.name.trim() && form.city.trim() && form.importantEvent.trim()
+    if (!ready) return
+    setFormError(null)
+    setFormStep('matching')
+    try {
+      const res = await fetch(`/api/satellite?city=${encodeURIComponent(form.city)}`)
+      const data = await res.json()
+      let sat
+      if (data.ok) {
+        const s = data.satellite
+        sat = {
+          name: s.OBJECT_NAME?.trim() ?? 'UNKNOWN-SAT',
+          noradId: s.NORAD_CAT_ID,
+          altitudeKm: Math.round((s.APOGEE + s.PERIGEE) / 2) || 500,
+          inclination: s.INCLINATION ?? 51.6,
+          periodMin: s.PERIOD ?? 92,
+          launchYear: s.LAUNCH_DATE ? new Date(s.LAUNCH_DATE).getFullYear() : 2020,
+        }
+      } else {
+        throw new Error(data.error)
+      }
+      setUser(form)
+      setSatellite(sat)
+      setFormStep('generating')
+      let outline = null
+      try {
+        outline = await generateStoryOutline({ name: form.name, city: form.city, importantEvent: form.importantEvent, satellite: sat })
+        setStoryOutline(outline)
+      } catch (e) {
+        console.warn('outline failed:', e)
+      }
+      let openStory = ''
+      try {
+        const result = await generateOpeningStory({ name: form.name, city: form.city, importantEvent: form.importantEvent, satellite: sat, storyOutline: outline })
+        openStory = result.story ?? ''
+      } catch {
+        openStory = `${sat.name} 于 ${sat.launchYear} 年进入轨道，高度 ${sat.altitudeKm} 公里。在那个平行宇宙里，它刚刚完成初始化，任务系统就绪，状态正常。而你最重要的那件事，正处于前夜。一切尚好。`
+      }
+      setOpeningStory(openStory)
+      setStoryChapter('opening', openStory)
+      setFormStep('result')
+    } catch {
+      setFormError('匹配失败，请重试')
+      setFormStep('form')
+    }
+  }
+
   useEffect(() => {
     let ticking = false
     function update() {
@@ -108,14 +171,14 @@ export default function M2({ onComplete }) {
       ticking = true
       requestAnimationFrame(() => {
         const vMid   = window.innerHeight / 2
-        const rects  = [chapterRef0, chapterRef1, chapterRef2].map(
+        const rects  = [chapterRef0, chapterRef1, chapterRef2, chapterRef3].map(
           (r) => r.current?.getBoundingClientRect() ?? null
         )
 
-        // ── 连续进度（0→1）：视口中心在三章节之间的相对位置
-        if (rects[0] && rects[2]) {
+        // ── 连续进度（0→1）：视口中心在四章节之间的相对位置
+        if (rects[0] && rects[3]) {
           const c0    = rects[0].top + rects[0].height / 2
-          const c2    = rects[2].top + rects[2].height / 2
+          const c2    = rects[3].top + rects[3].height / 2
           const range = c2 - c0
           if (range !== 0) {
             const prog   = Math.max(0, Math.min(1, (vMid - c0) / range))
@@ -134,7 +197,7 @@ export default function M2({ onComplete }) {
         }
 
         // ── 离散 step（仅用于章节透明度，频率低）
-        const dists = [chapterRef0, chapterRef1, chapterRef2].map((r) => {
+        const dists = [chapterRef0, chapterRef1, chapterRef2, chapterRef3].map((r) => {
           if (!r.current) return Infinity
           const rect = r.current.getBoundingClientRect()
           return Math.abs(rect.top + rect.height / 2 - vMid)
@@ -142,12 +205,22 @@ export default function M2({ onComplete }) {
         const next = dists.indexOf(Math.min(...dists))
         setCurrentStep((prev) => (prev !== next ? next : prev))
 
+        // ── 表单门控：chapter 2 顶部进入视口时才锁定，让用户能看完完整表单 ──
+        if (chapterRef2.current) {
+          const r2 = chapterRef2.current.getBoundingClientRect()
+          const shouldLock = r2.top < window.innerHeight && formStepRef.current !== 'result'
+          setScrollLocked(shouldLock)
+        }
+
         ticking = false
       })
     }
     window.addEventListener('scroll', update, { passive: true })
     update()
-    return () => window.removeEventListener('scroll', update)
+    return () => {
+      window.removeEventListener('scroll', update)
+      setScrollLocked(false)
+    }
   }, [])
 
   async function handleMissionSelect(missionId) {
@@ -491,9 +564,206 @@ export default function M2({ onComplete }) {
           </div>
 
           {/* ═══════════════════════════════════════════════
-              章节 1 · 你的卫星
+              章节 1 · 用户信息 & 卫星匹配
           ═══════════════════════════════════════════════ */}
           <div ref={chapterRef1} style={chapterWrap(1)}>
+            <motion.div
+              initial={{ opacity: 0, y: 36 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.65, ease: EASE }}
+              viewport={{ once: true, amount: 0.2 }}
+            >
+              <div style={{
+                fontFamily: '"Space Mono", monospace', fontSize: 8,
+                color: '#6b7fff', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 20,
+              }}>
+                02 · USER IDENTITY
+              </div>
+              <h3 style={{
+                fontFamily: '"Noto Serif SC", serif',
+                fontSize: 'clamp(22px, 2.4vw, 30px)',
+                fontWeight: 400, color: '#e8e8f8', lineHeight: 1.5,
+                margin: '0 0 10px',
+              }}>
+                告诉系统你是谁
+              </h3>
+              <p style={{
+                fontFamily: '"Noto Sans SC", sans-serif',
+                fontSize: 13, color: 'rgba(232,232,248,0.48)', lineHeight: 1.9,
+                marginBottom: 32, maxWidth: 400,
+              }}>
+                系统将为你匹配一颗真实卫星，并以此开始一段平行叙事。
+              </p>
+
+              <AnimatePresence mode="wait">
+                {formStep === 'form' && (
+                  <motion.div key="form"
+                    initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }} transition={{ duration: 0.45, ease: EASE }}
+                  >
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 400 }}>
+                      {[
+                        { key: 'name',           label: '你的名字或代号',     hint: '卫星将以此命名档案',       placeholder: '例：林远 / YUAN' },
+                        { key: 'city',           label: '所在城市',          hint: '用于匹配飞过你头顶的卫星',   placeholder: '例：北京、上海、成都' },
+                        { key: 'importantEvent', label: '对你最重要的一件事', hint: '可以是时刻、人、经历',       placeholder: '写下它……' },
+                      ].map((f) => (
+                        <div key={f.key}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                            <span style={{ fontFamily: '"Space Mono", monospace', fontSize: 8, color: '#6b7fff', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                              {f.label}
+                            </span>
+                            <span style={{ fontFamily: '"Space Mono", monospace', fontSize: 8, color: '#484878' }}>{f.hint}</span>
+                          </div>
+                          {f.key === 'importantEvent' ? (
+                            <textarea
+                              value={form[f.key]}
+                              onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))}
+                              placeholder={f.placeholder}
+                              rows={3}
+                              style={{
+                                width: '100%', background: 'rgba(8,8,26,0.72)',
+                                border: '1px solid #1a1a35', padding: '10px 12px',
+                                color: '#e8e8f8', fontSize: 13, outline: 'none',
+                                resize: 'none', fontFamily: '"Noto Sans SC", sans-serif',
+                                boxSizing: 'border-box',
+                              }}
+                            />
+                          ) : (
+                            <input
+                              value={form[f.key]}
+                              onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))}
+                              placeholder={f.placeholder}
+                              style={{
+                                width: '100%', background: 'transparent', border: 'none',
+                                borderBottom: '1px solid #1a1a35', padding: '8px 0',
+                                color: '#e8e8f8', fontSize: 13, outline: 'none',
+                                fontFamily: '"Noto Sans SC", sans-serif', boxSizing: 'border-box',
+                              }}
+                            />
+                          )}
+                        </div>
+                      ))}
+
+                      {formError && (
+                        <p style={{ fontFamily: '"Space Mono", monospace', fontSize: 10, color: '#f87171', margin: 0 }}>{formError}</p>
+                      )}
+
+                      <div
+                        onClick={handleFormSubmit}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 12,
+                          cursor: (form.name.trim() && form.city.trim() && form.importantEvent.trim()) ? 'pointer' : 'not-allowed',
+                          opacity: (form.name.trim() && form.city.trim() && form.importantEvent.trim()) ? 1 : 0.3,
+                          transition: 'opacity 0.2s', userSelect: 'none',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                          {[0, 1, 2].map((k) => (
+                            <div key={k} style={{
+                              height: 1, width: 5,
+                              background: `rgba(107,127,255,${0.3 + k * 0.2})`,
+                            }} />
+                          ))}
+                        </div>
+                        <span style={{
+                          fontFamily: '"Space Mono", monospace', fontSize: 10,
+                          letterSpacing: '0.16em', textTransform: 'uppercase', color: '#6b7fff',
+                        }}>
+                          匹配我的卫星
+                        </span>
+                        <div style={{ width: 12, height: 1, background: '#6b7fff' }} />
+                        <div style={{ width: 5, height: 5, borderTop: '1.5px solid #6b7fff', borderRight: '1.5px solid #6b7fff', transform: 'rotate(45deg)' }} />
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {(formStep === 'matching' || formStep === 'generating') && (
+                  <motion.div key="loading"
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    transition={{ duration: 0.4 }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                      <div style={{
+                        width: 5, height: 5, borderRadius: '50%', background: '#6b7fff',
+                        animation: 'blink 1.2s ease infinite', flexShrink: 0,
+                      }} />
+                      <span style={{ fontFamily: '"Space Mono", monospace', fontSize: 8, color: '#484878', letterSpacing: '0.14em' }}>
+                        {formStep === 'matching' ? 'SCANNING ORBIT...' : 'WRITING STORY...'}
+                      </span>
+                    </div>
+                    <p style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 14, color: 'rgba(232,232,248,0.6)', lineHeight: 1.8, maxWidth: 400 }}>
+                      {formStep === 'matching' ? '正在从真实轨道数据中匹配卫星……' : '正在生成你的故事开头……'}
+                    </p>
+                  </motion.div>
+                )}
+
+                {formStep === 'result' && satellite && (
+                  <motion.div key="result"
+                    initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.55, ease: EASE }}
+                  >
+                    <div style={{
+                      borderLeft: '2px solid rgba(107,127,255,0.35)',
+                      paddingLeft: 20, marginBottom: 24, maxWidth: 400,
+                    }}>
+                      <div style={{
+                        fontFamily: '"Space Mono", monospace', fontSize: 7,
+                        color: '#484878', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 10,
+                      }}>
+                        已匹配卫星 · MATCHED
+                      </div>
+                      <div style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 18, color: '#e8e8f8', marginBottom: 16, fontWeight: 300 }}>
+                        {satellite.name}
+                      </div>
+                      <div style={{ display: 'flex', gap: 28 }}>
+                        {[
+                          { label: '轨道高度', value: `${satellite.altitudeKm} km` },
+                          { label: '倾角',     value: `${satellite.inclination}°` },
+                          { label: '发射年份', value: satellite.launchYear },
+                        ].map(({ label, value }) => (
+                          <div key={label}>
+                            <div style={{ fontFamily: '"Space Mono", monospace', fontSize: 7, color: '#484878', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>{label}</div>
+                            <div style={{ fontFamily: '"Space Mono", monospace', fontSize: 12, color: '#e8e8f8' }}>{value}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {openingStory && (
+                      <div style={{ borderTop: '1px solid #1a1a35', paddingTop: 20, maxWidth: 400 }}>
+                        <div style={{
+                          fontFamily: '"Space Mono", monospace', fontSize: 8,
+                          color: '#6b7fff', letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 14,
+                        }}>
+                          第一段 · 开场
+                        </div>
+                        <p className="story-text" style={{ margin: 0 }}>{openingStory}</p>
+                      </div>
+                    )}
+
+                    <div style={{ marginTop: 28 }}>
+                      <button
+                        onClick={() => setFormStep('form')}
+                        style={{
+                          background: 'none', border: '1px solid #1a1a35', borderRadius: 3,
+                          color: '#484878', fontFamily: '"Space Mono", monospace', fontSize: 8,
+                          letterSpacing: '0.08em', padding: '6px 12px', cursor: 'pointer',
+                        }}
+                      >
+                        重新填写
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          </div>
+
+          {/* ═══════════════════════════════════════════════
+              章节 2 · 你的卫星
+          ═══════════════════════════════════════════════ */}
+          <div ref={chapterRef2} style={chapterWrap(2)}>
             <motion.div
               initial={{ opacity: 0, y: 36 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -646,7 +916,7 @@ export default function M2({ onComplete }) {
                     fontFamily: '"Noto Sans SC", sans-serif',
                     fontSize: 13, color: '#484878', margin: 0,
                   }}>
-                    请先在入口处匹配卫星。
+                    请先在上方填写个人信息以匹配卫星。
                   </p>
                 </div>
               )}
@@ -654,9 +924,9 @@ export default function M2({ onComplete }) {
           </div>
 
           {/* ═══════════════════════════════════════════════
-              章节 2 · 任务指派
+              章节 3 · 任务指派
           ═══════════════════════════════════════════════ */}
-          <div ref={chapterRef2} style={chapterWrap(2)}>
+          <div ref={chapterRef3} style={chapterWrap(3)}>
             <motion.div
               initial={{ opacity: 0, y: 36 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -1019,7 +1289,7 @@ export default function M2({ onComplete }) {
               satellite={satellite}
               height={420}
               activeOrbit={activeOrbit}
-              currentStep={currentStep}
+              currentStep={currentStep === 0 ? 0 : Math.max(0, currentStep - 1)}
               mission={mission}
             />
           </div>
@@ -1094,7 +1364,7 @@ export default function M2({ onComplete }) {
           {/* 动态图例（随步骤切换） */}
           <div style={{ width: '100%', marginTop: activeOrbit ? 8 : 14 }}>
             <AnimatePresence mode="wait">
-              {currentStep === 0 && (
+              {currentStep <= 1 && (
                 <motion.div
                   key="leg-0"
                   initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
@@ -1141,7 +1411,7 @@ export default function M2({ onComplete }) {
                 </motion.div>
               )}
 
-              {currentStep === 1 && (
+              {currentStep === 2 && (
                 <motion.div
                   key="leg-1"
                   initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
@@ -1172,7 +1442,7 @@ export default function M2({ onComplete }) {
                 </motion.div>
               )}
 
-              {currentStep === 2 && (
+              {currentStep === 3 && (
                 <motion.div
                   key="leg-2"
                   initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}

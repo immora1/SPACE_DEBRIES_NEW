@@ -49,10 +49,10 @@ const useAppStore = create(
       setPostTest: (t) => set({ postTest: t }),
 
       // 模块解锁/完成进度
-      currentModule: 'entrance',
+      currentModule: 'm1',
       setCurrentModule: (id) => set({ currentModule: id }),
 
-      unlockedModules: ['entrance'],
+      unlockedModules: ['m1'],
       completedModules: [],
 
       unlockModule: (id) =>
@@ -93,8 +93,8 @@ const useAppStore = create(
         storyChapters: { opening: '' },
         preTest: null,
         postTest: null,
-        currentModule: 'entrance',
-        unlockedModules: ['entrance'],
+        currentModule: 'm1',
+        unlockedModules: ['m1'],
         completedModules: [],
         scrollLocked: false,
       }),

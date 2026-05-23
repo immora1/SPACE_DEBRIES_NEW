@@ -4,7 +4,6 @@ import useAppStore from './store/useAppStore'
 import ProgressBar from './components/ProgressBar'
 import ModuleWrapper from './components/ModuleWrapper'
 
-const Entrance = lazy(() => import('./modules/Entrance'))
 const M1 = lazy(() => import('./modules/M1'))
 const M2 = lazy(() => import('./modules/M2'))
 const M3 = lazy(() => import('./modules/M3'))
@@ -143,7 +142,6 @@ function OptionalModuleCard({ Component, isVisible }) {
 
 // ── 模块顺序 + 衔接句 ───────────────────────────────────────────────────────
 const MODULES = [
-  { id: 'entrance', Component: Entrance, connector: null },
   { id: 'm1',       Component: M1,       connector: null, archDivider: '#04040f' },
   { id: 'm2',       Component: M2,       connector: null, archDivider: { color: '#04040f', flip: true } },
   { id: 'm3',       Component: M3,       connector: '不是没有人做过这个决定，是做了这个决定的人，已经不在了。' },
@@ -180,6 +178,7 @@ export default function App() {
 
     const step = () => {
       if (Math.abs(vel) < 0.5) { vel = 0; raf = null; return }
+      if (document.body.style.overflow === 'hidden') { vel = 0; raf = null; return }
       window.scrollBy(0, vel)
       vel *= 0.75
       raf = requestAnimationFrame(step)
@@ -238,7 +237,7 @@ export default function App() {
             connector={connector}
             archDivider={archDivider}
             noAnimation={id === 'm1'}
-            mouseReactive={id === 'entrance' || id === 'm1' || id === 'm2'}
+            mouseReactive={id === 'm1' || id === 'm2'}
             moduleId={id}
             ref={(el) => { moduleRefs.current[id] = el }}
           >
