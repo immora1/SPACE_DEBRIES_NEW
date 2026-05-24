@@ -191,13 +191,6 @@ const ZONE_STATS = [
     zone: 'GEO', zoneColor: '#6b7fff', zoneDesc: '35,786 KM' },
 ]
 
-/* ── Scene variants ── */
-const SCENE_VARIANTS = {
-  enter: (dir) => ({ x: dir * 80, opacity: 0, filter: 'blur(6px)' }),
-  show:  { x: 0, opacity: 1, filter: 'blur(0px)', transition: { duration: 0.75, ease: [0.16, 1, 0.3, 1] } },
-  leave: (dir) => ({ x: -dir * 80, opacity: 0, filter: 'blur(6px)', transition: { duration: 0.5, ease: [0.7, 0, 0.9, 0.3] } }),
-}
-
 /* ── CustomCursor ── */
 function CustomCursor({ mouseX, mouseY, smoothX, smoothY }) {
   const dotL  = useTransform(mouseX,  v => v - 3)
@@ -218,27 +211,6 @@ function CustomCursor({ mouseX, mouseY, smoothX, smoothY }) {
         left: ringL, top: ringT,
       }} />
     </>
-  )
-}
-
-/* ── SceneNav ── */
-function SceneNav({ sceneIdx, total, onNavigate }) {
-  return (
-    <div style={{
-      position: 'absolute', bottom: 24, left: '50%', transform: 'translateX(-50%)',
-      zIndex: 200, display: 'flex', alignItems: 'center', gap: 10, pointerEvents: 'none',
-    }}>
-      {Array.from({ length: total }).map((_, i) => (
-        <motion.button key={i} onClick={() => onNavigate(i)}
-          animate={{
-            width: i === sceneIdx ? 28 : 6,
-            background: i === sceneIdx ? '#6b7fff' : 'rgba(107,127,255,0.3)',
-          }}
-          transition={{ duration: 0.3 }}
-          style={{ height: 2, border: 'none', cursor: 'pointer', padding: 0, pointerEvents: 'all', borderRadius: 1 }}
-        />
-      ))}
-    </div>
   )
 }
 
@@ -1982,43 +1954,26 @@ function SceneMaterial({ satellite, user, storyOutline, materials, setMaterialPa
 
 /* ── Main M1 ── */
 export default function M1({ onComplete }) {
-  const satellite        = useAppStore(s => s.satellite)
-  const user             = useAppStore(s => s.user)
-  const storyOutline     = useAppStore(s => s.storyOutline)
-  const materials        = useAppStore(s => s.materials)
-  const setMaterialPart  = useAppStore(s => s.setMaterialPart)
-  const completedModules = useAppStore(s => s.completedModules)
+  const satellite       = useAppStore(s => s.satellite)
+  const user            = useAppStore(s => s.user)
+  const storyOutline    = useAppStore(s => s.storyOutline)
+  const materials       = useAppStore(s => s.materials)
+  const setMaterialPart = useAppStore(s => s.setMaterialPart)
 
-  const [released,  setReleased]  = useState(false)
-  const [isInView,  setIsInView]  = useState(false)
-  const [sceneIdx,  setSceneIdx]  = useState(0)
-  const [direction, setDirection] = useState(1)
   const containerRef = useRef()
-  const TOTAL = 6
+  const scaleRef     = useRef()
+  const [showCursor,    setShowCursor]    = useState(false)
+  const [scaleVisible,  setScaleVisible]  = useState(false)
 
-  // Refs for wheel handler (avoids stale closures in window-level listener)
-  const isInViewRef    = useRef(false)
-  const sceneIdxRef    = useRef(0)
-  const releasedRef    = useRef(false)
-  const releaseToNextRef = useRef(null)
-  const m1CompletedRef = useRef(completedModules.includes('m1'))
-
-  useEffect(() => { sceneIdxRef.current = sceneIdx }, [sceneIdx])
-  useEffect(() => { releasedRef.current = released  }, [released])
-  useEffect(() => { m1CompletedRef.current = completedModules.includes('m1') }, [completedModules])
-
-
-  /* Mouse tracking */
   const rawX    = useMotionValue(0)
   const rawY    = useMotionValue(0)
   const smoothX = useSpring(rawX, { stiffness: 80, damping: 22 })
   const smoothY = useSpring(rawY, { stiffness: 80, damping: 22 })
   const normX   = useTransform(rawX, [0, typeof window !== 'undefined' ? window.innerWidth  : 1], [-1, 1])
   const normY   = useTransform(rawY, [0, typeof window !== 'undefined' ? window.innerHeight : 1], [-1, 1])
-
-  /* R3F bridge */
   const mouseXRef = useRef(0.5)
   const mouseYRef = useRef(0.5)
+
   useEffect(() => {
     const ux = rawX.on('change', v => { mouseXRef.current = v / window.innerWidth })
     const uy = rawY.on('change', v => { mouseYRef.current = v / window.innerHeight })
@@ -2031,265 +1986,67 @@ export default function M1({ onComplete }) {
     return () => window.removeEventListener('mousemove', h)
   }, [])
 
-  /* Navigation */
-  const goTo = useCallback((idx) => {
-    const next = Math.max(0, Math.min(TOTAL - 1, idx))
-    setDirection(next > sceneIdxRef.current ? 1 : -1)
-    setSceneIdx(next)
-  }, [])
-
-  /* 滚动锁定 + Scene 导航
-     双重防御：
-     1. wheel 事件内"提前"检测（M1 将要进入视口就锁，不等进入后再锁）
-     2. scroll 事件兜底（极速滑过时由 scroll 事件补救并 snap 回来）
-     无论 M1 是否已完成，每次进入 M1 区域都会重新锁定，必须横向滚动到头才能继续。
-     从上方进入（向下滚）→ 从 Scene 0 开始，向右滚到 Scene 5 才能继续到 M2。
-     从下方进入（向上滚）→ 从 Scene 5 开始，向左滚到 Scene 0 才能继续到 Entrance。 */
   useEffect(() => {
-    const lastWheel = { t: 0 }
-    let locked    = false
-    let unlocking = false  // 解锁动画期间防止 scroll 兜底再次锁定
-    let animating = false  // snap 动画进行期间
-    let animRafId = null
-    let prevScrollY = window.scrollY
-
-    // ease-in-out 曲线：慢→快→慢
-    const ease = t => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
-
-    // 用 ease 曲线平滑滚动到 targetY，完成后调用 onDone
-    const smoothTo = (targetY, onDone) => {
-      const startY = window.scrollY
-      const dist   = targetY - startY
-      if (Math.abs(dist) < 3) { animating = false; onDone(); return }
-      const t0  = performance.now()
-      const dur = 620  // ms，可调
-      const tick = (now) => {
-        const p = Math.min((now - t0) / dur, 1)
-        window.scrollTo(0, startY + dist * ease(p))
-        if (p < 1) {
-          animRafId = requestAnimationFrame(tick)
-        } else {
-          window.scrollTo(0, targetY)
-          animating = false
-          animRafId = null
-          onDone()
-        }
-      }
-      animRafId = requestAnimationFrame(tick)
-    }
-
-    const getAbsTop = () => {
-      const el = containerRef.current
-      if (!el) return 0
-      return Math.round(el.getBoundingClientRect().top + window.scrollY)
-    }
-
-    // dir: 'down' = 从上方进入（从 Scene 0 开始），'up' = 从下方进入（从末尾开始）
-    const lockToM1 = (dir = 'down') => {
-      if (locked || unlocking || animating) return
-      locked = true
-      isInViewRef.current = true
-      setIsInView(true)
-      const startScene = dir === 'up' ? TOTAL - 1 : 0
-      sceneIdxRef.current = startScene
-      setSceneIdx(startScene)
-      setDirection(dir === 'up' ? -1 : 1)
-      const targetY = getAbsTop()
-      if (Math.abs(window.scrollY - targetY) < 3) {
-        // 已在位置，直接锁定
-        document.body.style.overflow = 'hidden'
-      } else {
-        // 用 ease 曲线平滑滚动到 M1，动画结束后再锁定滚动
-        animating = true
-        smoothTo(targetY, () => { document.body.style.overflow = 'hidden' })
-      }
-    }
-
-    const unlockFromM1 = (toY) => {
-      if (animRafId) { cancelAnimationFrame(animRafId); animRafId = null; animating = false }
-      locked    = false
-      unlocking = true
-      isInViewRef.current = false
-      setIsInView(false)
-      // overflow: hidden 状态下 window.scrollTo 无法移动页面，必须先解除再启动动画
-      // animating=true 会让 onWheel 的 e.preventDefault() 阻断用户触发，unlocking=true 阻断 onScroll 重锁
-      document.body.style.overflow = ''
-      animating = true
-      smoothTo(Math.max(0, toY), () => {
-        setTimeout(() => { unlocking = false }, 300)
-      })
-    }
-
-    releaseToNextRef.current = () => {
-      const elTop = getAbsTop()
-      unlockFromM1(elTop + (containerRef.current?.offsetHeight ?? window.innerHeight))
-    }
-
-    // scroll 兜底：极速滑动导致 wheel 漏网时，scroll 事件仍能 snap 回 M1
-    const onScroll = () => {
-      if (locked || unlocking) return
-      const el = containerRef.current
-      if (!el) return
-      const rect = el.getBoundingClientRect()
-      const currentScrollY = window.scrollY
-      const scrollDir = currentScrollY >= prevScrollY ? 'down' : 'up'
-      prevScrollY = currentScrollY
-      const closeEnoughToSnap = rect.top <= 96 && rect.bottom >= window.innerHeight * 0.55
-      if (closeEnoughToSnap) {
-        lockToM1(scrollDir)
-      }
-    }
-
-    const onWheel = e => {
-      const el = containerRef.current
-      if (!el) return
-
-      // snap 动画进行中：阻断原生滚动，等动画完成
-      if (animating) { e.preventDefault(); return }
-
-      if (!locked) {
-        const rect  = el.getBoundingClientRect()
-        const absDx = Math.abs(e.deltaX), absDy = Math.abs(e.deltaY)
-        const delta  = absDx > absDy ? e.deltaX : e.deltaY
-        const absDelta = Math.max(absDx, absDy)
-
-        // 提前锁定：向下滚且本次 delta 可能让 M1 进入视口（从上方接近）
-        const approaching          = delta > 0 && rect.top > 0 && rect.top < window.innerHeight + absDelta + 200
-        // 提前锁定：向上滚且 M1 底部即将进入视口（从下方接近，即从 M2 返回）
-        const approachingFromBelow = delta < 0 && rect.top < 0 && rect.bottom > -absDelta - 200
-        // 正常锁定：M1 已在视口内
-        const inView               = rect.top < window.innerHeight && rect.bottom > 0
-
-        if (approaching || approachingFromBelow || inView) {
-          e.preventDefault()
-          lockToM1(delta > 0 ? 'down' : 'up')
-        }
-        return
-      }
-
-      // 已锁定：阻断原生滚动
-      e.preventDefault()
-
-      const si    = sceneIdxRef.current
-      const rel   = releasedRef.current
-      const absDx = Math.abs(e.deltaX), absDy = Math.abs(e.deltaY)
-      const delta  = absDx > absDy ? e.deltaX : e.deltaY
-
-      // Scene 5 右侧可滚动面板：允许其自身滚动
-      if (si === 5 && e.target.closest('[data-scroll-zone]')) return
-
-      // 向左滚动且在第一个 Scene → 解锁回到 Entrance
-      if (delta < 0 && si === 0) {
-        unlockFromM1(getAbsTop() - window.innerHeight)
-        return
-      }
-
-      // 向右滚动且在最后一个 Scene，且材料已选完或 M1 已完成 → 解锁进入 M2
-      if (delta > 0 && (rel || m1CompletedRef.current) && si === TOTAL - 1) {
-        const elTop = getAbsTop()
-        unlockFromM1(elTop + (containerRef.current?.offsetHeight ?? window.innerHeight))
-        return
-      }
-
-      // 节流 Scene 切换
-      const now = Date.now()
-      if (now - lastWheel.t < 900) return
-      lastWheel.t = now
-
-      if (delta > 0) {
-        setDirection(1);  setSceneIdx(prev => Math.min(TOTAL - 1, prev + 1))
-      } else {
-        setDirection(-1); setSceneIdx(prev => Math.max(0, prev - 1))
-      }
-    }
-
-    const onKey = e => {
-      if (!isInViewRef.current) return
-      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-        setDirection(1);  setSceneIdx(prev => Math.min(TOTAL - 1, prev + 1))
-      }
-      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-        setDirection(-1); setSceneIdx(prev => Math.max(0, prev - 1))
-      }
-    }
-
-    window.addEventListener('scroll',  onScroll, { passive: true })
-    window.addEventListener('wheel',   onWheel,  { passive: false })
-    window.addEventListener('keydown', onKey)
-    return () => {
-      if (animRafId) cancelAnimationFrame(animRafId)
-      window.removeEventListener('scroll',  onScroll)
-      window.removeEventListener('wheel',   onWheel)
-      window.removeEventListener('keydown', onKey)
-      releaseToNextRef.current = null
-      document.body.style.overflow = ''
-    }
+    const io = new IntersectionObserver(([entry]) => setShowCursor(entry.isIntersecting), { threshold: 0.01 })
+    if (containerRef.current) io.observe(containerRef.current)
+    return () => io.disconnect()
   }, [])
 
-  function handleComplete() {
-    setReleased(true)
-    releasedRef.current = true
-    onComplete({ autoScroll: false })
-    requestAnimationFrame(() => releaseToNextRef.current?.())
-  }
+  useEffect(() => {
+    const io = new IntersectionObserver(([entry]) => setScaleVisible(entry.isIntersecting), { threshold: 0.5 })
+    if (scaleRef.current) io.observe(scaleRef.current)
+    return () => io.disconnect()
+  }, [])
 
-  const renderScene = () => {
-    switch (sceneIdx) {
-      case 0: return <SceneHero normX={normX} normY={normY} />
-      case 1: return <SceneScale />
-      case 2: return <SceneSources />
-      case 3: return <SceneCountries />
-      case 4: return <SceneTrend />
-      case 5: return (
+  const s = { height: '100vh', position: 'relative', overflow: 'hidden', background: '#04040f' }
+
+  return (
+    <div ref={containerRef} data-module-scroll-target style={{ position: 'relative', background: '#04040f', cursor: showCursor ? 'none' : 'auto' }}>
+
+      {/* Section 0 + 1: 单个 DebrisEarth 用 sticky 固定，左侧文字正常上下滚动 */}
+      <div style={{ position: 'relative', height: '200vh', background: '#04040f' }}>
+
+        {/* 粘性地球：在 200vh 容器内保持固定，不随文字滚动 */}
+        <div style={{
+          position: 'sticky', top: 0, height: '100vh',
+          zIndex: 1, pointerEvents: 'none', overflow: 'hidden',
+        }}>
+          <DebrisEarth showAnnotations={scaleVisible} />
+        </div>
+
+        {/* Hero 文字 — 叠在地球上方，第一个 100vh */}
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, height: '100vh',
+          zIndex: 3, overflow: 'hidden',
+        }}>
+          <SceneHero normX={normX} normY={normY} />
+        </div>
+
+        {/* Scale 文字 — 第二个 100vh，向上滚动时从下方进入 */}
+        <div ref={scaleRef} style={{
+          position: 'absolute', top: '100vh', left: 0, right: 0, height: '100vh',
+          zIndex: 3, overflow: 'hidden',
+        }}>
+          <SceneScale />
+        </div>
+      </div>
+
+      <div style={s}><SceneSources /></div>
+      <div style={s}><SceneCountries /></div>
+      <div style={s}><SceneTrend /></div>
+
+      <div style={s}>
         <SceneMaterial
           satellite={satellite} user={user} storyOutline={storyOutline}
           materials={materials} setMaterialPart={setMaterialPart}
-          onComplete={handleComplete}
+          onComplete={() => onComplete({ autoScroll: false })}
           mouseXRef={mouseXRef} mouseYRef={mouseYRef}
         />
-      )
-      default: return null
-    }
-  }
+      </div>
 
-  return (
-    <div ref={containerRef} data-module-scroll-target style={{
-      height: '100vh', position: 'relative',
-      overflow: 'hidden', cursor: 'none', background: '#04040f',
-    }}>
-
-      {/* Persistent Earth backdrop — unmount when not visible to free the WebGL context */}
-      <AnimatePresence>
-        {sceneIdx <= 1 && (
-          <motion.div
-            key="earth-backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-            style={{ position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none' }}
-          >
-            <DebrisEarth showAnnotations={sceneIdx === 1} />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence mode="wait" custom={direction}>
-        <motion.div
-          key={sceneIdx}
-          custom={direction}
-          variants={SCENE_VARIANTS}
-          initial="enter"
-          animate="show"
-          exit="leave"
-          style={{ position: 'absolute', inset: 0, zIndex: 3 }}
-        >
-          {renderScene()}
-        </motion.div>
-      </AnimatePresence>
-
-      <CustomCursor mouseX={rawX} mouseY={rawY} smoothX={smoothX} smoothY={smoothY} />
-      <SceneNav sceneIdx={sceneIdx} total={TOTAL} onNavigate={goTo} />
+      {showCursor && (
+        <CustomCursor mouseX={rawX} mouseY={rawY} smoothX={smoothX} smoothY={smoothY} />
+      )}
     </div>
   )
 }
