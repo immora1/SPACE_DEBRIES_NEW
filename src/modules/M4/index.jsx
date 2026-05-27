@@ -266,115 +266,142 @@ export default function M4({ onComplete }) {
   )
 }
 
+const EASE = [0.16, 1, 0.3, 1]
+
 function IntroOverlay({ satellite, initialArmor, damageLevel, storyOutline, onStart }) {
   const m4Beat = storyOutline?.checkpoints?.find((c) => c.id === 'm4')?.beat || '命运决战时刻'
 
   return (
     <div style={{
-      position: 'absolute',
-      inset: 0,
-      background: 'rgba(4,4,14,0.88)',
-      backdropFilter: 'blur(4px)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
+      position: 'absolute', inset: 0,
+      background: 'rgba(4,4,14,0.90)',
+      backdropFilter: 'blur(6px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
       zIndex: 10,
     }}>
-      <div style={{ maxWidth: 500, padding: '0 32px', textAlign: 'center' }}>
+      <motion.div
+        initial={{ opacity: 0, y: 28 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.72, ease: EASE }}
+        style={{ maxWidth: 520, width: '100%', padding: '0 32px', textAlign: 'center' }}
+      >
+        {/* 模块标签 */}
         <div style={{
-          fontFamily: 'Space Mono, monospace',
-          fontSize: '10px',
-          letterSpacing: '0.15em',
-          color: 'rgba(80,70,229,0.6)',
-          marginBottom: 14,
+          fontFamily: "'Space Mono', monospace",
+          fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase',
+          color: '#484878', marginBottom: 22,
         }}>
           MODULE 04 · SURVIVAL MISSION
         </div>
 
+        {/* 主标题 */}
         <h2 style={{
-          fontFamily: 'Noto Serif SC, serif',
-          fontSize: '26px',
-          color: '#e8e8f8',
-          fontWeight: 300,
-          margin: '0 0 14px',
+          fontFamily: "'Noto Serif SC', serif",
+          fontSize: 'clamp(22px, 3vw, 32px)',
+          color: '#e8e8f8', fontWeight: 300, margin: '0 0 16px', letterSpacing: '0.04em',
         }}>
           卫星生存任务
         </h2>
 
+        {/* 分割线 */}
+        <div style={{
+          height: 1,
+          background: 'linear-gradient(to right, transparent, rgba(107,127,255,0.35), transparent)',
+          margin: '0 auto 18px', width: '55%',
+        }} />
+
+        {/* 故事节拍 */}
         <p style={{
-          fontFamily: 'Noto Serif SC, serif',
-          fontSize: '13px',
-          color: '#6a6a64',
-          lineHeight: 1.9,
-          margin: '0 0 26px',
-          fontStyle: 'italic',
+          fontFamily: "'Noto Serif SC', serif",
+          fontSize: 13, color: 'rgba(232,232,248,0.40)',
+          lineHeight: 1.9, margin: '0 0 28px', fontStyle: 'italic',
         }}>
           {m4Beat}
         </p>
 
+        {/* 简报卡片 */}
         <div style={{
-          background: 'rgba(4,4,14,0.8)',
-          border: '1px solid rgba(80,70,229,0.18)',
-          borderRadius: 6,
-          padding: '16px 20px',
-          marginBottom: 26,
-          textAlign: 'left',
+          background: 'rgba(8,8,26,0.72)',
+          border: '1px solid #1a1a35',
+          backdropFilter: 'blur(14px)',
+          padding: '18px 22px', marginBottom: 22, textAlign: 'left',
         }}>
+          {/* 卡片标题行 */}
           <div style={{
-            fontFamily: 'Space Mono, monospace',
-            fontSize: '9px',
-            color: 'rgba(80,70,229,0.5)',
-            letterSpacing: '0.12em',
-            marginBottom: 12,
+            display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14,
           }}>
-            MISSION BRIEFING
+            <div style={{ width: 12, height: 1, background: 'rgba(107,127,255,0.45)' }} />
+            <span style={{
+              fontFamily: "'Space Mono', monospace",
+              fontSize: 8, color: '#6b7fff', letterSpacing: '0.16em', textTransform: 'uppercase',
+            }}>
+              MISSION BRIEFING
+            </span>
+            <div style={{ flex: 1, height: 1, background: 'linear-gradient(to right, rgba(107,127,255,0.25), transparent)' }} />
           </div>
-          <InfoRow label="卫星"     value={satellite?.name || 'UNKNOWN'} />
-          <InfoRow label="轨道"     value={`${satellite?.altitudeKm || '--'} km LEO`} />
-          <InfoRow label="初始护甲"  value={`${initialArmor}% ${damageLevel > 0 ? `(M3受损 -${damageLevel * 5}%)` : ''}`}
-            color={initialArmor < 70 ? '#f59e0b' : '#10b981'} />
-          <InfoRow label="燃料"     value="100%" color="#10b981" />
-          <InfoRow label="决策轮次"  value="6 轮" />
+
+          <InfoRow label="卫星"    value={satellite?.name || 'UNKNOWN'} />
+          <InfoRow label="轨道"    value={`${satellite?.altitudeKm || '--'} km LEO`} />
+          <InfoRow label="初始护甲" value={`${initialArmor}%${damageLevel > 0 ? `  (M3受损 -${damageLevel * 5}%)` : ''}`}
+            color={initialArmor < 70 ? '#fbbf24' : '#34d399'} />
+          <InfoRow label="燃料"    value="100%" color="#34d399" />
+          <InfoRow label="决策轮次" value="6 轮" last />
         </div>
 
+        {/* 说明文字 */}
         <p style={{
-          fontFamily: 'Noto Sans SC, sans-serif',
-          fontSize: '12px',
-          color: '#3a3a52',
-          lineHeight: 1.7,
-          margin: '0 0 26px',
+          fontFamily: "'Noto Sans SC', sans-serif",
+          fontSize: 12, color: 'rgba(232,232,248,0.38)', lineHeight: 1.85, margin: '0 0 30px',
         }}>
           每轮遭遇一种真实轨道威胁。你的每一个选择将同步推进平行时空中那件最重要的事。
         </p>
 
+        {/* 开始按钮 */}
         <button
           onClick={onStart}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = 'rgba(107,127,255,0.12)'
+            e.currentTarget.style.borderColor = 'rgba(107,127,255,0.85)'
+            e.currentTarget.style.color = '#e8e8f8'
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'transparent'
+            e.currentTarget.style.borderColor = 'rgba(107,127,255,0.45)'
+            e.currentTarget.style.color = '#6b7fff'
+          }}
           style={{
-            fontFamily: 'Space Mono, monospace',
-            fontSize: '12px',
-            letterSpacing: '0.12em',
-            color: 'transparent',
-            background: '#6b7fff',
-            border: 'none',
-            borderRadius: 3,
-            padding: '12px 44px',
-            cursor: 'pointer',
+            fontFamily: "'Space Mono', monospace",
+            fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase',
+            color: '#6b7fff', background: 'transparent',
+            border: '1px solid rgba(107,127,255,0.45)',
+            padding: '13px 52px', cursor: 'pointer',
+            transition: 'background 0.25s ease, border-color 0.25s ease, color 0.25s ease',
           }}
         >
-          开始任务
+          开始任务 →
         </button>
-      </div>
+      </motion.div>
     </div>
   )
 }
 
-function InfoRow({ label, value, color = '#5a5a72' }) {
+function InfoRow({ label, value, color = '#8888a8', last = false }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-      <span style={{ fontFamily: 'Space Mono, monospace', fontSize: '10px', color: '#28283e' }}>
+    <div style={{
+      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      padding: '8px 0',
+      borderBottom: last ? 'none' : '1px solid rgba(26,26,53,0.7)',
+    }}>
+      <span style={{
+        fontFamily: "'Space Mono', monospace",
+        fontSize: 9, color: '#484878', letterSpacing: '0.06em',
+      }}>
         {label}
       </span>
-      <span style={{ fontFamily: 'Space Mono, monospace', fontSize: '10px', color }}>
+      <span style={{
+        fontFamily: "'Space Mono', monospace",
+        fontSize: 10, color,
+      }}>
         {value}
       </span>
     </div>

@@ -1,4 +1,4 @@
-import { useRef, Suspense } from 'react'
+import { useRef, useState, useEffect, Suspense } from 'react'
 import { Canvas, useFrame, useLoader } from '@react-three/fiber'
 import { Text, Html, Line, Billboard } from '@react-three/drei'
 import * as THREE from 'three'
@@ -290,16 +290,28 @@ function EarthScene({ showAnnotations }) {
 }
 
 export default function DebrisEarth({ showAnnotations = false }) {
+  const [inView, setInView] = useState(false)
+  const wrapRef = useRef()
+
+  useEffect(() => {
+    const io = new IntersectionObserver(([e]) => setInView(e.isIntersecting), { rootMargin: '120px' })
+    if (wrapRef.current) io.observe(wrapRef.current)
+    return () => io.disconnect()
+  }, [])
+
   return (
-    <Canvas
-      camera={{ position: [0, 0.3, 8.5], fov: 52 }}
-      dpr={[1, 1.5]}
-      gl={{ antialias: true, alpha: true }}
-      style={{ background: 'transparent', width: '100%', height: '100%' }}
-    >
-      <Suspense fallback={null}>
-        <EarthScene showAnnotations={showAnnotations} />
-      </Suspense>
-    </Canvas>
+    <div ref={wrapRef} style={{ width: '100%', height: '100%' }}>
+      <Canvas
+        frameloop={inView ? 'always' : 'never'}
+        camera={{ position: [0, 0.3, 8.5], fov: 52 }}
+        dpr={[1, 1.5]}
+        gl={{ antialias: true, alpha: true }}
+        style={{ background: 'transparent', width: '100%', height: '100%' }}
+      >
+        <Suspense fallback={null}>
+          <EarthScene showAnnotations={showAnnotations} />
+        </Suspense>
+      </Canvas>
+    </div>
   )
 }

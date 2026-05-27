@@ -1,7 +1,15 @@
-import { useRef, useEffect, Suspense } from 'react'
+import { useRef, useState, useEffect, Suspense } from 'react'
 import { Canvas, useFrame, useLoader } from '@react-three/fiber'
 import { Line } from '@react-three/drei'
 import * as THREE from 'three'
+
+// Camera arc: match DebrisEarth exactly at p=0, sweep to top-down at p=1
+// DebrisEarth camera = [0, 0.3, 8.5] looking at origin
+const _CAM_START_ANGLE = Math.atan2(0.3, 8.5)          // ≈ 2°  (same as DebrisEarth)
+const _CAM_END_ANGLE   = Math.atan2(9,   0.01)          // ≈ 90° top-down
+const _CAM_START_R     = Math.sqrt(0.3 ** 2 + 8.5 ** 2) // ≈ 8.505
+// 缩放！！
+const _CAM_END_R       = 8
 
 const _COLORS = ['#f87171', '#6b7fff', '#fbbf24', '#8b9fff']
 const _PCTS   = [0.3892, 0.3795, 0.1325, 0.0985]
@@ -92,18 +100,31 @@ function CountryDebris({ group, color, ci, hovIdxRef }) {
   )
 }
 
-function Scene({ hovIdxRef }) {
+function Scene({ hovIdxRef, progressRef }) {
   const earthRef = useRef()
   const ringRef  = useRef()
   const earthTex = useLoader(THREE.TextureLoader, '/earth_borders.png')
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     if (earthRef.current) earthRef.current.rotation.y += delta * 0.04
     if (ringRef.current)  ringRef.current.rotation.y  += delta * 0.013
+
+    if (progressRef) {
+      const raw = progressRef.current
+      const p = raw < 0.5 ? 2 * raw * raw : -1 + (4 - 2 * raw) * raw
+      const angle = _CAM_START_ANGLE + p * (_CAM_END_ANGLE - _CAM_START_ANGLE)
+      const r     = _CAM_START_R    + p * (_CAM_END_R     - _CAM_START_R)
+      // camera x stays 0; Earth group at [1.8,0,0] is right-of-center in both phases
+      state.camera.position.set(2.5, r * Math.sin(angle), r * Math.cos(angle))
+      state.camera.lookAt(2.5, 0, 0)
+      state.camera.fov = THREE.MathUtils.lerp(52, 54, p)
+      state.camera.updateProjectionMatrix()
+    }
   })
 
   return (
-    <group>
+    // 左右
+    <group position={[4.3, -0.1, 0]}>
       {/* Earth */}
       <mesh ref={earthRef}>
         <sphereGeometry args={[1, 64, 64]} />
@@ -149,17 +170,29 @@ function Scene({ hovIdxRef }) {
   )
 }
 
-export default function DebrisEarthCountries({ hovIdxRef }) {
+export default function DebrisEarthCountries({ hovIdxRef, progressRef }) {
+  const [inView, setInView] = useState(false)
+  const wrapRef = useRef()
+
+  useEffect(() => {
+    const io = new IntersectionObserver(([e]) => setInView(e.isIntersecting), { rootMargin: '120px' })
+    if (wrapRef.current) io.observe(wrapRef.current)
+    return () => io.disconnect()
+  }, [])
+
   return (
-    <Canvas
-      camera={{ position: [0, 9, 0.01], fov: 62 }}
-      dpr={[1, 1.5]}
-      gl={{ antialias: true, alpha: true }}
-      style={{ background: 'transparent', width: '100%', height: '100%' }}
-    >
-      <Suspense fallback={null}>
-        <Scene hovIdxRef={hovIdxRef} />
-      </Suspense>
-    </Canvas>
+    <div ref={wrapRef} style={{ width: '100%', height: '100%' }}>
+      <Canvas
+        frameloop={inView ? 'always' : 'never'}
+        camera={{ position: [2.5, 0.3, 8.5], fov: 52 }}
+        dpr={[1, 1.5]}
+        gl={{ antialias: true, alpha: true }}
+        style={{ background: 'transparent', width: '100%', height: '100%' }}
+      >
+        <Suspense fallback={null}>
+          <Scene hovIdxRef={hovIdxRef} progressRef={progressRef} />
+        </Suspense>
+      </Canvas>
+    </div>
   )
 }

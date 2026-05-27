@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls, useGLTF, Center } from '@react-three/drei'
 import * as THREE from 'three'
@@ -39,8 +39,9 @@ function Body({ active }) {
     te.current.set(active ? C.frame.e : '#000')
     ;[bodyRef, topRef, botRef, domeRef].forEach(r => {
       if (!r.current?.material) return
-      r.current.material.color.lerp(tc.current, 0.07)
-      r.current.material.emissive.lerp(te.current, 0.07)
+      const mat = r.current.material
+      if (mat.color.distanceTo(tc.current) > 0.001)   mat.color.lerp(tc.current, 0.07)
+      if (mat.emissive.distanceTo(te.current) > 0.001) mat.emissive.lerp(te.current, 0.07)
     })
   })
 
@@ -83,9 +84,8 @@ function Insulation({ active }) {
   useFrame(() => {
     if (!ref.current?.material) return
     const mat = ref.current.material
-    tc.current.set(C.insulation.s)
-    mat.color.lerp(tc.current, 0.07)
-    mat.opacity += ((active ? 0.38 : 0) - mat.opacity) * 0.07
+    const tOpacity = active ? 0.38 : 0
+    if (Math.abs(tOpacity - mat.opacity) > 0.001) mat.opacity += (tOpacity - mat.opacity) * 0.07
   })
   return (
     <mesh ref={ref}>
@@ -112,8 +112,9 @@ function SolarPanels({ active }) {
     te.current.set(active ? C.solar.e : '#000')
     ;[r0, r1, r2, r3].forEach(r => {
       if (!r.current?.material) return
-      r.current.material.color.lerp(tc.current, 0.07)
-      r.current.material.emissive.lerp(te.current, 0.07)
+      const mat = r.current.material
+      if (mat.color.distanceTo(tc.current) > 0.001)   mat.color.lerp(tc.current, 0.07)
+      if (mat.emissive.distanceTo(te.current) > 0.001) mat.emissive.lerp(te.current, 0.07)
     })
   })
 
@@ -161,8 +162,9 @@ function PropulsionTank({ active }) {
     te.current.set(active ? C.propulsion.e : '#000')
     ;[tankRef, nozzleRef].forEach(r => {
       if (!r.current?.material) return
-      r.current.material.color.lerp(tc.current, 0.07)
-      r.current.material.emissive.lerp(te.current, 0.07)
+      const mat = r.current.material
+      if (mat.color.distanceTo(tc.current) > 0.001)   mat.color.lerp(tc.current, 0.07)
+      if (mat.emissive.distanceTo(te.current) > 0.001) mat.emissive.lerp(te.current, 0.07)
     })
   })
 
@@ -299,16 +301,17 @@ function GLBScene({ activePart = 'frame' }) {
   }
 
   useFrame(() => {
+    const accentHex = GLB_PART_ACCENT[activePart] ?? '#6b7fff'
     for (const [part, meshes] of Object.entries(partMeshes.current)) {
-      const isActive  = part === activePart
-      const accentHex = GLB_PART_ACCENT[activePart] ?? '#6b7fff'
+      const isActive = part === activePart
+      const tIntensity = isActive ? 0.72 : 0
       tCol.current.set(isActive ? accentHex : '#000000')
       for (const mesh of meshes) {
         const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
         for (const mat of mats) {
           if (!mat.emissive) continue
-          mat.emissive.lerp(tCol.current, 0.06)
-          mat.emissiveIntensity += ((isActive ? 0.72 : 0) - mat.emissiveIntensity) * 0.06
+          if (mat.emissive.distanceTo(tCol.current) > 0.001)     mat.emissive.lerp(tCol.current, 0.06)
+          if (Math.abs(mat.emissiveIntensity - tIntensity) > 0.001) mat.emissiveIntensity += (tIntensity - mat.emissiveIntensity) * 0.06
         }
       }
     }
@@ -324,11 +327,19 @@ function GLBScene({ activePart = 'frame' }) {
 }
 
 export function GLBSatelliteModel({ accent = '#6b7fff', activePart = 'frame' }) {
+  const [inView, setInView] = useState(false)
+  const wrapRef = useRef()
+  useEffect(() => {
+    const io = new IntersectionObserver(([e]) => setInView(e.isIntersecting), { rootMargin: '100px' })
+    if (wrapRef.current) io.observe(wrapRef.current)
+    return () => io.disconnect()
+  }, [])
   return (
-    <div style={{ width: '100%', height: '100%' }}>
+    <div ref={wrapRef} style={{ width: '100%', height: '100%' }}>
       <Canvas
-        camera={{ position: [0, 0.6, 4.8], fov: 36 }}
-        dpr={[1, 1.5]}
+        frameloop={inView ? 'always' : 'never'}
+        camera={{ position: [0, 0.4, 9.5], fov: 44 }}
+        dpr={[1, 1]}
         gl={{ antialias: true, alpha: true }}
         style={{ background: 'transparent', width: '100%', height: '100%' }}
       >
@@ -345,8 +356,8 @@ export function GLBSatelliteModel({ accent = '#6b7fff', activePart = 'frame' }) 
           autoRotate
           autoRotateSpeed={1.4}
           enableZoom
-          minDistance={2.2}
-          maxDistance={9.0}
+          minDistance={4.0}
+          maxDistance={16.0}
           enablePan={false}
           maxPolarAngle={Math.PI * 0.78}
           minPolarAngle={Math.PI * 0.18}
@@ -358,18 +369,27 @@ export function GLBSatelliteModel({ accent = '#6b7fff', activePart = 'frame' }) 
 }
 
 export default function SatelliteModel({ selections = {}, height = 480, fill = false, mouseXRef, mouseYRef, activePart }) {
+  const [inView, setInView] = useState(false)
+  const wrapRef = useRef()
+  useEffect(() => {
+    const io = new IntersectionObserver(([e]) => setInView(e.isIntersecting), { rootMargin: '100px' })
+    if (wrapRef.current) io.observe(wrapRef.current)
+    return () => io.disconnect()
+  }, [])
+
   const containerStyle = fill
     ? { width: '100%', height: '100%' }
     : { height, background: 'transparent' }
 
   return (
-    <div style={containerStyle}>
+    <div ref={wrapRef} style={containerStyle}>
       <Canvas
+        frameloop={inView ? 'always' : 'never'}
         camera={fill
           ? { position: [0, 0.5, 4.0], fov: 40 }
           : { position: [0, 0.4, 5.0], fov: 34 }
         }
-        dpr={[1, 1.5]}
+        dpr={[1, 1]}
         gl={{ antialias: true, alpha: true }}
         style={{ background: 'transparent', width: '100%', height: '100%' }}
       >

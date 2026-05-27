@@ -1,10 +1,13 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import useAppStore from '../../store/useAppStore'
-import { generateMissionStory, generateStoryOutline, generateOpeningStory } from '../../services/ai'
+import { generateMissionStory, generateStoryOutline, generateOpeningStory, generateMaterialFeedback } from '../../services/ai'
 import OrbitGlobe from './OrbitGlobe'
+import { PARTS, PART_ACCENT, CanvasErrorBoundary } from './SceneMaterial'
+import { GLBSatelliteModel } from '../M1/SatelliteModel'
 
 const EASE = [0.16, 1, 0.3, 1]
+const RISK_COLORS = { low: '#34d399', medium: '#fbbf24', high: '#f87171' }
 
 // ── 太空碎片 icon（不规则角形碎块 + 裂缝 + 溅射小片）──────────────────────────
 function DebrisIcon({ color, size = 22 }) {
@@ -84,6 +87,7 @@ export default function M2({ onComplete }) {
   const setMission       = useAppStore((s) => s.setMission)
   const setStoryChapter  = useAppStore((s) => s.setStoryChapter)
   const setScrollLocked  = useAppStore((s) => s.setScrollLocked)
+  const setMaterialPart  = useAppStore((s) => s.setMaterialPart)
 
   const [mission,        setMissionLocal]  = useState(null)
   const [aiState,        setAiState]       = useState('idle')
@@ -91,18 +95,28 @@ export default function M2({ onComplete }) {
   const [currentStep,    setCurrentStep]   = useState(0)
   const [activeOrbit,    setActiveOrbit]   = useState(null)
   const [hoveredMission, setHoveredMission] = useState(null)
-  const [btnHov,         setBtnHov]        = useState(false)
+  const [matPartIdx,     setMatPartIdx]    = useState(0)
+  const [matHov,         setMatHov]        = useState(null)
+  const [matAiState,     setMatAiState]    = useState('idle')
+  const [matFeedback,    setMatFeedback]   = useState('')
+  const [matModelVisible, setMatModelVisible] = useState(false)
 
   const [formStep,       setFormStep]      = useState('form')
   const [form,           setForm]          = useState({ name: '', city: '', importantEvent: '' })
   const [openingStory,   setOpeningStory]  = useState('')
   const [formError,      setFormError]     = useState(null)
 
+  useEffect(() => {
+    if (mission) onComplete?.({ autoScroll: false })
+  }, [mission])
+
   // 四章节 ref
-  const chapterRef0 = useRef(null)
-  const chapterRef1 = useRef(null)
-  const chapterRef2 = useRef(null)
-  const chapterRef3 = useRef(null)
+  const chapterRef0    = useRef(null)
+  const chapterRef1    = useRef(null)
+  const chapterRef2    = useRef(null)
+  const chapterRef3    = useRef(null)
+  const matModelRef    = useRef(null)
+  const matSectionRef  = useRef(null)
 
   // 进度条 DOM ref（直接操作，不经 React 状态，保证 60fps 丝滑）
   const indicatorRef = useRef(null)
@@ -112,8 +126,20 @@ export default function M2({ onComplete }) {
   // 折线分隔 DOM ref
   const notchRef     = useRef(null)
 
+  // 懒挂载 GLB 模型（进入视口才挂载，避免同时存在两个 WebGL context）
+  useEffect(() => {
+    if (!matModelRef.current) return
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setMatModelVisible(true); obs.disconnect() } },
+      { rootMargin: '150px' }
+    )
+    obs.observe(matModelRef.current)
+    return () => obs.disconnect()
+  }, [])
+
   // formStepRef 让滚动 RAF 闭包能读到最新 formStep（避免 stale closure）
-  const formStepRef = useRef(formStep)
+  const formStepRef      = useRef(formStep)
+  const scrollLockedRef  = useRef(false)
   useEffect(() => { formStepRef.current = formStep }, [formStep])
 
   async function handleFormSubmit() {
@@ -196,20 +222,21 @@ export default function M2({ onComplete }) {
           }
         }
 
-        // ── 离散 step（仅用于章节透明度，频率低）
-        const dists = [chapterRef0, chapterRef1, chapterRef2, chapterRef3].map((r) => {
-          if (!r.current) return Infinity
-          const rect = r.current.getBoundingClientRect()
+        // ── 离散 step（仅用于章节透明度，频率低）— 复用上面已读取的 rects
+        const dists = rects.map((rect) => {
+          if (!rect) return Infinity
           return Math.abs(rect.top + rect.height / 2 - vMid)
         })
         const next = dists.indexOf(Math.min(...dists))
         setCurrentStep((prev) => (prev !== next ? next : prev))
 
-        // ── 表单门控：chapter 2 顶部进入视口时才锁定，让用户能看完完整表单 ──
-        if (chapterRef2.current) {
-          const r2 = chapterRef2.current.getBoundingClientRect()
-          const shouldLock = r2.top < window.innerHeight && formStepRef.current !== 'result'
-          setScrollLocked(shouldLock)
+        // ── 表单门控：复用 rects[2]，避免重复 getBoundingClientRect ──
+        if (rects[2]) {
+          const shouldLock = rects[2].top < window.innerHeight && formStepRef.current !== 'result'
+          if (shouldLock !== scrollLockedRef.current) {
+            scrollLockedRef.current = shouldLock
+            setScrollLocked(shouldLock)
+          }
         }
 
         ticking = false
@@ -222,6 +249,19 @@ export default function M2({ onComplete }) {
       setScrollLocked(false)
     }
   }, [])
+
+  const safeMatls  = materials ?? {}
+  const matAllDone = Object.values(safeMatls).filter(Boolean).length === 4
+
+  async function handleMatFeedback() {
+    if (!matAllDone || matAiState !== 'idle') return
+    setMatAiState('loading')
+    try {
+      const result = await generateMaterialFeedback({ materials, satellite, user, storyOutline })
+      setMatFeedback(result.feedback ?? '')
+      setMatAiState('done')
+    } catch { setMatAiState('error') }
+  }
 
   async function handleMissionSelect(missionId) {
     if (aiState !== 'idle') return
@@ -924,6 +964,234 @@ export default function M2({ onComplete }) {
           </div>
 
           {/* ═══════════════════════════════════════════════
+              材料选择 · MATERIAL SELECTION
+          ═══════════════════════════════════════════════ */}
+          <div ref={matSectionRef} style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '80px 28px' }}>
+            <motion.div
+              initial={{ opacity: 0, y: 36 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.65, ease: EASE }}
+              viewport={{ once: true, amount: 0.2 }}
+            >
+              <div style={{ fontFamily: '"Space Mono", monospace', fontSize: 8, color: '#6b7fff', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 22 }}>
+                03 · MATERIAL SELECTION
+              </div>
+              <h3 style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 24, fontWeight: 400, color: '#e8e8f8', marginBottom: 10, lineHeight: 1.5 }}>
+                为卫星选择材料
+              </h3>
+              <p style={{ fontFamily: '"Noto Sans SC", sans-serif', fontSize: 13, color: 'rgba(232,232,248,0.52)', lineHeight: 1.85, marginBottom: 32, maxWidth: 420 }}>
+                为四个关键部件选择材料。它将决定卫星再入大气层时的碎片特征与地面落点风险。这是全站第一个有后果的选择。
+              </p>
+
+              {/* 左右布局：左侧 3D 模型 + 右侧终端行选择 */}
+              <div style={{ display: 'flex', gap: 28, alignItems: 'flex-start' }}>
+
+                {/* 左侧：GLB 3D 模型（sticky） */}
+                <div style={{ flexShrink: 0, width: 220, position: 'sticky', top: '16vh' }}>
+                  <div
+                    ref={matModelRef}
+                    onWheel={e => e.stopPropagation()}
+                    style={{ height: 300, background: 'transparent' }}
+                  >
+                    {matModelVisible && (
+                      <CanvasErrorBoundary fallback={<div style={{ width: '100%', height: '100%' }} />}>
+                        <Suspense fallback={<div style={{ width: '100%', height: '100%' }} />}>
+                          <GLBSatelliteModel
+                            accent={PART_ACCENT[PARTS[matPartIdx].id]}
+                            activePart={PARTS[matPartIdx].id}
+                          />
+                        </Suspense>
+                      </CanvasErrorBoundary>
+                    )}
+                  </div>
+                  <div style={{ paddingTop: 14 }}>
+                    <div style={{ fontFamily: '"Space Mono", monospace', fontSize: 7, color: PART_ACCENT[PARTS[matPartIdx].id], letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 5 }}>
+                      {String(matPartIdx + 1).padStart(2, '0')} / {PARTS.length} &nbsp;·&nbsp; {PARTS[matPartIdx].labelEn}
+                    </div>
+                    <div style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 14, color: '#e8e8f8', marginBottom: 5 }}>
+                      {PARTS[matPartIdx].label}
+                    </div>
+                    <div style={{ fontFamily: '"Noto Sans SC", sans-serif', fontSize: 11, color: 'rgba(232,232,248,0.35)', lineHeight: 1.7 }}>
+                      {PARTS[matPartIdx].desc}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, marginTop: 14 }}>
+                    {PARTS.map((p, i) => (
+                      <div key={p.id} onClick={() => setMatPartIdx(i)} style={{
+                        height: 2,
+                        width: matPartIdx === i ? 20 : 6,
+                        background: safeMatls[p.id]
+                          ? PART_ACCENT[p.id]
+                          : matPartIdx === i ? PART_ACCENT[PARTS[matPartIdx].id] : 'rgba(107,127,255,0.2)',
+                        transition: 'all 0.3s ease', cursor: 'pointer',
+                      }} />
+                    ))}
+                  </div>
+                </div>
+
+                {/* 右侧：部件 tabs + 选项终端行 */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {/* 部件 tabs */}
+                  <div style={{ display: 'flex', marginBottom: 20 }}>
+                    {PARTS.map((p, i) => {
+                      const isCur  = matPartIdx === i
+                      const isDone = !!safeMatls[p.id]
+                      const acc    = PART_ACCENT[p.id]
+                      return (
+                        <div key={p.id} onClick={() => setMatPartIdx(i)} style={{
+                          flex: 1, padding: '8px 2px', cursor: 'pointer',
+                          borderBottom: `1px solid ${isCur ? acc : isDone ? acc + '55' : '#1a1a35'}`,
+                          transition: 'border-color 0.3s',
+                        }}>
+                          <div style={{ fontFamily: '"Space Mono", monospace', fontSize: 7, color: isCur ? acc : isDone ? acc + 'aa' : '#484878', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 3, transition: 'color 0.3s' }}>
+                            {String(i + 1).padStart(2, '0')}
+                          </div>
+                          <div style={{ fontFamily: '"Noto Sans SC", sans-serif', fontSize: 10, color: isCur ? '#e8e8f8' : 'rgba(232,232,248,0.35)', transition: 'color 0.3s' }}>
+                            {p.label}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* 当前部件的选项（终端行风格） */}
+                  <AnimatePresence mode="wait">
+                    <motion.div key={matPartIdx}
+                      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }} transition={{ duration: 0.35, ease: EASE }}
+                    >
+                      <div style={{ height: 1, background: '#1a1a35' }} />
+                      {PARTS[matPartIdx].options.map((opt, idx) => {
+                        const partAcc  = PART_ACCENT[PARTS[matPartIdx].id]
+                        const isSel    = safeMatls[PARTS[matPartIdx].id] === opt.id
+                        const isHov    = matHov === idx
+                        const isActive = isSel || isHov
+                        const riskColor = RISK_COLORS[opt.risk]
+                        return (
+                          <div key={opt.id}>
+                            <div
+                              onClick={() => {
+                                setMaterialPart(PARTS[matPartIdx].id, opt.id)
+                                if (matPartIdx < PARTS.length - 1) setTimeout(() => setMatPartIdx(matPartIdx + 1), 400)
+                              }}
+                              onMouseEnter={() => setMatHov(idx)}
+                              onMouseLeave={() => setMatHov(null)}
+                              style={{ position: 'relative', overflow: 'hidden', cursor: 'pointer' }}
+                            >
+                              {/* 左侧激活竖线 */}
+                              <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 2, background: partAcc, transform: isSel ? 'scaleY(1)' : 'scaleY(0)', transformOrigin: 'center', transition: 'transform 0.4s cubic-bezier(0.16,1,0.3,1)', pointerEvents: 'none' }} />
+                              {/* 背景扫光 */}
+                              <div style={{ position: 'absolute', inset: 0, background: isActive ? `linear-gradient(to right, ${partAcc}12 0%, transparent 65%)` : 'transparent', transition: 'background 0.4s', pointerEvents: 'none' }} />
+                              {/* 主内容行 */}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: isSel ? '20px 14px 20px 18px' : '16px 14px 16px 18px', transition: 'padding 0.35s ease', position: 'relative' }}>
+                                {/* 轨道圆指示器 */}
+                                <div style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: `1px solid ${isSel ? partAcc : isHov ? partAcc + '55' : '#2a2a48'}`, transition: 'border-color 0.3s' }} />
+                                  <div style={{ width: isSel ? 9 : 3, height: isSel ? 9 : 3, borderRadius: '50%', background: isSel ? partAcc : isHov ? partAcc + '66' : '#2a2a48', transition: 'all 0.35s cubic-bezier(0.16,1,0.3,1)' }} />
+                                  <span style={{ position: 'absolute', fontFamily: '"Space Mono", monospace', fontSize: 7, color: isSel ? partAcc : '#484878', letterSpacing: '0.05em', bottom: -13, transition: 'color 0.35s' }}>
+                                    {String(idx + 1).padStart(2, '0')}
+                                  </span>
+                                </div>
+                                {/* 连接线 */}
+                                <div style={{ width: isActive ? 12 : 6, height: 1, background: isSel ? partAcc : '#2a2a48', flexShrink: 0, transition: 'all 0.35s' }} />
+                                {/* 文字 */}
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
+                                    <span style={{ fontFamily: '"Space Mono", monospace', fontSize: 7, color: isSel ? partAcc : isHov ? partAcc + '88' : '#484878', letterSpacing: '0.14em', textTransform: 'uppercase', transition: 'color 0.3s' }}>
+                                      {opt.en.split(' ').slice(0, 2).join(' ')}
+                                    </span>
+                                    <span style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 14, color: isActive ? '#e8e8f8' : 'rgba(232,232,248,0.5)', transition: 'color 0.3s' }}>
+                                      {opt.label}
+                                    </span>
+                                  </div>
+                                  <div style={{ fontFamily: '"Noto Sans SC", sans-serif', fontSize: 11, color: isSel ? 'rgba(232,232,248,0.58)' : isHov ? 'rgba(232,232,248,0.35)' : 'rgba(232,232,248,0.2)', lineHeight: 1.78, maxHeight: isActive ? '60px' : '0px', overflow: 'hidden', transition: 'max-height 0.4s cubic-bezier(0.16,1,0.3,1), color 0.3s' }}>
+                                    {opt.shortFeature}
+                                  </div>
+                                  {isSel && (
+                                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} transition={{ duration: 0.35, ease: EASE }} style={{ display: 'flex', gap: 20, marginTop: 10, overflow: 'hidden' }}>
+                                      <div>
+                                        <div style={{ fontFamily: '"Space Mono", monospace', fontSize: 7, color: '#484878', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 3 }}>再入风险</div>
+                                        <div style={{ fontFamily: '"Space Mono", monospace', fontSize: 10, color: riskColor }}>{opt.risk.toUpperCase()}</div>
+                                      </div>
+                                      <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontFamily: '"Space Mono", monospace', fontSize: 7, color: '#484878', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 3 }}>特征</div>
+                                        <div style={{ fontFamily: '"Noto Sans SC", sans-serif', fontSize: 11, color: 'rgba(232,232,248,0.55)', lineHeight: 1.7 }}>{opt.shortFeature}</div>
+                                      </div>
+                                    </motion.div>
+                                  )}
+                                </div>
+                                {/* 右侧箭头 */}
+                                <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 3, opacity: isActive ? 1 : 0, transform: isActive ? 'translateX(0)' : 'translateX(-8px)', transition: 'opacity 0.3s, transform 0.35s' }}>
+                                  <div style={{ width: 14, height: 1, background: isSel ? partAcc : partAcc + '66' }} />
+                                  <div style={{ width: 4, height: 4, borderTop: `1px solid ${partAcc}`, borderRight: `1px solid ${partAcc}`, transform: 'rotate(45deg)', opacity: isSel ? 1 : 0.5 }} />
+                                </div>
+                              </div>
+                            </div>
+                            <div style={{ height: 1, background: '#1a1a35' }} />
+                          </div>
+                        )
+                      })}
+                    </motion.div>
+                  </AnimatePresence>
+
+                  {/* AI 反馈 & 进入下一章 */}
+                  <AnimatePresence>
+                    {matAllDone && matAiState === 'idle' && (
+                      <motion.div key="mat-cta" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, ease: EASE, delay: 0.2 }} style={{ marginTop: 24 }}>
+                        <div onClick={handleMatFeedback} style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 12, userSelect: 'none' }}
+                          onMouseEnter={e => { e.currentTarget.querySelector('span').style.color = '#e8e8f8' }}
+                          onMouseLeave={e => { e.currentTarget.querySelector('span').style.color = '#6b7fff' }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                            {[0,1,2].map(k => (<div key={k} style={{ height: 1, width: 5, background: `rgba(107,127,255,${0.3 + k * 0.2})` }} />))}
+                          </div>
+                          <span style={{ fontFamily: '"Space Mono", monospace', fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#6b7fff', transition: 'color 0.3s' }}>
+                            生成材料分析
+                          </span>
+                          <div style={{ width: 12, height: 1, background: '#6b7fff' }} />
+                          <div style={{ width: 5, height: 5, borderTop: '1.5px solid #6b7fff', borderRight: '1.5px solid #6b7fff', transform: 'rotate(45deg)' }} />
+                        </div>
+                      </motion.div>
+                    )}
+                    {matAiState === 'loading' && (
+                      <motion.div key="mat-loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }} style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 24, padding: '16px 20px', background: 'rgba(8,8,26,0.72)', border: '1px solid #1a1a35' }}>
+                        <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#6b7fff', animation: 'blink 1.2s ease infinite', flexShrink: 0 }} />
+                        <span style={{ fontFamily: '"Space Mono", monospace', fontSize: 8, color: '#484878', letterSpacing: '0.14em' }}>ANALYZING RE-ENTRY PROFILE...</span>
+                      </motion.div>
+                    )}
+                    {(matAiState === 'done' || matAiState === 'error') && (
+                      <motion.div key="mat-done" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, ease: EASE }} style={{ marginTop: 24 }}>
+                        <div style={{ borderTop: '1px solid #1a1a35', paddingTop: 20, marginBottom: 20 }}>
+                          <div style={{ fontFamily: '"Space Mono", monospace', fontSize: 8, color: '#6b7fff', letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 14 }}>
+                            材料分析 · RE-ENTRY PROFILE
+                          </div>
+                          <p className="story-text" style={{ margin: 0 }}>
+                            {matAiState === 'done' ? matFeedback : '材料分析服务暂时不可用，材料组合已记录。'}
+                          </p>
+                        </div>
+                        <div onClick={() => chapterRef3.current?.scrollIntoView({ behavior: 'smooth' })}
+                          style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 14, userSelect: 'none' }}
+                          onMouseEnter={e => { e.currentTarget.querySelector('span').style.color = '#e8e8f8' }}
+                          onMouseLeave={e => { e.currentTarget.querySelector('span').style.color = '#6b7fff' }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                            {[0,1,2].map(k => (<div key={k} style={{ height: 1, width: 5, background: `rgba(107,127,255,${0.3 + k * 0.2})` }} />))}
+                          </div>
+                          <span style={{ fontFamily: '"Space Mono", monospace', fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#6b7fff', transition: 'color 0.3s' }}>
+                            进入任务选择 · MISSION
+                          </span>
+                          <div style={{ width: 12, height: 1, background: '#6b7fff' }} />
+                          <div style={{ width: 5, height: 5, borderTop: '1.5px solid #6b7fff', borderRight: '1.5px solid #6b7fff', transform: 'rotate(45deg)' }} />
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* ═══════════════════════════════════════════════
               章节 3 · 任务指派
           ═══════════════════════════════════════════════ */}
           <div ref={chapterRef3} style={chapterWrap(3)}>
@@ -937,7 +1205,7 @@ export default function M2({ onComplete }) {
                 fontFamily: '"Space Mono", monospace', fontSize: 8,
                 color: '#8b6cf8', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 22,
               }}>
-                03 · MISSION SELECT
+                04 · MISSION SELECT
               </div>
               <h3 style={{
                 fontFamily: '"Noto Serif SC", serif', fontSize: 24,
@@ -1145,111 +1413,46 @@ export default function M2({ onComplete }) {
                 )}
               </AnimatePresence>
 
-              {/* AI 故事 + 继续按钮 */}
+              {/* 选完任务后：故事 + 继续按钮 */}
               <AnimatePresence>
-                {(aiState === 'done' || aiState === 'error') && (
+                {mission && (
                   <motion.div
                     key="story"
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.55, ease: EASE }}
                   >
-                    {/* 任务元信息 */}
-                    {mission && (() => {
-                      const sel = MISSIONS.find((m) => m.id === mission)
-                      return (
-                        <div style={{ display: 'flex', gap: 24, marginBottom: 18, flexWrap: 'wrap' }}>
-                          {[{ l: '轨道', v: sel.orbit }, { l: '典型案例', v: sel.example }].map(({ l, v }) => (
-                            <div key={l} style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
-                              <span style={{
-                                fontFamily: '"Space Mono", monospace', fontSize: 7,
-                                color: '#484878', letterSpacing: '0.1em', textTransform: 'uppercase',
-                              }}>
-                                {l}
-                              </span>
-                              <span style={{
-                                fontFamily: '"Noto Sans SC", sans-serif',
-                                fontSize: 12, color: 'rgba(232,232,248,0.5)',
-                              }}>
-                                {v}
-                              </span>
+                    {/* 故事区（AI 完成后才渲染） */}
+                    <AnimatePresence>
+                      {(aiState === 'done' || aiState === 'error') && (
+                        <motion.div key="story-text" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: EASE }}>
+                          {/* 任务元信息 */}
+                          {(() => {
+                            const sel = MISSIONS.find((m) => m.id === mission)
+                            return (
+                              <div style={{ display: 'flex', gap: 24, marginBottom: 18, flexWrap: 'wrap' }}>
+                                {[{ l: '轨道', v: sel.orbit }, { l: '典型案例', v: sel.example }].map(({ l, v }) => (
+                                  <div key={l} style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
+                                    <span style={{ fontFamily: '"Space Mono", monospace', fontSize: 7, color: '#484878', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{l}</span>
+                                    <span style={{ fontFamily: '"Noto Sans SC", sans-serif', fontSize: 12, color: 'rgba(232,232,248,0.5)' }}>{v}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )
+                          })()}
+                          {/* 故事文本 */}
+                          <div style={{ borderTop: '1px solid #1a1a35', paddingTop: 22, marginBottom: 24 }}>
+                            <div style={{ fontFamily: '"Space Mono", monospace', fontSize: 8, color: '#8b6cf8', letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 16 }}>
+                              第二段 · 任务展开 · {satellite?.name ?? ''}
                             </div>
-                          ))}
-                        </div>
-                      )
-                    })()}
+                            <p className="story-text" style={{ margin: 0 }}>
+                              {aiState === 'done' ? story : '叙事生成失败，任务已记录，继续下一章。'}
+                            </p>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
 
-                    {/* 故事文本 */}
-                    <div style={{ borderTop: '1px solid #1a1a35', paddingTop: 22, marginBottom: 24 }}>
-                      <div style={{
-                        fontFamily: '"Space Mono", monospace', fontSize: 8,
-                        color: '#8b6cf8', letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 16,
-                      }}>
-                        第二段 · 任务展开 · {satellite?.name ?? ''}
-                      </div>
-                      <p className="story-text" style={{ margin: 0 }}>
-                        {aiState === 'done' ? story : '叙事生成失败，任务已记录，继续下一章。'}
-                      </p>
-                    </div>
-
-                    {/* 继续按钮——轨道线箭头设计（非矩形） */}
-                    <div
-                      onClick={onComplete}
-                      onMouseEnter={() => setBtnHov(true)}
-                      onMouseLeave={() => setBtnHov(false)}
-                      style={{ cursor: 'pointer', display: 'inline-flex', flexDirection: 'column', gap: 8, userSelect: 'none' }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        {/* 左侧引导线 */}
-                        <div style={{
-                          display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0,
-                        }}>
-                          {[0, 1, 2].map((k) => (
-                            <div key={k} style={{
-                              height: 1,
-                              width: btnHov ? (k === 2 ? 16 : 8) : 5,
-                              background: `rgba(139,108,248,${0.3 + k * 0.2})`,
-                              transition: `width ${0.3 + k * 0.08}s ease`,
-                            }} />
-                          ))}
-                        </div>
-
-                        {/* 文字 */}
-                        <span style={{
-                          fontFamily: '"Space Mono", monospace', fontSize: 10,
-                          letterSpacing: '0.16em', textTransform: 'uppercase',
-                          color: btnHov ? '#e8e8f8' : '#8b6cf8',
-                          transition: 'color 0.3s ease',
-                        }}>
-                          进入下一章 · M3 历史事件
-                        </span>
-
-                        {/* 右侧箭头序列 */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
-                          <div style={{
-                            width: btnHov ? 24 : 12, height: 1,
-                            background: '#8b6cf8',
-                            transition: 'width 0.4s cubic-bezier(0.16,1,0.3,1)',
-                          }} />
-                          {/* 箭头头 */}
-                          <div style={{
-                            width: 6, height: 6,
-                            borderTop: '1.5px solid #8b6cf8',
-                            borderRight: '1.5px solid #8b6cf8',
-                            transform: `rotate(45deg) translateX(${btnHov ? 3 : 0}px)`,
-                            transition: 'transform 0.35s ease',
-                          }} />
-                        </div>
-                      </div>
-
-                      {/* 底部扫线 */}
-                      <div style={{
-                        height: 1,
-                        width: btnHov ? '100%' : '48%',
-                        background: '#8b6cf8',
-                        transition: 'width 0.55s cubic-bezier(0.16,1,0.3,1)',
-                      }} />
-                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -1475,6 +1678,7 @@ export default function M2({ onComplete }) {
         </div>
         </div>{/* absolute outer end */}
       </div>
+
     </div>
   )
 }

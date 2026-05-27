@@ -143,8 +143,8 @@ function OptionalModuleCard({ Component, isVisible }) {
 // ── 模块顺序 + 衔接句 ───────────────────────────────────────────────────────
 const MODULES = [
   { id: 'm1',       Component: M1,       connector: null, archDivider: '#04040f' },
-  { id: 'm2',       Component: M2,       connector: null, archDivider: { color: '#04040f', flip: true } },
-  { id: 'm3',       Component: M3,       connector: '不是没有人做过这个决定，是做了这个决定的人，已经不在了。' },
+  { id: 'm3',       Component: M3,       connector: null },
+  { id: 'm2',       Component: M2,       connector: null },
   { id: 'm4',       Component: M4,       connector: null },
   { id: 'm5',       Component: M5,       connector: '旅行结束了，那些留下来的，我们总是忘了还有机会处理。' },
   { id: 'm6',       Component: M6,       connector: '不要问还有没有人在乎，问你自己。' },
@@ -171,34 +171,6 @@ export default function App() {
     return () => { document.body.style.overflow = '' }
   }, [scrollLocked])
 
-  // 惯性滚动：wheel 停止后继续滑行一段距离
-  useEffect(() => {
-    let vel = 0
-    let raf = null
-
-    const step = () => {
-      if (Math.abs(vel) < 0.5) { vel = 0; raf = null; return }
-      if (document.body.style.overflow === 'hidden') { vel = 0; raf = null; return }
-      window.scrollBy(0, vel)
-      vel *= 0.75
-      raf = requestAnimationFrame(step)
-    }
-
-    const onWheel = (e) => {
-      if (document.body.style.overflow === 'hidden') return
-      e.preventDefault()
-      const delta = e.deltaMode === 1 ? e.deltaY * 40 : e.deltaY
-      vel += delta * 0.38
-      vel = Math.max(-400, Math.min(400, vel))
-      if (!raf) raf = requestAnimationFrame(step)
-    }
-
-    window.addEventListener('wheel', onWheel, { passive: false })
-    return () => {
-      window.removeEventListener('wheel', onWheel)
-      if (raf) cancelAnimationFrame(raf)
-    }
-  }, [])
 
   // 兼容新增模块：静默补解锁，不触发滚动
   useEffect(() => {

@@ -126,12 +126,8 @@ function EarthMesh() {
     <group rotation={[-Math.PI / 2, 0, Math.PI]}>
       <group ref={spinRef}>
         <mesh>
-          <sphereGeometry args={[6.5, 64, 64]} />
+          <sphereGeometry args={[6.5, 40, 28]} />
           <meshStandardMaterial map={texture} transparent roughness={0.65} metalness={0.05} emissive="#1a3a7a" emissiveIntensity={0.15} />
-        </mesh>
-        <mesh>
-          <sphereGeometry args={[6.55, 28, 14]} />
-          <meshStandardMaterial color="#2255aa" transparent opacity={0.02} wireframe />
         </mesh>
         <mesh>
           <sphereGeometry args={[6.82, 40, 40]} />
@@ -349,6 +345,7 @@ function EraRing({ config, events, launchYear, hoveredId, clickedIds, onHover, o
                 <div style={{
                   fontFamily: "'Space Mono', monospace",
                   fontSize: 5,
+                  transform: 'scaleY(-1)',
                   color: isKey && isActive ? '#f87171' : isActive ? '#6b7fff' : '#2a3060',
                   whiteSpace: 'nowrap',
                   letterSpacing: '0.04em',
@@ -395,7 +392,7 @@ function EraRays() {
               opacity={0.75}
             />
             <Html position={[midR * cos, midR * sin, 0.5]} center style={{ pointerEvents: 'none', userSelect: 'none' }}>
-              <div style={{ textAlign: 'center' }}>
+              <div style={{ textAlign: 'center', transform: 'scaleY(-1)' }}>
                 <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 7, color: '#6b7fff', letterSpacing: '0.1em', whiteSpace: 'nowrap' }}>
                   ERA 0{meta.id} · {meta.range}
                 </div>
@@ -472,6 +469,8 @@ export default function M3({ onComplete }) {
   const onHover  = useCallback(ev => setHoveredEv(ev), [])
   const onLeave  = useCallback(() => setHoveredEv(null), [])
 
+  useEffect(() => { onComplete?.({ autoScroll: false }) }, [])
+
   const onClick = useCallback(ev => {
     setSelectedEv(ev)
     if (KEY_IDS.has(ev.id) && ev.year >= launchYear && !clickedIds.has(ev.id) && !loadingId) {
@@ -493,14 +492,25 @@ export default function M3({ onComplete }) {
     }
   }, [clickedIds, loadingId, launchYear, satellite, user, storyOutline, setDamageLevel, setClickedHistoryEvents])
 
+  const [globeInView, setGlobeInView] = useState(false)
+  const globeWrapRef = useRef(null)
+
+  useEffect(() => {
+    const io = new IntersectionObserver(([e]) => setGlobeInView(e.isIntersecting), { rootMargin: '120px' })
+    if (globeWrapRef.current) io.observe(globeWrapRef.current)
+    return () => io.disconnect()
+  }, [])
+
   return (
     <div style={{ color: '#e8e8f8' }}>
-      <div style={{ position: 'relative', width: '100%', height: '100vh', minHeight: 500, overflow: 'hidden' }}>
+      <div ref={globeWrapRef} style={{ position: 'relative', width: '100%', height: '100vh', minHeight: 500, overflow: 'hidden', transform: 'scaleY(-1)' }}>
 
         <Canvas
           orthographic
+          frameloop={globeInView ? 'always' : 'never'}
           camera={{ position: [0, 0, 100] }}
           style={{ position: 'absolute', inset: 0 }}
+          dpr={[1, 1]}
           gl={{ antialias: true, alpha: true }}
         >
           <Suspense fallback={null}>
@@ -517,7 +527,7 @@ export default function M3({ onComplete }) {
 
         {/* Title overlay */}
         <div style={{
-          position: 'absolute', top: '8%', left: '50%', transform: 'translateX(-50%)',
+          position: 'absolute', top: '8%', left: '50%', transform: 'translateX(-50%) scaleY(-1)',
           zIndex: 3, textAlign: 'center', pointerEvents: 'none', width: '100%',
         }}>
           <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, color: '#484878', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 16 }}>
@@ -540,7 +550,7 @@ export default function M3({ onComplete }) {
 
         {/* ERA legend — left side */}
         <div style={{
-          position: 'absolute', left: 28, top: '50%', transform: 'translateY(-50%)',
+          position: 'absolute', left: 28, top: '50%', transform: 'translateY(-50%) scaleY(-1)',
           zIndex: 3, pointerEvents: 'none',
         }}>
           {ERA_META.map((era, i) => (
@@ -568,7 +578,7 @@ export default function M3({ onComplete }) {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.12 }}
               style={{
-                position: 'absolute', bottom: 90, left: '50%', transform: 'translateX(-50%)',
+                position: 'absolute', bottom: 90, left: '50%', transform: 'translateX(-50%) scaleY(-1)',
                 zIndex: 10, pointerEvents: 'none',
               }}
             >
@@ -607,7 +617,7 @@ export default function M3({ onComplete }) {
               exit={{ opacity: 0, x: 24 }}
               transition={{ duration: 0.3, ease: EASE }}
               style={{
-                position: 'absolute', right: 28, top: '50%', transform: 'translateY(-50%)',
+                position: 'absolute', right: 28, top: '50%', transform: 'translateY(-50%) scaleY(-1)',
                 zIndex: 10, width: 300,
               }}
             >
@@ -672,27 +682,7 @@ export default function M3({ onComplete }) {
           )}
         </AnimatePresence>
 
-        {/* Continue button */}
-        <div style={{ position: 'absolute', bottom: 32, left: '50%', transform: 'translateX(-50%)', zIndex: 3 }}>
-          <button
-            onClick={onComplete}
-            style={{
-              padding: '12px 32px', background: 'transparent',
-              border: '1px solid rgba(107,127,255,0.5)', color: '#6b7fff',
-              fontFamily: "'Space Mono', monospace", fontSize: 10,
-              letterSpacing: '0.14em', cursor: 'pointer', textTransform: 'uppercase',
-            }}
-          >
-            继续 →
-          </button>
-        </div>
 
-        {/* Horizon gradient */}
-        <div style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0, height: 60,
-          background: 'linear-gradient(to top, rgba(4,4,15,0.7), transparent)',
-          zIndex: 2, pointerEvents: 'none',
-        }} />
       </div>
     </div>
   )

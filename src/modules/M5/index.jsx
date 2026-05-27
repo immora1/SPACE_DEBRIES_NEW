@@ -1,12 +1,12 @@
-﻿import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence, animate as fmAnimate, useMotionValue } from 'framer-motion'
 import useAppStore from '../../store/useAppStore'
 import { generateReentryEnding } from '../../services/ai'
 
-const MONO = 'Space Mono, monospace'
-const SERIF = 'Noto Serif SC, serif'
-const SANS = 'Noto Sans SC, sans-serif'
-const EASE = [0.16, 1, 0.3, 1]
+const MONO  = "'Space Mono', monospace"
+const SERIF = "'Noto Serif SC', serif"
+const SANS  = "'Noto Sans SC', sans-serif"
+const EASE  = [0.16, 1, 0.3, 1]
 
 const MATERIAL_SURVIVAL = {
   '铝合金':      { rate: '~10%', flame: '#ffa040', note: '熔点 660°C，主结构在 80–90km 高度完全烧蚀' },
@@ -16,12 +16,12 @@ const MATERIAL_SURVIVAL = {
 }
 
 const BURN_TABLE = [
-  { part: '铝合金结构',   fate: '烧蚀', note: '熔点 660°C，85km 高度完全消融',         ok: true  },
-  { part: '钛合金贮箱',   fate: '存活', note: '熔点 1668°C，致密件穿过大气层',           ok: false },
-  { part: '碳纤维面板',   fate: '烧蚀', note: '升华但结构快速解体，碎片细小',             ok: true  },
-  { part: '玻璃纤维框架', fate: '部分', note: '依厚度和再入角度，存活概率差异大',         ok: null  },
-  { part: '隔热毯',       fate: '烧蚀', note: '柔性材料在 70km 高度解体',                ok: true  },
-  { part: '不锈钢紧固件', fate: '存活', note: '小质量高密度，是最常见的地面落片',         ok: false },
+  { part: '铝合金结构',   fate: '烧蚀', note: '熔点 660°C，85km 高度完全消融',           ok: true  },
+  { part: '钛合金贮箱',   fate: '存活', note: '熔点 1668°C，致密件穿过大气层',             ok: false },
+  { part: '碳纤维面板',   fate: '烧蚀', note: '升华但结构快速解体，碎片细小',               ok: true  },
+  { part: '玻璃纤维框架', fate: '部分', note: '依厚度和再入角度，存活概率差异大',           ok: null  },
+  { part: '隔热毯',       fate: '烧蚀', note: '柔性材料在 70km 高度解体',                  ok: true  },
+  { part: '不锈钢紧固件', fate: '存活', note: '小质量高密度，是最常见的地面落片',           ok: false },
 ]
 
 const CASES = [
@@ -64,21 +64,16 @@ const MAP_MARKERS = [
   { id: 'columbia', lat: 31.5,  lng: -95,    year: 2003, name: 'Columbia 碎片',   color: '#906060' },
 ]
 
-// ─── Geometry — concentric Earth + Orbit, impact INSIDE Earth ────────────────
-// ViewBox 560×280. Earth center (100,500) r=430 — only top arc visible.
-// Orbit: same center r=590. Both ORB and ENT are exactly ON the orbit circle.
-// ENT_Y = 500 − sqrt(590²−390²) ≈ 57  (verified: dist from center = 590 ✓)
-// IMP: dist from center ≈290 (67% of radius) — clearly INSIDE Earth body.
+// ─── Geometry ─────────────────────────────────────────────────────────────────
 const GEO = {
   ECX: 100, ECY: 500, ER: 430,
   OR: 590,
-  ORB_X: 438, ORB_Y: 17,    // orbit start  (on orbit circle)
-  ENT_X: 490, ENT_Y: 57,    // orbit end / re-entry start (on orbit circle)
-  IMP_X: 175, IMP_Y: 220,   // impact — dist≈290 from center, INSIDE Earth
-  CP_X:  380, CP_Y:  130,   // bezier control point
+  ORB_X: 438, ORB_Y: 17,
+  ENT_X: 490, ENT_Y: 57,
+  IMP_X: 175, IMP_Y: 220,
+  CP_X:  380, CP_Y:  130,
 }
 
-// n evenly-spaced points along the circular arc from angle θ1 to θ2
 function computeArcPts(cx, cy, r, θ1, θ2, n) {
   return Array.from({ length: n }, (_, i) => {
     const θ = θ1 + (θ2 - θ1) * i / (n - 1)
@@ -86,7 +81,6 @@ function computeArcPts(cx, cy, r, θ1, θ2, n) {
   })
 }
 
-// n evenly-spaced points along quadratic bezier P0→CP→P2
 function computeBezPts(p0x, p0y, cpx, cpy, p2x, p2y, n) {
   return Array.from({ length: n }, (_, i) => {
     const t = i / (n - 1), mt = 1 - t
@@ -97,9 +91,8 @@ function computeBezPts(p0x, p0y, cpx, cpy, p2x, p2y, n) {
   })
 }
 
-// ─── Re-entry diagram — vintage engraving, looping animation ─────────────────
+// ─── Re-entry diagram (vintage engraving, looping) ────────────────────────────
 function ReentryVis({ material }) {
-  // material key may be English (from store) or Chinese — map both
   const MAT_KEYS = { titanium: '钛合金', carbon: '碳纤维', solar: '太阳能电池板', aluminum: '铝合金' }
   const matKey  = MAT_KEYS[material] ?? material
   const info    = MATERIAL_SURVIVAL[matKey] || MATERIAL_SURVIVAL['铝合金']
@@ -111,8 +104,6 @@ function ReentryVis({ material }) {
   const satY      = useMotionValue(GEO.ORB_Y)
   const satRotate = useMotionValue(0)
 
-  // Drive satellite along orbit arc then bezier track using imperative keyframe animation.
-  // Both paths are precomputed so the satellite's motion exactly follows the drawn lines.
   useEffect(() => {
     const { ECX, ECY, OR, ORB_X, ORB_Y, ENT_X, ENT_Y, CP_X, CP_Y, IMP_X, IMP_Y } = GEO
 
@@ -122,16 +113,13 @@ function ReentryVis({ material }) {
     const θ1 = Math.atan2(ORB_Y - ECY, ORB_X - ECX)
     const θ2 = Math.atan2(ENT_Y - ECY, ENT_X - ECX)
 
-    // 12 pts along orbit arc, 20 pts along bezier (ENT→IMP)
     const arcPts = computeArcPts(ECX, ECY, OR, θ1, θ2, 12)
     const bezPts = computeBezPts(ENT_X, ENT_Y, CP_X, CP_Y, IMP_X, IMP_Y, 20)
 
     const TOTAL = 10.2
-    const T_ENT = 3.8 / TOTAL   // ≈0.373
-    const T_IMP = 9.5 / TOTAL   // ≈0.931
+    const T_ENT = 3.8 / TOTAL
+    const T_IMP = 9.5 / TOTAL
 
-    // Normalized times: arc (0→T_ENT), bezier (T_ENT→T_IMP), hold (T_IMP→1)
-    // arcPts[11] = ENT = bezPts[0] → dedup junction by skipping bezPts[0] in xs/ys
     const arcTimes = arcPts.map((_, i) => (i / (arcPts.length - 1)) * T_ENT)
     const bezAllT  = bezPts.map((_, j) => T_ENT + (j / (bezPts.length - 1)) * (T_IMP - T_ENT))
     const times = [...arcTimes, ...bezAllT.slice(1), 1.0]
@@ -158,7 +146,6 @@ function ReentryVis({ material }) {
 
   const { ECX, ECY, ER, OR, ENT_X, ENT_Y, CP_X, CP_Y, IMP_X, IMP_Y } = GEO
 
-  // 14 dots along the bezier — satellite's re-entry track
   const dots = useMemo(() => {
     const n = 14
     return Array.from({ length: n }, (_, i) => {
@@ -171,21 +158,46 @@ function ReentryVis({ material }) {
     })
   }, [])
 
-  const INK      = '#d8cfbc'
-  const INK_DIM  = '#6a6055'
+  const INK      = '#6b9fff'
+  const INK_DIM  = '#1a2a52'
   const ablating    = phase >= 1
   const heavyAblate = phase >= 2
 
+  const PHASE_LABELS = ['ORBITAL APPROACH', 'ATMOSPHERIC ENTRY', 'ABLATION IN PROGRESS', `IMPACT  ·  SURVIVAL  ${info.rate}`]
+
   return (
     <div style={{
-      position: 'relative', background: '#0a0906',
-      border: '1px solid #2a2520', borderRadius: 4,
-      overflow: 'hidden', marginBottom: 4,
+      position: 'relative',
+      width: '100vw',
+      marginLeft: 'calc(-50vw + 50%)',
+      background: '#04040f',
+      overflow: 'hidden',
     }}>
+      {/* Scanlines */}
       <div style={{
         position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 3,
-        background: 'repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.07) 2px,rgba(0,0,0,0.07) 3px)',
+        background: 'repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.06) 2px,rgba(0,0,0,0.06) 3px)',
       }} />
+
+      {/* Top status bar */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '14px 28px',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <motion.div
+            animate={{ opacity: [1, 0.3, 1] }}
+            transition={{ duration: 1.4, repeat: Infinity }}
+            style={{ width: 6, height: 6, borderRadius: '50%', background: '#6b7fff' }}
+          />
+          <span style={{ fontFamily: MONO, fontSize: 8, color: '#6b7fff', letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+            RE-ENTRY SIMULATION
+          </span>
+        </div>
+        <span style={{ fontFamily: MONO, fontSize: 8, color: '#484878', letterSpacing: '0.1em' }}>
+          {matKey}
+        </span>
+      </div>
 
       <svg width="100%" viewBox="0 0 560 280" style={{ display: 'block' }}>
         <defs>
@@ -207,8 +219,8 @@ function ReentryVis({ material }) {
           </g>
         ))}
 
-        {/* Earth fill + hatch */}
-        <circle cx={ECX} cy={ECY} r={ER} fill="#100e0a"/>
+        {/* Earth */}
+        <circle cx={ECX} cy={ECY} r={ER} fill="#040818"/>
         {Array.from({ length: 32 }, (_, i) => (
           <line key={i}
             x1={ECX - ER + i * 28} y1={ECY - ER}
@@ -223,7 +235,7 @@ function ReentryVis({ material }) {
         <circle cx={ECX} cy={ECY} r={ER + 30}
           fill="none" stroke={INK} strokeWidth="0.35" opacity="0.11" strokeDasharray="3 11"/>
 
-        {/* Orbit — same center */}
+        {/* Orbit */}
         <circle cx={ECX} cy={ECY} r={OR}
           fill="none" stroke={INK} strokeWidth="1.1" opacity="0.52"/>
 
@@ -234,7 +246,7 @@ function ReentryVis({ material }) {
         <text x="378" y="12" fill={INK} fontSize="12"
           fontFamily="Georgia, serif" letterSpacing="2" opacity="0.60">ORBIT</text>
 
-        {/* Track dots — progressive reveal per phase */}
+        {/* Track dots */}
         {dots.map((d, i) => {
           const threshold = [0, 0.42, 0.85, 1.5][phase] || 0
           const vis = phase >= 1 && d.t <= threshold
@@ -247,7 +259,6 @@ function ReentryVis({ material }) {
           )
         })}
 
-        {/* TRACK label */}
         <AnimatePresence>
           {phase >= 1 && (
             <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
@@ -259,13 +270,12 @@ function ReentryVis({ material }) {
           )}
         </AnimatePresence>
 
-        {/* ── Satellite — position driven by motion values along orbit arc + bezier ── */}
+        {/* Satellite */}
         <motion.g
           style={{ x: satX, y: satY, rotate: satRotate }}
           animate={{ opacity: phase >= 3 ? 0 : 1 }}
           transition={{ duration: 0.3 }}
         >
-          {/* Dish antenna — hidden when ablating */}
           {!ablating && <>
             <line x1="0" y1="-8" x2="0" y2="-18"
               stroke={INK} strokeWidth="0.9" opacity="0.65"/>
@@ -273,38 +283,30 @@ function ReentryVis({ material }) {
               fill="none" stroke={INK} strokeWidth="0.9" opacity="0.65"/>
             <circle cx="0" cy="-18" r="1.8" fill={INK} opacity="0.70"/>
           </>}
-
-          {/* Solar arrays — 3-panel wings, hidden when heavy ablation */}
           {!heavyAblate && <>
             <rect x="-40" y="-5" width="30" height="10"
-              fill="#100e0a" stroke={INK} strokeWidth="0.9"
+              fill="#040818" stroke={INK} strokeWidth="0.9"
               opacity={ablating ? 0.45 : 0.82}/>
             <line x1="-30" y1="-5" x2="-30" y2="5" stroke={INK} strokeWidth="0.5" opacity="0.33"/>
             <line x1="-20" y1="-5" x2="-20" y2="5" stroke={INK} strokeWidth="0.5" opacity="0.33"/>
             <rect x="10" y="-5" width="30" height="10"
-              fill="#100e0a" stroke={INK} strokeWidth="0.9"
+              fill="#040818" stroke={INK} strokeWidth="0.9"
               opacity={ablating ? 0.45 : 0.82}/>
             <line x1="20" y1="-5" x2="20" y2="5" stroke={INK} strokeWidth="0.5" opacity="0.33"/>
             <line x1="30" y1="-5" x2="30" y2="5" stroke={INK} strokeWidth="0.5" opacity="0.33"/>
           </>}
-
-          {/* Main body */}
           <rect x="-10" y="-7" width="20" height="14"
-            fill="#100e0a" stroke={INK}
+            fill="#0a0a18" stroke={INK}
             strokeWidth={ablating ? 0.7 : 1.5}
             opacity={heavyAblate ? 0.5 : 1}/>
           {!ablating && <>
             <line x1="-10" y1="-7" x2="10" y2="7" stroke={INK} strokeWidth="0.45" opacity="0.28"/>
             <line x1="10" y1="-7" x2="-10" y2="7" stroke={INK} strokeWidth="0.45" opacity="0.28"/>
           </>}
-
-          {/* Thruster nozzle */}
           {!ablating && (
             <path d="M -4,7 L-5,13 L5,13 L4,7 Z"
-              fill="#100e0a" stroke={INK} strokeWidth="0.7" opacity="0.55"/>
+              fill="#040818" stroke={INK} strokeWidth="0.7" opacity="0.55"/>
           )}
-
-          {/* Ablation flames */}
           {ablating && (
             <motion.g
               animate={{ opacity: [0.45, 1, 0.45] }}
@@ -326,7 +328,6 @@ function ReentryVis({ material }) {
           )}
         </motion.g>
 
-        {/* SATELLITE label */}
         <AnimatePresence>
           {phase < 2 && (
             <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -339,7 +340,6 @@ function ReentryVis({ material }) {
           )}
         </AnimatePresence>
 
-        {/* Impact crater — inside Earth body */}
         <AnimatePresence>
           {phase >= 3 && (
             <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}>
@@ -357,23 +357,11 @@ function ReentryVis({ material }) {
           )}
         </AnimatePresence>
 
-        {/* Status caption */}
-        <motion.text
-          key={`${phase}-${cycle}`} x="32" y="270"
-          fill={INK_DIM} fontSize="10"
-          fontFamily="'Space Mono', monospace" letterSpacing="1.5"
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}
-        >
-          {['ORBITAL APPROACH','ATMOSPHERIC ENTRY','ABLATION IN PROGRESS',
-            `IMPACT  ·  SURVIVAL  ${info.rate}`][phase]}
-        </motion.text>
-
-        {/* Material note box — top-right, appears at impact */}
         <AnimatePresence>
           {phase >= 3 && (
             <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
               <rect x="298" y="42" width="248" height="68" rx="1"
-                fill="#100e0a" stroke={INK} strokeWidth="0.8" opacity="0.93"/>
+                fill="#040818" stroke={INK} strokeWidth="0.8" opacity="0.93"/>
               {[[298,42],[546,42],[298,110],[546,110]].map(([rx, ry], i) => (
                 <g key={i}>
                   <line x1={rx+(i%2===0?4:-4)} y1={ry} x2={rx+(i%2===0?10:-10)} y2={ry}
@@ -389,7 +377,7 @@ function ReentryVis({ material }) {
               <foreignObject x="314" y="71" width="216" height="50">
                 <div xmlns="http://www.w3.org/1999/xhtml" style={{
                   fontFamily: 'Georgia, serif', fontSize: '10px',
-                  color: '#7a7060', lineHeight: 1.55,
+                  color: '#4a72a8', lineHeight: 1.55,
                 }}>
                   {info.note}
                 </div>
@@ -398,17 +386,29 @@ function ReentryVis({ material }) {
           )}
         </AnimatePresence>
 
-        {/* Double border frame */}
-        <rect x="5" y="5" width="550" height="270" rx="1"
-          fill="none" stroke={INK} strokeWidth="0.6" opacity="0.17"/>
-        <rect x="9" y="9" width="542" height="262" rx="1"
-          fill="none" stroke={INK} strokeWidth="0.3" opacity="0.09"/>
       </svg>
+
+      {/* Bottom status bar */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '10px 28px',
+      }}>
+        <motion.span
+          key={`${phase}-${cycle}`}
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}
+          style={{ fontFamily: MONO, fontSize: 8, color: '#484878', letterSpacing: '0.14em' }}
+        >
+          {PHASE_LABELS[phase]}
+        </motion.span>
+        <span style={{ fontFamily: MONO, fontSize: 8, color: '#1a1a35', letterSpacing: '0.1em' }}>
+          LOOP {cycle + 1}
+        </span>
+      </div>
     </div>
   )
 }
 
-// ─── Case archive ────────────────────────────────────────────────────────────
+// ─── Case archive ─────────────────────────────────────────────────────────────
 function CaseArchive({ openedIds, onOpen }) {
   const [activeId, setActiveId] = useState(null)
   const active = CASES.find(c => c.id === activeId)
@@ -422,17 +422,17 @@ function CaseArchive({ openedIds, onOpen }) {
   return (
     <div>
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 10,
-        fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em',
-        color: '#3a3a38', marginBottom: 12,
+        display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14,
       }}>
-        <div style={{ height: 1, background: '#1c1c1a', flex: 1 }} />
-        <span style={{ color: '#5a5a56' }}>{openedIds.size}/{CASES.length} READ</span>
+        <div style={{ flex: 1, height: 1, background: '#1a1a35' }} />
+        <span style={{ fontFamily: MONO, fontSize: 8, color: '#484878', letterSpacing: '0.12em' }}>
+          {openedIds.size}/{CASES.length} READ
+        </span>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 10 }}>
         {CASES.map(c => {
-          const isRead = openedIds.has(c.id)
+          const isRead   = openedIds.has(c.id)
           const isActive = activeId === c.id
           return (
             <motion.button
@@ -441,33 +441,30 @@ function CaseArchive({ openedIds, onOpen }) {
               whileHover={{ y: -2 }}
               whileTap={{ scale: 0.98 }}
               style={{
-                background: '#0d0d0b',
-                border: `1px solid ${isActive ? c.color + '80' : isRead ? c.color + '30' : '#222220'}`,
-                borderTop: `3px solid ${c.color}`,
-                borderRadius: 3,
-                padding: '14px 16px',
-                textAlign: 'left',
-                cursor: 'pointer',
-                position: 'relative',
-                transition: 'border-color 0.2s',
+                background: isActive ? 'rgba(8,8,26,0.92)' : 'rgba(8,8,26,0.72)',
+                border: `1px solid ${isActive ? c.color + '70' : isRead ? c.color + '28' : '#1a1a35'}`,
+                borderTop: `2px solid ${c.color}`,
+                padding: '14px 16px', textAlign: 'left',
+                cursor: 'pointer', position: 'relative',
+                backdropFilter: 'blur(14px)',
+                transition: 'border-color 0.2s, background 0.2s',
               }}
             >
               {isRead && (
                 <div style={{
                   position: 'absolute', top: 8, right: 10,
-                  fontFamily: MONO, fontSize: 8,
-                  color: c.color, letterSpacing: '0.1em',
+                  fontFamily: MONO, fontSize: 7, color: c.color, letterSpacing: '0.1em',
                 }}>
                   READ
                 </div>
               )}
-              <div style={{ fontFamily: MONO, fontSize: 9, color: '#5a5a56', marginBottom: 6 }}>
+              <div style={{ fontFamily: MONO, fontSize: 8, color: '#484878', marginBottom: 7, letterSpacing: '0.08em' }}>
                 {c.year} · {c.tag}
               </div>
-              <div style={{ fontFamily: SERIF, fontSize: 14, color: '#f0efe8', marginBottom: 4, fontWeight: 400 }}>
+              <div style={{ fontFamily: SERIF, fontSize: 14, color: '#e8e8f8', marginBottom: 5, fontWeight: 400 }}>
                 {c.title}
               </div>
-              <div style={{ fontFamily: SANS, fontSize: 11, color: '#7a7a74', lineHeight: 1.5 }}>
+              <div style={{ fontFamily: SANS, fontSize: 11, color: '#6a6a88', lineHeight: 1.5 }}>
                 {c.subtitle}
               </div>
             </motion.button>
@@ -479,43 +476,46 @@ function CaseArchive({ openedIds, onOpen }) {
         {active && (
           <motion.div
             key={active.id}
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 6 }}
             transition={{ duration: 0.28, ease: EASE }}
             style={{
-              background: '#0d0d0b',
-              border: `1px solid ${active.color}35`,
-              borderLeft: `3px solid ${active.color}`,
-              borderRadius: 3,
+              background: 'rgba(8,8,26,0.92)',
+              border: `1px solid ${active.color}30`,
+              borderLeft: `2px solid ${active.color}`,
+              backdropFilter: 'blur(14px)',
               padding: '20px 24px',
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
               <div>
-                <div style={{ fontFamily: MONO, fontSize: 9, color: active.color, letterSpacing: '0.1em', marginBottom: 6 }}>
+                <div style={{ fontFamily: MONO, fontSize: 8, color: active.color, letterSpacing: '0.1em', marginBottom: 7 }}>
                   {active.year} · {active.location}
                 </div>
-                <div style={{ fontFamily: SERIF, fontSize: 17, color: '#f0efe8', fontWeight: 400 }}>
+                <div style={{ fontFamily: SERIF, fontSize: 18, color: '#e8e8f8', fontWeight: 400 }}>
                   {active.title}
                 </div>
               </div>
               <button
                 onClick={() => setActiveId(null)}
                 style={{
-                  background: 'none', border: 'none', color: '#5a5a56',
-                  cursor: 'pointer', fontFamily: MONO, fontSize: 11,
-                  padding: '0 4px', lineHeight: 1,
+                  background: 'none', border: '1px solid #1a1a35', color: '#484878',
+                  cursor: 'pointer', fontFamily: MONO, fontSize: 10,
+                  padding: '4px 10px', lineHeight: 1, flexShrink: 0,
+                  transition: 'color 0.2s, border-color 0.2s',
                 }}
+                onMouseEnter={e => { e.currentTarget.style.color = '#e8e8f8'; e.currentTarget.style.borderColor = '#484878' }}
+                onMouseLeave={e => { e.currentTarget.style.color = '#484878'; e.currentTarget.style.borderColor = '#1a1a35' }}
               >
                 ✕
               </button>
             </div>
-            <p style={{ fontFamily: SANS, fontSize: 13, color: '#9a9a92', lineHeight: 1.85, margin: '0 0 12px' }}>
+            <p style={{ fontFamily: SANS, fontSize: 13, color: '#8888a8', lineHeight: 1.85, margin: '0 0 14px' }}>
               {active.summary}
             </p>
-            <div style={{ width: '100%', height: 1, background: '#1c1c1a', margin: '12px 0' }} />
-            <p style={{ fontFamily: SANS, fontSize: 12, color: '#6a6a64', lineHeight: 1.85, margin: 0 }}>
+            <div style={{ height: 1, background: '#1a1a35', margin: '14px 0' }} />
+            <p style={{ fontFamily: SANS, fontSize: 12, color: '#6060808', lineHeight: 1.85, margin: 0, color: '#606080' }}>
               {active.detail}
             </p>
           </motion.div>
@@ -526,10 +526,8 @@ function CaseArchive({ openedIds, onOpen }) {
 }
 
 // ─── World map ────────────────────────────────────────────────────────────────
-// Equirectangular: x = lng+180 (0–360), y = 90–lat (0–180)
 const _lp = cs => cs.map(([ln, la]) => `${(ln + 180).toFixed(1)},${(90 - la).toFixed(1)}`).join(' ')
 
-// Continent polygons in [lng, lat] pairs — simplified but geographically recognisable
 const LAND_SHAPES = [
   { id: 'na',   pts: [[-165,66],[-156,58],[-138,57],[-125,49],[-120,35],[-110,23],[-87,16],[-83,10],[-77,25],[-81,25],[-75,37],[-70,42],[-65,45],[-52,47],[-55,55],[-62,63],[-80,75],[-110,77],[-130,70],[-155,65]] },
   { id: 'gl',   pts: [[-46,83],[-18,78],[-18,68],[-26,65],[-44,60],[-57,65],[-57,77]] },
@@ -549,69 +547,60 @@ const LAND_SHAPES = [
 
 function WorldMap({ selectedId, onSelect }) {
   const selected = MAP_MARKERS.find(m => m.id === selectedId)
-  const INK     = '#d8cfbc'   // warm cream — matches ReentryVis
-  const INK_DIM = '#8a7a60'   // muted amber
-  const CFILL   = '#0e0c09'   // very dark warm-black land
-  const CSTROKE = '#2e2818'   // subtle warm outline
+  const INK      = '#d8cfbc'
+  const INK_DIM  = '#8a7a60'
+  const CFILL    = '#0e0e1e'
+  const CSTROKE  = '#1e1e30'
 
   return (
     <div>
-      <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.12em', color: '#6a6055', marginBottom: 8 }}>
-        已记录的坠落地点
-      </div>
-
       <div style={{
-        position: 'relative', background: '#0a0906',
-        border: '1px solid #2a2520', borderRadius: 2, overflow: 'hidden', marginBottom: 10,
+        background: 'rgba(8,8,26,0.72)',
+        border: '1px solid #1a1a35',
+        backdropFilter: 'blur(14px)',
+        overflow: 'hidden',
+        marginBottom: 10,
       }}>
-        {/* Scanlines overlay */}
+        {/* Scanlines */}
         <div style={{
-          position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 3,
-          background: 'repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.07) 2px,rgba(0,0,0,0.07) 3px)',
+          position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1,
+          background: 'repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.05) 2px,rgba(0,0,0,0.05) 3px)',
         }} />
 
         <svg width="100%" viewBox="0 0 360 180" style={{ display: 'block' }}>
-          {/* Ocean fill */}
-          <rect x="0" y="0" width="360" height="180" fill="#0a0906" />
+          <rect x="0" y="0" width="360" height="180" fill="#04040f" />
 
-          {/* Lat / lng grid */}
           {[-60,-30,0,30,60].map(lat => (
             <line key={lat} x1="0" y1={90-lat} x2="360" y2={90-lat}
-              stroke={lat === 0 ? '#302a1e' : '#1c1810'} strokeWidth={lat === 0 ? 0.55 : 0.28} />
+              stroke={lat === 0 ? '#1a1a35' : '#111128'} strokeWidth={lat === 0 ? 0.6 : 0.3} />
           ))}
           {[-120,-60,0,60,120].map(lng => (
             <line key={lng} x1={lng+180} y1="0" x2={lng+180} y2="180"
-              stroke="#1c1810" strokeWidth="0.28" />
+              stroke="#111128" strokeWidth="0.3" />
           ))}
 
-          {/* Continents */}
           {LAND_SHAPES.map(({ id, pts }) => (
             <polygon key={id} points={_lp(pts)} fill={CFILL} stroke={CSTROKE} strokeWidth="0.6" />
           ))}
 
-          {/* Ocean labels */}
-          <text x="48"  y="102" fill={INK_DIM} fontSize="7" fontFamily="Georgia,serif" letterSpacing="4" opacity="0.55" textAnchor="middle">PACIFIC</text>
-          <text x="212" y="88"  fill={INK_DIM} fontSize="7" fontFamily="Georgia,serif" letterSpacing="4" opacity="0.55" textAnchor="middle">ATLANTIC</text>
-          <text x="292" y="122" fill={INK_DIM} fontSize="6" fontFamily="Georgia,serif" letterSpacing="3" opacity="0.50" textAnchor="middle">INDIAN</text>
-          <text x="322" y="76"  fill={INK_DIM} fontSize="7" fontFamily="Georgia,serif" letterSpacing="4" opacity="0.55" textAnchor="middle">PACIFIC</text>
+          <text x="48"  y="102" fill={INK_DIM} fontSize="7" fontFamily="Georgia,serif" letterSpacing="4" opacity="0.45" textAnchor="middle">PACIFIC</text>
+          <text x="212" y="88"  fill={INK_DIM} fontSize="7" fontFamily="Georgia,serif" letterSpacing="4" opacity="0.45" textAnchor="middle">ATLANTIC</text>
+          <text x="292" y="122" fill={INK_DIM} fontSize="6" fontFamily="Georgia,serif" letterSpacing="3" opacity="0.40" textAnchor="middle">INDIAN</text>
+          <text x="322" y="76"  fill={INK_DIM} fontSize="7" fontFamily="Georgia,serif" letterSpacing="4" opacity="0.45" textAnchor="middle">PACIFIC</text>
 
-          {/* Lat labels */}
-          <text x="5" y="94"  fill={INK} fontSize="5.5" fontFamily="'Space Mono',monospace" opacity="0.45">EQ</text>
-          <text x="5" y="64"  fill={INK} fontSize="5"   fontFamily="'Space Mono',monospace" opacity="0.28">30°N</text>
-          <text x="5" y="124" fill={INK} fontSize="5"   fontFamily="'Space Mono',monospace" opacity="0.28">30°S</text>
+          <text x="5" y="94"  fill={INK} fontSize="5.5" fontFamily="'Space Mono',monospace" opacity="0.35">EQ</text>
+          <text x="5" y="64"  fill={INK} fontSize="5"   fontFamily="'Space Mono',monospace" opacity="0.20">30°N</text>
+          <text x="5" y="124" fill={INK} fontSize="5"   fontFamily="'Space Mono',monospace" opacity="0.20">30°S</text>
 
-          {/* Double frame — matches ReentryVis border style */}
-          <rect x="0" y="0" width="360" height="180" fill="none" stroke={INK} strokeWidth="1.2" opacity="0.25"/>
-          <rect x="4" y="4" width="352" height="172" fill="none" stroke={INK} strokeWidth="0.4"  opacity="0.10"/>
-          {/* Corner ticks */}
+          <rect x="0" y="0" width="360" height="180" fill="none" stroke={INK} strokeWidth="1.2" opacity="0.18"/>
+          <rect x="4" y="4" width="352" height="172" fill="none" stroke={INK} strokeWidth="0.4"  opacity="0.08"/>
           {[[0,0,6,0,0,6],[356,0,-6,0,0,6],[0,176,6,0,0,-6],[356,176,-6,0,0,-6]].map(([x,y,dx1,dy1,dx2,dy2],i) => (
             <g key={i}>
-              <line x1={x} y1={y} x2={x+dx1} y2={y+dy1} stroke={INK} strokeWidth="0.7" opacity="0.35"/>
-              <line x1={x} y1={y} x2={x+dx2} y2={y+dy2} stroke={INK} strokeWidth="0.7" opacity="0.35"/>
+              <line x1={x} y1={y} x2={x+dx1} y2={y+dy1} stroke={INK} strokeWidth="0.7" opacity="0.30"/>
+              <line x1={x} y1={y} x2={x+dx2} y2={y+dy2} stroke={INK} strokeWidth="0.7" opacity="0.30"/>
             </g>
           ))}
 
-          {/* Markers — crosshair + pulsing ring on select */}
           {MAP_MARKERS.map(m => {
             const mx = m.lng + 180
             const my = 90 - m.lat
@@ -625,14 +614,11 @@ function WorldMap({ selectedId, onSelect }) {
                     transition={{ duration: 1.5, repeat: Infinity, ease: 'easeOut' }}
                   />
                 )}
-                {/* Crosshair lines */}
                 <line x1={mx-5} y1={my}   x2={mx-2} y2={my}   stroke={m.color} strokeWidth="0.85" opacity={sel ? 0.95 : 0.55}/>
                 <line x1={mx+2} y1={my}   x2={mx+5} y2={my}   stroke={m.color} strokeWidth="0.85" opacity={sel ? 0.95 : 0.55}/>
                 <line x1={mx}   y1={my-5} x2={mx}   y2={my-2} stroke={m.color} strokeWidth="0.85" opacity={sel ? 0.95 : 0.55}/>
                 <line x1={mx}   y1={my+2} x2={mx}   y2={my+5} stroke={m.color} strokeWidth="0.85" opacity={sel ? 0.95 : 0.55}/>
-                {/* Centre dot */}
                 <circle cx={mx} cy={my} r={sel ? 2.2 : 1.6} fill={m.color} opacity={sel ? 1 : 0.75}/>
-                {/* Year label when selected */}
                 {sel && (
                   <text x={mx+4} y={my-3} fill={m.color} fontSize="5.5"
                     fontFamily="'Space Mono',monospace" opacity="0.90">{m.year}</text>
@@ -650,12 +636,12 @@ function WorldMap({ selectedId, onSelect }) {
             initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            style={{ display: 'flex', alignItems: 'center', gap: 10, fontFamily: MONO, fontSize: 10, color: '#7a7a74' }}
+            style={{ display: 'flex', alignItems: 'center', gap: 10, fontFamily: MONO, fontSize: 10 }}
           >
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: selected.color, flexShrink: 0 }} />
             <span style={{ color: selected.color }}>{selected.year}</span>
-            <span style={{ color: '#1c1c38' }}>·</span>
-            <span>{selected.name}</span>
+            <span style={{ color: '#1a1a35' }}>·</span>
+            <span style={{ color: '#8888a8' }}>{selected.name}</span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -663,14 +649,14 @@ function WorldMap({ selectedId, onSelect }) {
   )
 }
 
-// ─── Fade-up section wrapper ──────────────────────────────────────────────────
+// ─── Fade-in section wrapper ──────────────────────────────────────────────────
 function FadeSection({ children, delay = 0, style = {} }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 24 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-60px' }}
-      transition={{ duration: 0.5, delay, ease: EASE }}
+      transition={{ duration: 0.65, delay, ease: EASE }}
       style={style}
     >
       {children}
@@ -678,17 +664,31 @@ function FadeSection({ children, delay = 0, style = {} }) {
   )
 }
 
+function SectionTag({ label }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18,
+    }}>
+      <span style={{ fontFamily: MONO, fontSize: 9, color: '#484878', letterSpacing: '0.16em', textTransform: 'uppercase' }}>
+        {label}
+      </span>
+      <div style={{ flex: 1, height: 1, background: 'linear-gradient(to right, #1a1a35, transparent)' }} />
+    </div>
+  )
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function M5({ onComplete }) {
   const { gameResult, materials, satellite, user, storyOutline, setStoryChapter } = useAppStore()
 
-  const [ending, setEnding] = useState(null)
+  const [ending,        setEnding]        = useState(null)
   const [loadingEnding, setLoadingEnding] = useState(false)
-  const [openedCases, setOpenedCases] = useState(new Set())
+  const [openedCases,   setOpenedCases]   = useState(new Set())
   const [selectedMapId, setSelectedMapId] = useState(null)
 
-  const material = materials?.frame || '铝合金'
-  const result = gameResult?.result || 'failure'
+  const material    = materials?.frame || '铝合金'
+  const result      = gameResult?.result || 'failure'
+  const resultColor = result === 'success' ? '#34d399' : '#f87171'
 
   useEffect(() => {
     if (!satellite || !user) return
@@ -713,216 +713,205 @@ export default function M5({ onComplete }) {
   }
 
   const allCasesRead = openedCases.size >= CASES.length
-  const resultColor = result === 'success' ? '#4a7a41' : '#c84840'
 
   return (
-    <div style={{ background: 'transparent', color: '#e8e8f8', padding: '80px 24px' }}>
+    <div style={{ color: '#e8e8f8', padding: '80px 24px' }}>
       <div style={{ maxWidth: 1080, margin: '0 auto' }}>
 
         {/* ── Header ── */}
-        <FadeSection style={{ marginBottom: 52 }}>
-          <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.15em', color: '#5a5a56', marginBottom: 12 }}>
+        <FadeSection style={{ marginBottom: 64 }}>
+          <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '0.18em', color: '#484878', marginBottom: 16, textTransform: 'uppercase' }}>
             MODULE 05 · REENTRY
           </div>
-          <h2 style={{ fontFamily: SERIF, fontSize: 28, fontWeight: 300, color: '#e8e8f8', margin: '0 0 14px' }}>
+          <h2 style={{ fontFamily: SERIF, fontSize: 'clamp(24px, 2.8vw, 36px)', fontWeight: 300, color: '#e8e8f8', margin: '0 0 20px', letterSpacing: '0.02em' }}>
             太空垃圾落地球
           </h2>
-          <p style={{ fontFamily: SANS, fontSize: 13, color: '#6a6a64', margin: 0, lineHeight: 1.75, maxWidth: 760 }}>
+          <div style={{ height: 1, background: 'linear-gradient(to right, rgba(107,127,255,0.3), transparent)', width: '50%', marginBottom: 20 }} />
+          <p style={{ fontFamily: SANS, fontSize: 13, color: 'rgba(232,232,248,0.5)', margin: 0, lineHeight: 1.85, maxWidth: 680 }}>
             每一颗卫星都有生命尽头。任务结束后，它们面临两种命运：受控离轨，或等待轨道衰减。
             无论哪种，再入大气层的过程都在地球上留下了痕迹。
           </p>
         </FadeSection>
 
-        {/* ── 01 · Re-entry animation ── */}
-        <FadeSection style={{ marginBottom: 40 }}>
-          <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em', color: '#5a5a56', marginBottom: 10 }}>
-            01 · RE-ENTRY SIMULATION · {material}
-          </div>
+        {/* ── 01 · Re-entry simulation ── */}
+        <FadeSection style={{ marginBottom: 52 }}>
+          <SectionTag label="01 · RE-ENTRY SIMULATION" />
           <ReentryVis material={material} />
         </FadeSection>
 
-        {/* ── 02 · Material fate table ── */}
+        {/* ── 02 · Material fate ── */}
         <FadeSection style={{ marginBottom: 52 }}>
-          <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em', color: '#5a5a56', marginBottom: 14 }}>
-            02 · MATERIAL FATE
-          </div>
+          <SectionTag label="02 · MATERIAL FATE" />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-            {BURN_TABLE.map((row, i) => (
-              <motion.div
-                key={row.part}
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: i * 0.06, ease: EASE }}
-                whileHover={{ y: -2, borderColor: row.ok === true ? '#4a7a4180' : row.ok === false ? '#c8484080' : '#c8a04080' }}
-                style={{
-                  background: '#0d0d0b',
-                  border: '1px solid #1c1c1a',
-                  borderTop: `3px solid ${row.ok === true ? '#4a7a41' : row.ok === false ? '#c84840' : '#c8a040'}`,
-                  borderRadius: 3,
-                  padding: '14px 16px',
-                  cursor: 'default',
-                  transition: 'border-color 0.2s',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-                  <span style={{ fontFamily: SANS, fontSize: 12, color: '#c0c0b8', fontWeight: 400 }}>{row.part}</span>
-                  <span style={{
-                    fontFamily: MONO, fontSize: 9, letterSpacing: '0.08em',
-                    color: row.ok === true ? '#4a7a41' : row.ok === false ? '#c84840' : '#c8a040',
-                  }}>
-                    {row.fate}
-                  </span>
-                </div>
-                <div style={{ fontFamily: SANS, fontSize: 11, color: '#5a5a56', lineHeight: 1.6 }}>{row.note}</div>
-              </motion.div>
-            ))}
+            {BURN_TABLE.map((row, i) => {
+              const stateColor = row.ok === true ? '#34d399' : row.ok === false ? '#f87171' : '#fbbf24'
+              return (
+                <motion.div
+                  key={row.part}
+                  initial={{ opacity: 0, y: 16 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.45, delay: i * 0.07, ease: EASE }}
+                  style={{
+                    background: 'rgba(8,8,26,0.72)',
+                    border: '1px solid #1a1a35',
+                    borderTop: `2px solid ${stateColor}`,
+                    backdropFilter: 'blur(14px)',
+                    padding: '14px 16px',
+                    transition: 'border-color 0.2s',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+                    <span style={{ fontFamily: SANS, fontSize: 12, color: '#c8c8e0', fontWeight: 400 }}>{row.part}</span>
+                    <span style={{ fontFamily: MONO, fontSize: 8, letterSpacing: '0.08em', color: stateColor }}>
+                      {row.fate}
+                    </span>
+                  </div>
+                  <div style={{ fontFamily: SANS, fontSize: 11, color: '#484878', lineHeight: 1.65 }}>{row.note}</div>
+                </motion.div>
+              )
+            })}
           </div>
         </FadeSection>
 
         {/* ── 03 · Story ending ── */}
         <FadeSection style={{ marginBottom: 52 }}>
-          <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em', color: '#5a5a56', marginBottom: 14 }}>
-            03 · PARALLEL TIMELINE · CHAPTER 05
-          </div>
+          <SectionTag label="03 · PARALLEL TIMELINE · CHAPTER 05" />
           <div style={{
+            background: 'rgba(8,8,26,0.72)',
+            border: '1px solid #1a1a35',
+            borderLeft: `2px solid ${resultColor}`,
+            backdropFilter: 'blur(14px)',
             padding: '28px 32px',
-            background: '#0d0d0b',
-            border: '1px solid #242420',
-            borderLeft: `3px solid ${resultColor}`,
-            borderRadius: 3,
-            position: 'relative',
-            overflow: 'hidden',
+            position: 'relative', overflow: 'hidden',
           }}>
             <div style={{
-              position: 'absolute', top: 0, right: 0, bottom: 0, width: 180,
-              background: `linear-gradient(to left, ${resultColor}08, transparent)`,
+              position: 'absolute', top: 0, right: 0, bottom: 0, width: 200,
+              background: `linear-gradient(to left, ${resultColor}06, transparent)`,
               pointerEvents: 'none',
             }} />
             <div style={{
-              fontFamily: MONO, fontSize: 9, letterSpacing: '0.12em',
-              color: resultColor, marginBottom: 16, opacity: 0.8,
+              display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18,
             }}>
-              {result === 'success' ? 'MISSION SECURED' : 'MISSION LOST'}
+              <motion.div
+                animate={{ opacity: [1, 0.3, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                style={{ width: 5, height: 5, borderRadius: '50%', background: resultColor }}
+              />
+              <span style={{ fontFamily: MONO, fontSize: 8, color: resultColor, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+                {result === 'success' ? 'MISSION SECURED' : 'MISSION LOST'}
+              </span>
             </div>
             {loadingEnding ? (
               <motion.div
-                animate={{ opacity: [0.4, 1, 0.4] }}
-                transition={{ duration: 1.2, repeat: Infinity }}
-                style={{ fontFamily: MONO, fontSize: 11, color: '#5a5a56', letterSpacing: '0.08em' }}
+                animate={{ opacity: [0.3, 0.8, 0.3] }}
+                transition={{ duration: 1.4, repeat: Infinity }}
+                style={{ fontFamily: MONO, fontSize: 10, color: '#484878', letterSpacing: '0.1em' }}
               >
                 GENERATING...
               </motion.div>
             ) : (
-              <p style={{ fontFamily: SERIF, fontSize: 15, color: '#aeaea6', lineHeight: 2, margin: 0, fontStyle: 'italic' }}>
+              <p style={{ fontFamily: SERIF, fontSize: 15, color: 'rgba(232,232,248,0.75)', lineHeight: 2.1, margin: 0, fontStyle: 'italic' }}>
                 {ending}
               </p>
             )}
           </div>
         </FadeSection>
 
-        {/* ── 04 · International framework (two columns) ── */}
+        {/* ── 04 · International framework ── */}
         <FadeSection style={{ marginBottom: 52 }}>
-          <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em', color: '#5a5a56', marginBottom: 16 }}>
-            04 · INTERNATIONAL FRAMEWORK
-          </div>
+          <SectionTag label="04 · INTERNATIONAL FRAMEWORK" />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div style={{
-              background: '#0d0d0b', border: '1px solid #222220',
-              borderRadius: 3, padding: '22px 26px',
-            }}>
-              <div style={{
-                fontFamily: MONO, fontSize: 9, letterSpacing: '0.1em',
-                color: '#6b7fff', marginBottom: 10, opacity: 0.7,
+            {[
+              {
+                year: '1995 · NASA / COPUOS',
+                color: '#6b7fff',
+                title: '25 年离轨规定',
+                body: <>LEO 卫星在任务结束后 <span style={{ color: '#6b7fff' }}>25 年内</span>必须离轨。超过这个时限，大气阻力已无法保证可预测的再入时间和落点。</>,
+                note: <>这只是建议，不是强制法律。统计显示目前约 <span style={{ color: '#fbbf24' }}>60% 的卫星</span>未能满足这一时限。</>,
+              },
+              {
+                year: '1967 · OUTER SPACE TREATY',
+                color: '#f87171',
+                title: '法律真空',
+                body: '卫星在轨期间的所有权归发射国永久持有，即使失效后也不例外。任何第三国或私人公司都无权在未获授权情况下移动或清除他国碎片。',
+                note: '碎片清理的核心障碍，不是技术，是国际法。',
+              },
+            ].map(item => (
+              <div key={item.year} style={{
+                background: 'rgba(8,8,26,0.72)',
+                border: '1px solid #1a1a35',
+                backdropFilter: 'blur(14px)',
+                padding: '22px 26px',
               }}>
-                1995 · NASA / COPUOS
+                <div style={{ fontFamily: MONO, fontSize: 8, color: item.color, marginBottom: 12, letterSpacing: '0.1em', opacity: 0.8 }}>
+                  {item.year}
+                </div>
+                <div style={{ fontFamily: SERIF, fontSize: 16, color: '#e8e8f8', marginBottom: 14, fontWeight: 400 }}>
+                  {item.title}
+                </div>
+                <p style={{ fontFamily: SANS, fontSize: 12, color: 'rgba(232,232,248,0.55)', lineHeight: 1.85, margin: '0 0 12px' }}>
+                  {item.body}
+                </p>
+                <p style={{ fontFamily: SANS, fontSize: 11, color: '#484878', lineHeight: 1.7, margin: 0 }}>
+                  {item.note}
+                </p>
               </div>
-              <div style={{ fontFamily: SERIF, fontSize: 15, color: '#f0efe8', marginBottom: 12, fontWeight: 400 }}>
-                25 年离轨规定
-              </div>
-              <p style={{ fontFamily: SANS, fontSize: 12, color: '#8a8a82', lineHeight: 1.8, margin: '0 0 12px' }}>
-                LEO 卫星在任务结束后{' '}
-                <span style={{ color: '#6b7fff' }}>25 年内</span>必须离轨。
-                超过这个时限，大气阻力已无法保证可预测的再入时间和落点。
-              </p>
-              <p style={{ fontFamily: SANS, fontSize: 11, color: '#5a5a56', lineHeight: 1.7, margin: 0 }}>
-                这只是建议，不是强制法律。统计显示目前约{' '}
-                <span style={{ color: '#c8a040' }}>60% 的卫星</span>未能满足这一时限。
-              </p>
-            </div>
-            <div style={{
-              background: '#0d0d0b', border: '1px solid #222220',
-              borderRadius: 3, padding: '22px 26px',
-            }}>
-              <div style={{
-                fontFamily: MONO, fontSize: 9, letterSpacing: '0.1em',
-                color: '#c84840', marginBottom: 10, opacity: 0.7,
-              }}>
-                1967 · OUTER SPACE TREATY
-              </div>
-              <div style={{ fontFamily: SERIF, fontSize: 15, color: '#f0efe8', marginBottom: 12, fontWeight: 400 }}>
-                法律真空
-              </div>
-              <p style={{ fontFamily: SANS, fontSize: 12, color: '#8a8a82', lineHeight: 1.8, margin: '0 0 12px' }}>
-                卫星在轨期间的所有权归发射国永久持有，即使失效后也不例外。
-                任何第三国或私人公司都无权在未获授权情况下移动或清除他国碎片。
-              </p>
-              <p style={{ fontFamily: SANS, fontSize: 11, color: '#5a5a56', lineHeight: 1.7, margin: 0 }}>
-                碎片清理的核心障碍，不是技术，是国际法。
-              </p>
-            </div>
+            ))}
           </div>
         </FadeSection>
 
         {/* ── 05 · Incident archive ── */}
         <FadeSection style={{ marginBottom: 52 }}>
-          <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em', color: '#5a5a56', marginBottom: 16 }}>
-            05 · INCIDENT ARCHIVE
-          </div>
+          <SectionTag label="05 · INCIDENT ARCHIVE" />
           <CaseArchive openedIds={openedCases} onOpen={handleOpenCase} />
         </FadeSection>
 
         {/* ── 06 · World map ── */}
         <FadeSection style={{ marginBottom: 52 }}>
-          <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em', color: '#5a5a56', marginBottom: 10 }}>
-            06 · REENTRY IMPACT RECORD
-          </div>
+          <SectionTag label="06 · REENTRY IMPACT RECORD" />
           <WorldMap selectedId={selectedMapId} onSelect={setSelectedMapId} />
         </FadeSection>
 
         {/* ── Complete ── */}
-        <div style={{ borderTop: '1px solid #1c1c1a', paddingTop: 40 }}>
+        <div style={{ borderTop: '1px solid #1a1a35', paddingTop: 40 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
             <div>
               {!allCasesRead ? (
-                <p style={{ fontFamily: SANS, fontSize: 12, color: '#5a5a56', margin: 0 }}>
+                <p style={{ fontFamily: SANS, fontSize: 12, color: '#484878', margin: 0 }}>
                   还有 <span style={{ color: '#6b7fff' }}>{CASES.length - openedCases.size}</span> 个档案未读
                 </p>
               ) : (
-                <p style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em', color: '#4a7a41', margin: 0 }}>
-                  ✓ 全部档案已读
-                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#34d399' }} />
+                  <p style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '0.12em', color: '#34d399', margin: 0, textTransform: 'uppercase' }}>
+                    全部档案已读
+                  </p>
+                </div>
               )}
             </div>
-            <motion.button
+            <button
               onClick={onComplete}
-              whileHover={{ opacity: 0.85, y: -1 }}
-              whileTap={{ scale: 0.97 }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = 'rgba(107,127,255,0.12)'
+                e.currentTarget.style.borderColor = 'rgba(107,127,255,0.85)'
+                e.currentTarget.style.color = '#e8e8f8'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.borderColor = 'rgba(107,127,255,0.45)'
+                e.currentTarget.style.color = '#6b7fff'
+              }}
               style={{
-                fontFamily: MONO,
-                fontSize: 12,
-                letterSpacing: '0.12em',
-                color: 'transparent',
-                background: allCasesRead ? '#6b7fff' : '#3a3a38',
-                border: 'none',
-                borderRadius: 2,
-                padding: '12px 40px',
-                cursor: 'pointer',
-                transition: 'background 0.3s',
+                fontFamily: MONO, fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase',
+                color: '#6b7fff', background: 'transparent',
+                border: '1px solid rgba(107,127,255,0.45)',
+                padding: '12px 40px', cursor: 'pointer',
+                transition: 'background 0.25s ease, border-color 0.25s ease, color 0.25s ease',
               }}
             >
               {allCasesRead ? '前往 M6 →' : '跳过，前往 M6 →'}
-            </motion.button>
+            </button>
           </div>
         </div>
 
@@ -930,4 +919,3 @@ export default function M5({ onComplete }) {
     </div>
   )
 }
-

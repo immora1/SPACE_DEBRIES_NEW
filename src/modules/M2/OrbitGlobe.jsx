@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
@@ -20,29 +20,18 @@ function Earth() {
   useFrame((_, dt) => { ref.current.rotation.y += dt * 0.025 })
   return (
     <group ref={ref}>
-      {/* 主球体 */}
       <mesh>
-        <sphereGeometry args={[1, 48, 30]} />
+        <sphereGeometry args={[1, 28, 18]} />
         <meshStandardMaterial color="#08101a" roughness={0.9} metalness={0.08} />
       </mesh>
       {/* 赤道线 */}
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[1.002, 0.002, 2, 128]} />
+        <torusGeometry args={[1.002, 0.002, 2, 64]} />
         <meshBasicMaterial color="#1e2d3d" />
       </mesh>
-      {/* 纬度线 */}
-      {[30, -30, 60, -60].map((deg) => {
-        const phi = (deg * Math.PI) / 180
-        return (
-          <mesh key={deg} rotation={[-Math.PI / 2, 0, 0]} position={[0, Math.sin(phi), 0]}>
-            <torusGeometry args={[Math.cos(phi), 0.001, 2, 80]} />
-            <meshBasicMaterial color="#0d1824" />
-          </mesh>
-        )
-      })}
       {/* 大气光晕 */}
       <mesh>
-        <sphereGeometry args={[1.08, 24, 14]} />
+        <sphereGeometry args={[1.08, 16, 10]} />
         <meshBasicMaterial color="#1a4080" transparent opacity={0.09} side={THREE.BackSide} />
       </mesh>
     </group>
@@ -66,12 +55,13 @@ function ZoneRing({ r, baseOpacity, active, tube, hexColor, currentStep }) {
   }
 
   useFrame(() => {
-    if (matRef.current) matRef.current.opacity += (target - matRef.current.opacity) * 0.1
+    if (matRef.current && Math.abs(target - matRef.current.opacity) > 0.001)
+      matRef.current.opacity += (target - matRef.current.opacity) * 0.1
   })
 
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]}>
-      <torusGeometry args={[r, tube, 2, 160]} />
+      <torusGeometry args={[r, tube, 2, 64]} />
       <meshBasicMaterial ref={matRef} color={hexColor} transparent opacity={baseOpacity} />
     </mesh>
   )
@@ -102,7 +92,7 @@ function SatOrbit({ altKm, incDeg, currentStep }) {
     <group>
       {/* 轨道环：step 1 时加粗加亮 */}
       <mesh rotation={[rx, 0, 0]}>
-        <torusGeometry args={[r, highlight ? 0.013 : 0.007, 4, 128]} />
+        <torusGeometry args={[r, highlight ? 0.013 : 0.007, 4, 64]} />
         <meshBasicMaterial color="#6b7fff" transparent opacity={highlight ? 1.0 : 0.88} />
       </mesh>
       {/* 卫星点 */}
@@ -136,11 +126,21 @@ export default function OrbitGlobe({
   const meoActive = activeOrbit === null ? null : activeOrbit === 'meo'
   const geoActive = activeOrbit === null ? null : activeOrbit === 'geo'
 
+  const [inView, setInView] = useState(false)
+  const wrapRef = useRef()
+
+  useEffect(() => {
+    const io = new IntersectionObserver(([e]) => setInView(e.isIntersecting), { rootMargin: '120px' })
+    if (wrapRef.current) io.observe(wrapRef.current)
+    return () => io.disconnect()
+  }, [])
+
   return (
-    <div style={{ height, background: 'transparent', width: '100%' }}>
+    <div ref={wrapRef} style={{ height, background: 'transparent', width: '100%' }}>
       <Canvas
+        frameloop={inView ? 'always' : 'never'}
         camera={{ position: [0, 2.8, 9.0], fov: 52 }}
-        dpr={[1, 1.5]}
+        dpr={[1, 1]}
         gl={{ antialias: true, alpha: true }}
         style={{ background: 'transparent', width: '100%', height: '100%' }}
       >
