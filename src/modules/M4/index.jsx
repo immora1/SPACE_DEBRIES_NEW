@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react'
+﻿import { useState, useEffect, useCallback, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import useAppStore from '../../store/useAppStore'
 import {
@@ -43,6 +43,10 @@ export default function M4({ onComplete }) {
   const [alertActive, setAlertActive]   = useState(false)
   // 累积故事线索：每轮决策后的平行时空更新
   const [storyThread, setStoryThread]   = useState([])
+  // 自动推进倒计时（反馈阶段）
+  const [countdown,   setCountdown]     = useState(null)
+  const timerRef        = useRef(null)
+  const hContinueRef    = useRef(null)   // 始终持有最新 handleContinue
 
   const initialArmor = calcInitialArmor(damageLevel)
 
@@ -126,6 +130,10 @@ export default function M4({ onComplete }) {
   }, [armor, fuel, missionProgress, round, currentEvent, decisions, satellite, user, storyOutline])
 
   const handleContinue = useCallback(async () => {
+    // 取消自动倒计时
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
+    setCountdown(null)
+
     const nextRound = round + 1
     const isLast = nextRound >= TOTAL_ROUNDS || armor <= 0 || fuel <= 0
 
@@ -133,12 +141,36 @@ export default function M4({ onComplete }) {
       await handleGameEnd(decisions, armor, fuel, missionProgress)
     } else {
       setRound(nextRound)
-      // 不清空 feedback：AnimatePresence 退场动画期间仍需渲染旧内容
-      // feedback 会在下一次 handleChoose 时被新值覆盖
       setPhase(PHASE.EVENT)
       setTimeout(() => setAlertActive(true), 400)
     }
   }, [round, decisions, armor, fuel, missionProgress])
+
+  // 始终保持 ref 指向最新 handleContinue，避免倒计时 stale closure
+  hContinueRef.current = handleContinue
+
+  // 进入 FEEDBACK 阶段后自动 4 秒推进（省去"继续"点击）
+  useEffect(() => {
+    if (phase !== PHASE.FEEDBACK || aiLoading) {
+      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
+      setCountdown(null)
+      return
+    }
+    let secs = 4
+    setCountdown(secs)
+    timerRef.current = setInterval(() => {
+      secs -= 1
+      if (secs <= 0) {
+        clearInterval(timerRef.current)
+        timerRef.current = null
+        setCountdown(null)
+        hContinueRef.current()
+      } else {
+        setCountdown(secs)
+      }
+    }, 1000)
+    return () => { clearInterval(timerRef.current); timerRef.current = null }
+  }, [phase, aiLoading])
 
   const handleGameEnd = useCallback(async (allDecisions, finalArmor, finalFuel, finalMission) => {
     const result = evaluateResult({
@@ -201,22 +233,88 @@ export default function M4({ onComplete }) {
         />
       </div>
 
-      {/* HUD — 左上角 */}
+      {/* 左侧白色磨砂玻璃面板 — 占屏幕 1/3 */}
       {(phase === PHASE.EVENT || phase === PHASE.FEEDBACK) && (
-        <HUD
-          armor={armor}
-          fuel={fuel}
-          missionProgress={missionProgress}
-          round={round + 1}
-          totalRounds={TOTAL_ROUNDS}
-          satelliteName={satellite?.name}
-        />
-      )}
+        <div style={{
+          position: 'absolute', left: 0, top: 0,
+          width: 'calc(100% / 3)',
+          height: '100%',
+          background: 'rgba(255,255,255,0.88)',
+          backdropFilter: 'blur(28px)',
+          WebkitBackdropFilter: 'blur(28px)',
+          borderRight: '1px solid rgba(18,18,18,0.08)',
+          zIndex: 20,
+          display: 'flex', flexDirection: 'column',
+          overflow: 'hidden',
+        }}>
+          {/* HUD 顶部状态区 */}
+          <HUD
+            armor={armor} fuel={fuel}
+            missionProgress={missionProgress}
+            round={round + 1} totalRounds={TOTAL_ROUNDS}
+            satelliteName={satellite?.name}
+          />
+          {/* 分割线 */}
+          <div style={{ height: 1, background: 'rgba(18,18,18,0.08)', flexShrink: 0 }} />
 
-      {/* AI 处理中 — 动态思考面板 */}
-      <AnimatePresence>
-        {aiLoading && <AiThinkingPanel key="ai-thinking" />}
-      </AnimatePresence>
+          {/* 内容区（可滚动） */}
+          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+            <AnimatePresence mode="wait">
+              {aiLoading && <AiThinkingPanel key="ai-thinking" />}
+              {phase === PHASE.EVENT && !aiLoading && (
+                <EventCard
+                  key={`event-${round}`}
+                  event={currentEvent}
+                  onChoose={handleChoose}
+                  disabled={aiLoading}
+                  round={round + 1}
+                  totalRounds={TOTAL_ROUNDS}
+                  storyThread={storyThread}
+                />
+              )}
+              {phase === PHASE.FEEDBACK && !aiLoading && (
+                <DecisionFeedback
+                  key={`feedback-${round}`}
+                  feedback={currentFeedback}
+                  storyThread={storyThread}
+                />
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* 底部固定按钮区 — 位置始终不变 */}
+          {phase === PHASE.FEEDBACK && !aiLoading && currentFeedback && (
+            <div style={{
+              flexShrink: 0,
+              padding: '12px 20px 16px',
+              borderTop: '1px solid rgba(18,18,18,0.08)',
+              background: 'rgba(255,255,255,0.60)',
+            }}>
+              <motion.button
+                onClick={handleContinue}
+                whileHover={{ opacity: 0.82 }}
+                whileTap={{ scale: 0.97 }}
+                style={{
+                  width: '100%',
+                  fontFamily: 'Space Mono, monospace',
+                  fontSize: 11, letterSpacing: '0.12em', fontWeight: 700,
+                  color: (round + 1 >= TOTAL_ROUNDS || armor <= 0 || fuel <= 0) ? '#fff' : '#5046e5',
+                  background: (round + 1 >= TOTAL_ROUNDS || armor <= 0 || fuel <= 0) ? '#5046e5' : 'transparent',
+                  border: `1px solid ${(round + 1 >= TOTAL_ROUNDS || armor <= 0 || fuel <= 0) ? '#5046e5' : 'rgba(80,70,229,0.35)'}`,
+                  borderRadius: 3, padding: '10px 0',
+                  cursor: 'pointer', textAlign: 'center',
+                  transition: 'background 0.2s, color 0.2s',
+                }}
+              >
+                {(round + 1 >= TOTAL_ROUNDS || armor <= 0 || fuel <= 0)
+                  ? '查看结算 →'
+                  : countdown != null ? `继续  (${countdown}s)` : '继续 →'
+                }
+              </motion.button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* INTRO */}
       {phase === PHASE.INTRO && (
@@ -228,30 +326,6 @@ export default function M4({ onComplete }) {
           onStart={startGame}
         />
       )}
-
-      {/* 右侧面板 — 事件卡片 / 反馈，AnimatePresence 管理切换动画 */}
-      <AnimatePresence mode="wait">
-        {phase === PHASE.EVENT && !aiLoading && (
-          <EventCard
-            key={`event-${round}`}
-            event={currentEvent}
-            onChoose={handleChoose}
-            disabled={aiLoading}
-            round={round + 1}
-            totalRounds={TOTAL_ROUNDS}
-            storyThread={storyThread}
-          />
-        )}
-        {phase === PHASE.FEEDBACK && !aiLoading && (
-          <DecisionFeedback
-            key={`feedback-${round}`}
-            feedback={currentFeedback}
-            onContinue={handleContinue}
-            isLast={round + 1 >= TOTAL_ROUNDS || armor <= 0 || fuel <= 0}
-            storyThread={storyThread}
-          />
-        )}
-      </AnimatePresence>
 
       {/* 结算页 */}
       {phase === PHASE.REFLECTION && (
@@ -477,203 +551,77 @@ function AiThinkingPanel() {
       exit={{ opacity: 0 }}
       transition={{ duration: 0.18 }}
       style={{
-        position: 'absolute',
-        top: 0, right: 0,
-        width: 360,
-        height: '100%',
-        background: 'rgba(4, 4, 14, 0.94)',
-        backdropFilter: 'blur(28px)',
-        WebkitBackdropFilter: 'blur(28px)',
-        borderLeft: `1px solid rgba(80,70,229,0.22)`,
-        boxShadow: '-16px 0 48px rgba(0,0,0,0.65)',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'stretch',
-        zIndex: 20,
-        overflow: 'hidden',
+        flex: 1, display: 'flex', flexDirection: 'column',
+        justifyContent: 'center', alignItems: 'stretch',
+        overflow: 'hidden', position: 'relative',
+        padding: '0 20px',
       }}
     >
-      {/* Top accent */}
-      <div style={{
-        position: 'absolute', top: 0, left: 0, right: 0, height: 2,
-        background: `linear-gradient(to right, transparent, ${ACCENT}cc, transparent)`,
-      }} />
-
       {/* Scan line */}
       <div style={{
-        position: 'absolute',
-        left: 0, right: 0,
-        top: `${scanY}%`,
+        position: 'absolute', left: 0, right: 0, top: `${scanY}%`,
         height: 1,
-        background: `linear-gradient(to right, transparent, rgba(80,70,229,0.25), transparent)`,
+        background: 'linear-gradient(to right, transparent, rgba(80,70,229,0.12), transparent)',
         pointerEvents: 'none',
       }} />
 
-      <div style={{ padding: '0 24px', display: 'flex', flexDirection: 'column', gap: 28 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
 
-        {/* Orbital pulse indicator */}
+        {/* Orbital pulse */}
         <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <div style={{ position: 'relative', width: 72, height: 72 }}>
-            {/* Outer ring */}
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
-              style={{
-                position: 'absolute', inset: 0,
-                borderRadius: '50%',
-                border: `1px solid rgba(80,70,229,0.22)`,
-                borderTopColor: `rgba(80,70,229,0.7)`,
-              }}
-            />
-            {/* Middle ring */}
-            <motion.div
-              animate={{ rotate: -360 }}
-              transition={{ duration: 4.5, repeat: Infinity, ease: 'linear' }}
-              style={{
-                position: 'absolute', inset: 10,
-                borderRadius: '50%',
-                border: `1px solid rgba(80,70,229,0.12)`,
-                borderBottomColor: `rgba(139,92,246,0.6)`,
-              }}
-            />
-            {/* Core dot */}
-            <motion.div
-              animate={{ opacity: [0.4, 1, 0.4] }}
-              transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
-              style={{
-                position: 'absolute',
-                top: '50%', left: '50%',
-                transform: 'translate(-50%,-50%)',
-                width: 8, height: 8,
-                borderRadius: '50%',
-                background: ACCENT,
-                boxShadow: `0 0 10px ${ACCENT}`,
-              }}
-            />
-            {/* Orbit dot */}
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 2.2, repeat: Infinity, ease: 'linear' }}
-              style={{
-                position: 'absolute', inset: 0,
-                borderRadius: '50%',
-              }}
-            >
-              <div style={{
-                position: 'absolute',
-                top: 2, left: '50%',
-                transform: 'translateX(-50%)',
-                width: 4, height: 4,
-                borderRadius: '50%',
-                background: 'rgba(139,92,246,0.9)',
-                boxShadow: '0 0 6px rgba(139,92,246,0.8)',
-              }} />
+          <div style={{ position: 'relative', width: 64, height: 64 }}>
+            <motion.div animate={{ rotate: 360 }} transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
+              style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(80,70,229,0.18)', borderTopColor: 'rgba(80,70,229,0.65)' }} />
+            <motion.div animate={{ rotate: -360 }} transition={{ duration: 4.5, repeat: Infinity, ease: 'linear' }}
+              style={{ position: 'absolute', inset: 9, borderRadius: '50%', border: '1px solid rgba(80,70,229,0.10)', borderBottomColor: 'rgba(139,92,246,0.55)' }} />
+            <motion.div animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+              style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 7, height: 7, borderRadius: '50%', background: ACCENT, boxShadow: `0 0 8px ${ACCENT}80` }} />
+            <motion.div animate={{ rotate: 360 }} transition={{ duration: 2.2, repeat: Infinity, ease: 'linear' }}
+              style={{ position: 'absolute', inset: 0, borderRadius: '50%' }}>
+              <div style={{ position: 'absolute', top: 2, left: '50%', transform: 'translateX(-50%)', width: 4, height: 4, borderRadius: '50%', background: 'rgba(139,92,246,0.85)' }} />
             </motion.div>
           </div>
         </div>
 
-        {/* Rotating status line */}
+        {/* Status line */}
         <div style={{ textAlign: 'center' }}>
-          <motion.div
-            key={lineIdx}
-            initial={{ opacity: 0, y: 5 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -5 }}
-            transition={{ duration: 0.3 }}
-            style={{
-              fontFamily: 'Space Mono, monospace',
-              fontSize: 10,
-              letterSpacing: '0.12em',
-              color: 'rgba(80,70,229,0.65)',
-            }}
-          >
+          <motion.div key={lineIdx} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.3 }}
+            style={{ fontFamily: 'Space Mono, monospace', fontSize: 9, letterSpacing: '0.12em', fontWeight: 700, color: 'rgba(80,70,229,0.65)' }}>
             {THINKING_LINES[lineIdx]}
           </motion.div>
-          {/* Animated dots */}
           <div style={{ marginTop: 8, display: 'flex', justifyContent: 'center', gap: 5 }}>
             {[0, 1, 2].map(i => (
-              <motion.div
-                key={i}
-                animate={{ opacity: [0.15, 0.9, 0.15] }}
+              <motion.div key={i} animate={{ opacity: [0.15, 0.85, 0.15] }}
                 transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.28, ease: 'easeInOut' }}
-                style={{ width: 4, height: 4, borderRadius: '50%', background: ACCENT }}
-              />
+                style={{ width: 4, height: 4, borderRadius: '50%', background: ACCENT + 'aa' }} />
             ))}
           </div>
         </div>
 
         {/* Data stream */}
-        <div style={{
-          background: 'rgba(255,255,255,0.018)',
-          border: '1px solid rgba(80,70,229,0.10)',
-          borderRadius: 4,
-          padding: '10px 12px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 6,
-        }}>
-          <div style={{
-            fontFamily: 'Space Mono, monospace',
-            fontSize: 8,
-            letterSpacing: '0.1em',
-            color: 'rgba(80,70,229,0.35)',
-            marginBottom: 4,
-          }}>
+        <div style={{ background: 'rgba(80,70,229,0.05)', border: '1px solid rgba(80,70,229,0.12)', borderRadius: 4, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 5 }}>
+          <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 8, letterSpacing: '0.1em', fontWeight: 700, color: 'rgba(80,70,229,0.45)', marginBottom: 3 }}>
             DATA STREAM · LIVE
           </div>
           {fragRows.map((row, i) => (
-            <motion.div
-              key={i}
-              animate={{ opacity: [0.25, 0.55, 0.25] }}
+            <motion.div key={i} animate={{ opacity: [0.25, 0.50, 0.25] }}
               transition={{ duration: 2 + i * 0.3, repeat: Infinity, ease: 'easeInOut', delay: i * 0.18 }}
-              style={{
-                fontFamily: 'Space Mono, monospace',
-                fontSize: 9,
-                color: 'rgba(80,70,229,0.38)',
-                letterSpacing: '0.06em',
-                overflow: 'hidden',
-                whiteSpace: 'nowrap',
-                textOverflow: 'ellipsis',
-              }}
-            >
+              style={{ fontFamily: 'Space Mono, monospace', fontSize: 9, fontWeight: 600, color: 'rgba(80,70,229,0.55)', letterSpacing: '0.06em', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
               {row}
             </motion.div>
           ))}
         </div>
 
-        {/* Bottom label */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 8,
-        }}>
-          <div style={{
-            width: 20, height: 1,
-            background: 'linear-gradient(to right, transparent, rgba(80,70,229,0.4))',
-          }} />
-          <span style={{
-            fontFamily: 'Space Mono, monospace',
-            fontSize: 9,
-            letterSpacing: '0.16em',
-            color: 'rgba(80,70,229,0.28)',
-          }}>
+        {/* Footer label */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          <div style={{ width: 16, height: 1, background: 'linear-gradient(to right, transparent, rgba(80,70,229,0.30))' }} />
+          <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 8, letterSpacing: '0.16em', fontWeight: 700, color: 'rgba(80,70,229,0.35)' }}>
             AI INFERENCE ENGINE
           </span>
-          <div style={{
-            width: 20, height: 1,
-            background: 'linear-gradient(to left, transparent, rgba(80,70,229,0.4))',
-          }} />
+          <div style={{ width: 16, height: 1, background: 'linear-gradient(to left, transparent, rgba(80,70,229,0.30))' }} />
         </div>
 
       </div>
-
-      {/* Bottom accent */}
-      <div style={{
-        position: 'absolute', bottom: 0, left: 0, right: 0, height: 1,
-        background: `linear-gradient(to right, transparent, rgba(80,70,229,0.10), transparent)`,
-      }} />
     </motion.div>
   )
 }

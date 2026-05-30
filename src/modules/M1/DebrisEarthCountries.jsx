@@ -182,17 +182,19 @@ export default function DebrisEarthCountries({ hovIdxRef, progressRef }) {
 
   return (
     <div ref={wrapRef} style={{ width: '100%', height: '100%' }}>
-      <Canvas
-        frameloop={inView ? 'always' : 'never'}
-        camera={{ position: [2.5, 0.3, 8.5], fov: 52 }}
-        dpr={[1, 1.5]}
-        gl={{ antialias: true, alpha: true }}
-        style={{ background: 'transparent', width: '100%', height: '100%' }}
-      >
-        <Suspense fallback={null}>
-          <Scene hovIdxRef={hovIdxRef} progressRef={progressRef} />
-        </Suspense>
-      </Canvas>
+      {inView && (
+        <Canvas
+          frameloop="always"
+          camera={{ position: [2.5, 0.3, 8.5], fov: 52 }}
+          dpr={[1, 1.5]}
+          gl={{ antialias: true, alpha: true }}
+          style={{ background: 'transparent', width: '100%', height: '100%' }}
+        >
+          <Suspense fallback={null}>
+            <Scene hovIdxRef={hovIdxRef} progressRef={progressRef} />
+          </Suspense>
+        </Canvas>
+      )}
     </div>
   )
 }

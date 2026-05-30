@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence, animate as fmAnimate, useMotionValue } from 'framer-motion'
+import { AnimateChars, ScrollReveal } from '../../animations'
 import useAppStore from '../../store/useAppStore'
 import { generateReentryEnding } from '../../services/ai'
 
@@ -719,19 +720,26 @@ export default function M5({ onComplete }) {
       <div style={{ maxWidth: 1080, margin: '0 auto' }}>
 
         {/* ── Header ── */}
-        <FadeSection style={{ marginBottom: 64 }}>
-          <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '0.18em', color: '#484878', marginBottom: 16, textTransform: 'uppercase' }}>
-            MODULE 05 · REENTRY
-          </div>
-          <h2 style={{ fontFamily: SERIF, fontSize: 'clamp(24px, 2.8vw, 36px)', fontWeight: 300, color: '#e8e8f8', margin: '0 0 20px', letterSpacing: '0.02em' }}>
-            太空垃圾落地球
-          </h2>
-          <div style={{ height: 1, background: 'linear-gradient(to right, rgba(107,127,255,0.3), transparent)', width: '50%', marginBottom: 20 }} />
-          <p style={{ fontFamily: SANS, fontSize: 13, color: 'rgba(232,232,248,0.5)', margin: 0, lineHeight: 1.85, maxWidth: 680 }}>
-            每一颗卫星都有生命尽头。任务结束后，它们面临两种命运：受控离轨，或等待轨道衰减。
-            无论哪种，再入大气层的过程都在地球上留下了痕迹。
-          </p>
-        </FadeSection>
+        <div style={{ marginBottom: 64 }}>
+          <ScrollReveal>
+            <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '0.18em', color: '#484878', marginBottom: 16, textTransform: 'uppercase' }}>
+              MODULE 05 · REENTRY
+            </div>
+          </ScrollReveal>
+          <AnimateChars
+            text="太空垃圾落地球"
+            as="h2"
+            style={{ fontFamily: SERIF, fontSize: 'clamp(24px, 2.8vw, 36px)', fontWeight: 300, color: '#e8e8f8', margin: '0 0 20px', letterSpacing: '0.02em' }}
+            delay={0.05}
+          />
+          <ScrollReveal delay={0.18}>
+            <div style={{ height: 1, background: 'linear-gradient(to right, rgba(107,127,255,0.3), transparent)', width: '50%', marginBottom: 20 }} />
+            <p style={{ fontFamily: SANS, fontSize: 13, color: 'rgba(232,232,248,0.5)', margin: 0, lineHeight: 1.85, maxWidth: 680 }}>
+              每一颗卫星都有生命尽头。任务结束后，它们面临两种命运：受控离轨，或等待轨道衰减。
+              无论哪种，再入大气层的过程都在地球上留下了痕迹。
+            </p>
+          </ScrollReveal>
+        </div>
 
         {/* ── 01 · Re-entry simulation ── */}
         <FadeSection style={{ marginBottom: 52 }}>

@@ -1,5 +1,6 @@
 ﻿import { useMemo, useState, useRef, useEffect } from 'react'
 import { AnimatePresence, motion, animate as fmAnimate, useMotionValue } from 'framer-motion'
+import { AnimateChars, ScrollReveal } from '../../animations'
 import useAppStore from '../../store/useAppStore'
 import { generateAnswerExplanation, generateVideoQuestion } from '../../services/ai'
 
@@ -507,21 +508,24 @@ export default function M7({ onComplete }) {
       <div style={{ maxWidth: CONTENT_MAX, margin: '0 auto' }}>
 
         {/* ── Header ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }} transition={{ duration: 0.5, ease: EASE }}
-          style={{ marginBottom: 52 }}
-        >
-          <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.15em', color: '#5a5a56', marginBottom: 12 }}>
-            MODULE 07 · VIDEO BRIEFING
-          </div>
-          <h2 style={{ fontFamily: SERIF, fontSize: 28, fontWeight: 300, color: '#e8e8f8', margin: '0 0 14px' }}>
-            探索太空垃圾的多个视角。
-          </h2>
-          <p style={{ fontFamily: SANS, fontSize: 13, color: '#6a6a64', margin: 0, lineHeight: 1.75, maxWidth: 680 }}>
-            几个不同维度的视频资料与核心数据来源。按兴趣自由浏览，点击卡片查看要点，随时可以继续。
-          </p>
-        </motion.div>
+        <div style={{ marginBottom: 52 }}>
+          <ScrollReveal>
+            <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.15em', color: '#5a5a56', marginBottom: 12 }}>
+              MODULE 07 · VIDEO BRIEFING
+            </div>
+          </ScrollReveal>
+          <AnimateChars
+            text="探索太空垃圾的多个视角。"
+            as="h2"
+            style={{ fontFamily: SERIF, fontSize: 28, fontWeight: 300, color: '#e8e8f8', margin: '0 0 14px' }}
+            delay={0.05}
+          />
+          <ScrollReveal delay={0.2}>
+            <p style={{ fontFamily: SANS, fontSize: 13, color: '#6a6a64', margin: 0, lineHeight: 1.75, maxWidth: 680 }}>
+              几个不同维度的视频资料与核心数据来源。按兴趣自由浏览，点击卡片查看要点，随时可以继续。
+            </p>
+          </ScrollReveal>
+        </div>
 
         {/* ── 视频精选 ── */}
         <motion.div

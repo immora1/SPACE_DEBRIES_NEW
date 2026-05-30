@@ -310,7 +310,7 @@ function GLBScene({ activePart = 'frame' }) {
         const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
         for (const mat of mats) {
           if (!mat.emissive) continue
-          if (mat.emissive.distanceTo(tCol.current) > 0.001)     mat.emissive.lerp(tCol.current, 0.06)
+          mat.emissive.lerp(tCol.current, 0.06)
           if (Math.abs(mat.emissiveIntensity - tIntensity) > 0.001) mat.emissiveIntensity += (tIntensity - mat.emissiveIntensity) * 0.06
         }
       }
@@ -336,34 +336,36 @@ export function GLBSatelliteModel({ accent = '#6b7fff', activePart = 'frame' }) 
   }, [])
   return (
     <div ref={wrapRef} style={{ width: '100%', height: '100%' }}>
-      <Canvas
-        frameloop={inView ? 'always' : 'never'}
-        camera={{ position: [0, 0.4, 9.5], fov: 44 }}
-        dpr={[1, 1]}
-        gl={{ antialias: true, alpha: true }}
-        style={{ background: 'transparent', width: '100%', height: '100%' }}
-      >
-        <ambientLight intensity={0.22} />
-        <directionalLight position={[4, 6, 3]}   intensity={1.4} color="#c0d0ff" />
-        <directionalLight position={[-3, -2, -5]} intensity={0.20} color="#1a1060" />
-        <pointLight position={[-4, 3, 2]} intensity={1.1} color={accent} distance={16} />
-        <pointLight position={[3, -2, 4]} intensity={0.5} color="#ffffff" distance={10} />
+      {inView && (
+        <Canvas
+          frameloop="always"
+          camera={{ position: [0, 0.4, 9.5], fov: 44 }}
+          dpr={[1, 1]}
+          gl={{ antialias: true, alpha: true }}
+          style={{ background: 'transparent', width: '100%', height: '100%' }}
+        >
+          <ambientLight intensity={0.22} />
+          <directionalLight position={[4, 6, 3]}   intensity={1.4} color="#c0d0ff" />
+          <directionalLight position={[-3, -2, -5]} intensity={0.20} color="#1a1060" />
+          <pointLight position={[-4, 3, 2]} intensity={1.1} color={accent} distance={16} />
+          <pointLight position={[3, -2, 4]} intensity={0.5} color="#ffffff" distance={10} />
 
-        <BackgroundPlanet />
-        <GLBScene activePart={activePart} />
+          <BackgroundPlanet />
+          <GLBScene activePart={activePart} />
 
-        <OrbitControls
-          autoRotate
-          autoRotateSpeed={1.4}
-          enableZoom
-          minDistance={4.0}
-          maxDistance={16.0}
-          enablePan={false}
-          maxPolarAngle={Math.PI * 0.78}
-          minPolarAngle={Math.PI * 0.18}
-          zoomSpeed={0.6}
-        />
-      </Canvas>
+          <OrbitControls
+            autoRotate
+            autoRotateSpeed={1.4}
+            enableZoom
+            minDistance={4.0}
+            maxDistance={16.0}
+            enablePan={false}
+            maxPolarAngle={Math.PI * 0.78}
+            minPolarAngle={Math.PI * 0.18}
+            zoomSpeed={0.6}
+          />
+        </Canvas>
+      )}
     </div>
   )
 }
@@ -383,36 +385,38 @@ export default function SatelliteModel({ selections = {}, height = 480, fill = f
 
   return (
     <div ref={wrapRef} style={containerStyle}>
-      <Canvas
-        frameloop={inView ? 'always' : 'never'}
-        camera={fill
-          ? { position: [0, 0.5, 4.0], fov: 40 }
-          : { position: [0, 0.4, 5.0], fov: 34 }
-        }
-        dpr={[1, 1]}
-        gl={{ antialias: true, alpha: true }}
-        style={{ background: 'transparent', width: '100%', height: '100%' }}
-      >
-        <ambientLight intensity={0.16} />
-        <directionalLight position={[4, 6, 3]}  intensity={1.5} color="#c0d0ff" />
-        <directionalLight position={[-3, -2, -5]} intensity={0.22} color="#1a1060" />
-        <pointLight position={[-4, 3, 2]} intensity={1.0} color="#6b7fff" distance={14} />
+      {inView && (
+        <Canvas
+          frameloop="always"
+          camera={fill
+            ? { position: [0, 0.5, 4.0], fov: 40 }
+            : { position: [0, 0.4, 5.0], fov: 34 }
+          }
+          dpr={[1, 1]}
+          gl={{ antialias: true, alpha: true }}
+          style={{ background: 'transparent', width: '100%', height: '100%' }}
+        >
+          <ambientLight intensity={0.16} />
+          <directionalLight position={[4, 6, 3]}  intensity={1.5} color="#c0d0ff" />
+          <directionalLight position={[-3, -2, -5]} intensity={0.22} color="#1a1060" />
+          <pointLight position={[-4, 3, 2]} intensity={1.0} color="#6b7fff" distance={14} />
 
-        <BackgroundPlanet />
-        <OrbitalRing />
-        <OrbitalRing2 />
-        <Satellite selections={selections} activePart={activePart} />
+          <BackgroundPlanet />
+          <OrbitalRing />
+          <OrbitalRing2 />
+          <Satellite selections={selections} activePart={activePart} />
 
-        {mouseXRef && mouseYRef
-          ? <CameraRig mouseX={mouseXRef} mouseY={mouseYRef} />
-          : <OrbitControls
-              enableZoom={false}
-              enablePan={false}
-              maxPolarAngle={Math.PI * 0.72}
-              minPolarAngle={Math.PI * 0.28}
-            />
-        }
-      </Canvas>
+          {mouseXRef && mouseYRef
+            ? <CameraRig mouseX={mouseXRef} mouseY={mouseYRef} />
+            : <OrbitControls
+                enableZoom={false}
+                enablePan={false}
+                maxPolarAngle={Math.PI * 0.72}
+                minPolarAngle={Math.PI * 0.28}
+              />
+          }
+        </Canvas>
+      )}
     </div>
   )
 }

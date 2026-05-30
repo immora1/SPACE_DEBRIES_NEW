@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { AnimateChars, ScrollReveal } from '../../animations'
 import useAppStore from '../../store/useAppStore'
 import { generateCleanupFeedback, generateCleanupEpilogue } from '../../services/ai'
 
@@ -387,16 +388,23 @@ export default function M6({ onComplete }) {
 
         {/* ── Header ── */}
         <div style={{ marginBottom: 52 }}>
-          <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.15em', color: '#5a5a56', marginBottom: 12 }}>
-            MODULE 06 · CLEANUP
-          </div>
-          <h2 style={{ fontFamily: SERIF, fontSize: 28, fontWeight: 300, color: '#e8e8f8', margin: '0 0 14px' }}>
-            怎么清理太空垃圾
-          </h2>
-          <p style={{ fontFamily: SANS, fontSize: 13, color: '#6a6a64', margin: 0, lineHeight: 1.75, maxWidth: 760 }}>
-            目前没有商业规模化清理案例。速度、数量、法律与成本，构成了每一次清理的四重障碍。
-            三类技术路径已进入测试阶段，但距离规模化仍有距离。
-          </p>
+          <ScrollReveal>
+            <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.15em', color: '#5a5a56', marginBottom: 12 }}>
+              MODULE 06 · CLEANUP
+            </div>
+          </ScrollReveal>
+          <AnimateChars
+            text="怎么清理太空垃圾"
+            as="h2"
+            style={{ fontFamily: SERIF, fontSize: 28, fontWeight: 300, color: '#e8e8f8', margin: '0 0 14px' }}
+            delay={0.05}
+          />
+          <ScrollReveal delay={0.2}>
+            <p style={{ fontFamily: SANS, fontSize: 13, color: '#6a6a64', margin: 0, lineHeight: 1.75, maxWidth: 760 }}>
+              目前没有商业规模化清理案例。速度、数量、法律与成本，构成了每一次清理的四重障碍。
+              三类技术路径已进入测试阶段，但距离规模化仍有距离。
+            </p>
+          </ScrollReveal>
         </div>
 
         {/* ── Section 01 · 四重障碍 ── */}

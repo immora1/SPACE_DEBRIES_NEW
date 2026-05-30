@@ -5,6 +5,27 @@ import { generateStoryOutline, generateOpeningStory } from '../../services/ai'
 
 const EASE = [0.16, 1, 0.3, 1]
 
+// 字符入场变体
+const CHAR_C = { hidden: {}, show: { transition: { staggerChildren: 0.04 } } }
+const CHAR_I = {
+  hidden: { opacity: 0, y: 24, filter: 'blur(3px)' },
+  show:   { opacity: 1, y: 0,  filter: 'blur(0px)', transition: { duration: 0.65, ease: [0.16, 1, 0.3, 1] } },
+}
+function EntranceChars({ text, style }) {
+  return (
+    <motion.span
+      variants={CHAR_C} initial="hidden" animate="show"
+      style={{ display: 'inline', perspective: '400px', ...style }}
+    >
+      {text.split('').map((ch, i) => (
+        <motion.span key={i} variants={CHAR_I} style={{ display: 'inline-block', willChange: 'transform, opacity' }}>
+          {ch}
+        </motion.span>
+      ))}
+    </motion.span>
+  )
+}
+
 async function fetchSatellite(city) {
   try {
     const res = await fetch(`/api/satellite?city=${encodeURIComponent(city)}`)
@@ -123,7 +144,8 @@ export default function Entrance({ onComplete }) {
                   ENTRANCE · 个人信息
                 </div>
                 <h1 style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 22, color: '#e8e8f8', lineHeight: 1.5, marginBottom: 12 }}>
-                  在平行宇宙里，<br />一颗卫星正在等待你的名字。
+                  <EntranceChars text="在平行宇宙里，" /><br />
+                  <EntranceChars text="一颗卫星正在等待你的名字。" />
                 </h1>
                 <p style={{ color: '#484878', fontSize: 13, lineHeight: 1.7 }}>
                   填写下面三项，系统将为你匹配一颗真实卫星，并开始一段关于你和太空垃圾的故事。

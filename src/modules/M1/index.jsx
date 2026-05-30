@@ -1,5 +1,7 @@
 ﻿import React, { useState, useCallback, useEffect, useLayoutEffect, useRef, useMemo, Suspense } from 'react'
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion'
+import { useGSAP } from '@gsap/react'
+import gsap from 'gsap'
 import useAppStore from '../../store/useAppStore'
 import DebrisEarth from './DebrisEarth'
 import DebrisEarthCountries from './DebrisEarthCountries'
@@ -8,6 +10,15 @@ const ZH   = "'PingFang SC', 'Microsoft YaHei', sans-serif"
 const MONO = "'Space Mono', monospace"
 const LEX  = "'Lexend', sans-serif"
 const EASE = [0.16, 1, 0.3, 1]
+
+// 字符 span 工厂 — GSAP 通过 .sh-char 选择器批量动画
+function charSpans(text) {
+  return text.split('').map((ch, i) => (
+    <span key={i} className="sh-char" style={{ display: 'inline-block', willChange: 'transform, opacity, filter' }}>
+      {ch}
+    </span>
+  ))
+}
 
 const TREND = [
   { year: 1960, count: 100   }, { year: 1970, count: 2000  },
@@ -126,17 +137,74 @@ function CustomCursor({ mouseX, mouseY, smoothX, smoothY }) {
   )
 }
 
-/* ── Scene 0: HERO ── */
+/* ── Scene 0: HERO — GSAP timeline ── */
 function SceneHero({ normX, normY }) {
+  const containerRef = useRef()
+  const ghostNumRef  = useRef()
   const ghostX = useTransform(normX, [-1, 1], ['-50px', '50px'])
   const ghostY = useTransform(normY, [-1, 1], ['-28px', '28px'])
-  const E = { duration: 0.65, ease: [0.16, 1, 0.3, 1] }
 
+  useGSAP(() => {
+    const q  = gsap.utils.selector(containerRef)
+    const tl = gsap.timeline({ defaults: { ease: 'power3.out' } })
+
+    // 顶部标签：从上方 16px 滑入
+    tl.from(q('.sh-tag'), { opacity: 0, y: -16, duration: 0.65 }, 0.05)
+
+    // H1 第一行：逐字 3D 翻转入场（X 轴旋转 + 上移 + 模糊）
+    tl.from(q('.sh-line1 .sh-char'), {
+      opacity: 0, y: 44, rotationX: -75, filter: 'blur(6px)',
+      stagger: { each: 0.055, ease: 'power2.inOut' },
+      duration: 0.82,
+    }, 0.10)
+
+    // H1 第二行：稍晚 0.22s
+    tl.from(q('.sh-line2 .sh-char'), {
+      opacity: 0, y: 44, rotationX: -75, filter: 'blur(6px)',
+      stagger: { each: 0.055, ease: 'power2.inOut' },
+      duration: 0.82,
+    }, 0.32)
+
+    // 正文段落：渐入 + 微量上移
+    tl.from(q('.sh-body'), { opacity: 0, y: 14, duration: 0.72 }, 0.46)
+
+    // 分割线：从左向右 scaleX 展开
+    tl.from(q('.sh-divider'), {
+      scaleX: 0, opacity: 0, duration: 0.85,
+      transformOrigin: 'left center',
+    }, 0.64)
+
+    // H2 副标题：逐字翻转，节奏更紧凑
+    tl.from(q('.sh-sub .sh-char'), {
+      opacity: 0, y: 36, rotationX: -65, filter: 'blur(5px)',
+      stagger: { each: 0.042, ease: 'power2.inOut' },
+      duration: 0.78,
+    }, 0.78)
+
+    // ghost 数字 count-up：0 → 28,000（大气装饰）
+    const proxy = { val: 0 }
+    tl.to(proxy, {
+      val: 28000,
+      duration: 3.2,
+      ease: 'power2.out',
+      onUpdate() {
+        if (ghostNumRef.current) {
+          ghostNumRef.current.textContent = Math.round(proxy.val).toLocaleString()
+        }
+      },
+    }, 0.18)
+
+    // 右侧散落装饰：依次渐入
+    tl.from(q('.sh-deco'), {
+      opacity: 0, y: 8, stagger: 0.09, duration: 0.72,
+    }, 0.56)
+
+  }, { scope: containerRef })
 
   return (
-    <div style={{ position: 'absolute', inset: 0 }}>
+    <div ref={containerRef} style={{ position: 'absolute', inset: 0 }}>
 
-      {/* ── Ghost parallax — behind Earth, very subtle ── */}
+      {/* Ghost parallax 数字 — motion.div 保留视差，内部 span 由 GSAP count-up */}
       <div style={{
         position: 'absolute', top: '44%', left: '60%',
         transform: 'translate(-50%,-50%)',
@@ -147,114 +215,104 @@ function SceneHero({ normX, normY }) {
           color: 'rgba(232,232,248,0.018)', letterSpacing: '-0.04em', lineHeight: 1,
           whiteSpace: 'nowrap', x: ghostX, y: ghostY,
         }}>
-          28,000
+          <span ref={ghostNumRef}>0</span>
         </motion.div>
       </div>
 
-      {/* ── Module tag — top center ── */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ ...E, delay: 0.05 }}
-        style={{
-          position: 'absolute', top: '5%', left: '50%', transform: 'translateX(-50%)',
+      {/* 顶部模块标签 — 外层 div 负责居中定位，内层 .sh-tag 交给 GSAP */}
+      <div style={{ position: 'absolute', top: '5%', left: '50%', transform: 'translateX(-50%)' }}>
+        <div className="sh-tag" style={{
           fontFamily: LEX, fontSize: 8, fontWeight: 700, color: '#484878',
           letterSpacing: '0.18em', textTransform: 'uppercase', whiteSpace: 'nowrap',
         }}>
-        M1 · 太空垃圾是什么
-      </motion.div>
+          M1 · 太空垃圾是什么
+        </div>
+      </div>
 
-      {/* ── Left column — all text ── */}
+      {/* 左侧文字列 */}
       <div style={{
         position: 'absolute', left: '6%', top: '13%', width: '44%',
         display: 'flex', flexDirection: 'column',
       }}>
+        {/* H1 第一行 */}
+        <span className="sh-line1" style={{
+          display: 'block', perspective: '600px',
+          fontFamily: ZH, fontSize: 'clamp(50px,7.2vw,78px)', fontWeight: 700,
+          color: '#ffffff', lineHeight: 1.08, marginBottom: 2,
+        }}>
+          {charSpans('太空垃圾')}
+        </span>
 
-        {/* H1 */}
-        <motion.div initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} transition={{ ...E, delay: 0.12 }}
-          style={{
-            fontFamily: ZH, fontSize: 'clamp(50px,7.2vw,78px)', fontWeight: 700,
-            color: '#ffffff', lineHeight: 1.08, marginBottom: 2,
-          }}>
-          太空垃圾
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} transition={{ ...E, delay: 0.20 }}
-          style={{
-            fontFamily: ZH, fontSize: 'clamp(50px,7.2vw,78px)', fontWeight: 700,
-            color: '#ffffff', lineHeight: 1.08, marginBottom: 26,
-          }}>
-          不是比喻，
-        </motion.div>
+        {/* H1 第二行 */}
+        <span className="sh-line2" style={{
+          display: 'block', perspective: '600px',
+          fontFamily: ZH, fontSize: 'clamp(50px,7.2vw,78px)', fontWeight: 700,
+          color: '#ffffff', lineHeight: 1.08, marginBottom: 26,
+        }}>
+          {charSpans('不是比喻，')}
+        </span>
 
-        {/* Hairline divider */}
-        <motion.div
-          initial={{ scaleX: 0, opacity: 0 }} animate={{ scaleX: 1, opacity: 1 }}
-          transition={{ ...E, delay: 0.28 }}
-          style={{
-            height: 1, background: 'linear-gradient(to right, rgba(107,127,255,0.45), transparent)',
-            transformOrigin: 'left', marginBottom: 22,
-          }}
-        />
+        {/* 细线分割 */}
+        <div className="sh-divider" style={{
+          height: 1,
+          background: 'linear-gradient(to right, rgba(107,127,255,0.45), transparent)',
+          marginBottom: 22,
+        }} />
 
-        {/* H2 */}
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ ...E, delay: 0.35 }}
-          style={{
-            fontFamily: ZH, fontSize: 18, fontWeight: 700,
-            color: '#ffffff', lineHeight: 1.6, marginBottom: 12,
-          }}>
-          是真实存在的物理威胁。
-        </motion.div>
+        {/* H2 副标题 */}
+        <span className="sh-sub" style={{
+          display: 'block', perspective: '600px',
+          fontFamily: ZH, fontSize: 18, fontWeight: 700,
+          color: '#ffffff', lineHeight: 1.6, marginBottom: 12,
+        }}>
+          {charSpans('是真实存在的物理威胁。')}
+        </span>
 
-        {/* Body */}
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ ...E, delay: 0.43 }}
-          style={{
-            fontFamily: ZH, fontSize: 13,
-            color: 'rgba(232,232,248,0.48)', lineHeight: 1.9, marginBottom: 36,
-          }}>
+        {/* 正文 */}
+        <div className="sh-body" style={{
+          fontFamily: ZH, fontSize: 13,
+          color: 'rgba(232,232,248,0.48)', lineHeight: 1.9, marginBottom: 36,
+        }}>
           自 1957 年第一颗卫星升空，人类已在轨道上累积了数以亿计的碎片。
           它们以超音速运行，无法回收，无法清除，且持续增加。
-        </motion.div>
-
+        </div>
       </div>
 
-      {/* ── Scattered decorations — right zone ── */}
-
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ ...E, delay: 0.58 }}
-        style={{
-          position: 'absolute', top: '7%', right: '5%',
-          fontFamily: MONO, fontSize: 8, color: '#2a2a4a', letterSpacing: '0.12em',
-        }}>
+      {/* 右侧散落装饰文字 */}
+      <div className="sh-deco" style={{
+        position: 'absolute', top: '7%', right: '5%',
+        fontFamily: MONO, fontSize: 8, color: '#2a2a4a', letterSpacing: '0.12em',
+      }}>
         SINCE 1957
-      </motion.div>
+      </div>
 
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ ...E, delay: 0.64 }}
-        style={{
-          position: 'absolute', top: '28%', right: '3%',
-          fontFamily: MONO, fontSize: 8, color: 'rgba(107,127,255,0.18)', letterSpacing: '0.06em',
-        }}>
+      <div className="sh-deco" style={{
+        position: 'absolute', top: '28%', right: '3%',
+        fontFamily: MONO, fontSize: 8, color: 'rgba(107,127,255,0.18)', letterSpacing: '0.06em',
+      }}>
         ~1.3亿 FRAGMENTS
-      </motion.div>
+      </div>
 
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ ...E, delay: 0.70 }}
-        style={{
-          position: 'absolute', bottom: '28%', right: '5%',
-          fontFamily: MONO, fontSize: 8, color: 'rgba(232,232,248,0.10)', letterSpacing: '0.08em',
-        }}>
+      <div className="sh-deco" style={{
+        position: 'absolute', bottom: '28%', right: '5%',
+        fontFamily: MONO, fontSize: 8, color: 'rgba(232,232,248,0.10)', letterSpacing: '0.08em',
+      }}>
         LEO · MEO · GEO
-      </motion.div>
+      </div>
 
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ ...E, delay: 0.76 }}
-        style={{
-          position: 'absolute', bottom: '14%', right: '8%',
-          fontFamily: MONO, fontSize: 8, color: 'rgba(107,127,255,0.14)', letterSpacing: '0.06em',
-        }}>
+      <div className="sh-deco" style={{
+        position: 'absolute', bottom: '14%', right: '8%',
+        fontFamily: MONO, fontSize: 8, color: 'rgba(107,127,255,0.14)', letterSpacing: '0.06em',
+      }}>
         KESSLER SYNDROME
-      </motion.div>
+      </div>
 
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ ...E, delay: 0.82 }}
-        style={{
-          position: 'absolute', bottom: '5%', right: '4%',
-          fontFamily: LEX, fontSize: 8, color: '#2a2a4a', letterSpacing: '0.10em',
-        }}>
+      <div className="sh-deco" style={{
+        position: 'absolute', bottom: '5%', right: '4%',
+        fontFamily: LEX, fontSize: 8, color: '#2a2a4a', letterSpacing: '0.10em',
+      }}>
         — →
-      </motion.div>
+      </div>
     </div>
   )
 }
@@ -1397,8 +1455,35 @@ function SceneTrend() {
 /* ── 章节过渡：滚动驱动文字切换 ── */
 function ChapterEndTransition({ onComplete }) {
   const containerRef = useRef()
+  const line1Ref     = useRef()   // GSAP 完全控制，React 不渲染子节点
   const [phase, setPhase] = useState(0)
+  const phaseRef     = useRef(0)
+  const animatingRef = useRef(false)
 
+  const PHASES = [
+    { tag: '01 · SPACE DEBRIS · 本章总结', tagColor: '#484878',              title1: '太空垃圾' },
+    { tag: '02 · ORBIT · 进入下一章',      tagColor: 'rgba(107,127,255,0.7)', title1: '轨道'    },
+  ]
+
+  // 填充 GSAP 控制的大字 DOM
+  function populateLine1(el, text, startHidden) {
+    el.innerHTML = ''
+    for (const ch of text) {
+      const span = document.createElement('span')
+      span.className = 'cet-c'
+      span.style.display = 'inline-block'
+      span.style.willChange = 'transform, opacity, filter'
+      if (startHidden) {
+        span.style.opacity = '0'
+        span.style.transform = 'translateY(80%)'
+        span.style.filter = 'blur(4px)'
+      }
+      span.textContent = ch
+      el.appendChild(span)
+    }
+  }
+
+  // 滚动相位检测
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
@@ -1407,9 +1492,9 @@ function ChapterEndTransition({ onComplete }) {
     io.observe(el)
     const onScroll = () => {
       if (!inViewRef.current) return
-      const rect = el.getBoundingClientRect()
+      const rect    = el.getBoundingClientRect()
       const scrolled = -rect.top
-      const total = rect.height - window.innerHeight
+      const total    = rect.height - window.innerHeight
       const p = Math.max(0, Math.min(1, scrolled / total))
       setPhase(prev => {
         const next = p > 0.46 ? 1 : 0
@@ -1421,30 +1506,55 @@ function ChapterEndTransition({ onComplete }) {
     return () => { window.removeEventListener('scroll', onScroll); io.disconnect() }
   }, [])
 
-  const PHASES = [
-    {
-      tag: '01 · SPACE DEBRIS · 本章总结',
-      tagColor: '#484878',
-      title: ['太空垃圾', '数据知识'],
-    },
-    {
-      tag: '02 · ORBIT · 进入下一章',
-      tagColor: 'rgba(107,127,255,0.7)',
-      title: ['轨道', '数据知识'],
-    },
-  ]
+  // 初始挂载：填充第一帧大字
+  useEffect(() => {
+    if (line1Ref.current) populateLine1(line1Ref.current, PHASES[0].title1, false)
+  }, [])
+
+  // 相位切换：逐字向上替换动画（仅大字，其余元素不动）
+  useEffect(() => {
+    if (phaseRef.current === phase) return
+    const el = line1Ref.current
+    if (!el || animatingRef.current) return
+    animatingRef.current = true
+
+    const oldChars = [...el.querySelectorAll('.cet-c')]
+    const newTitle = PHASES[phase].title1
+
+    // 旧字：从右向左依次向上消失
+    const exitAnim = gsap.to(oldChars, {
+      y: '-90%', opacity: 0, filter: 'blur(5px)',
+      stagger: { each: 0.042, from: 'end' },
+      duration: 0.36, ease: 'power2.in',
+      onComplete() {
+        // 填入新字（初始隐藏在下方）
+        populateLine1(el, newTitle, true)
+        // 新字：从左向右依次向上进入
+        gsap.to(el.querySelectorAll('.cet-c'), {
+          y: '0%', opacity: 1, filter: 'blur(0px)',
+          stagger: { each: 0.065, from: 'start' },
+          duration: 0.72, ease: 'power3.out',
+          onComplete() { animatingRef.current = false },
+        })
+      },
+    })
+
+    phaseRef.current = phase
+    return () => exitAnim?.kill()
+  }, [phase])
+
   const cur = PHASES[phase]
 
   return (
     <div ref={containerRef} style={{ height: '200vh', position: 'relative' }}>
       <div style={{
         position: 'sticky', top: 0, height: '100vh', overflow: 'hidden',
-        background: 'radial-gradient(ellipse at 18% 65%, rgba(12,18,80,0.6) 0%, transparent 58%), radial-gradient(ellipse at 82% 25%, rgba(28,12,75,0.45) 0%, transparent 58%), #04060f',
+        background: 'transparent',
         display: 'flex', flexDirection: 'column', justifyContent: 'center',
         padding: '0 7vw', borderTop: '1px solid #1a1a35',
       }}>
 
-        {/* 幽灵背景大数字 */}
+        {/* 幽灵背景大数字 — CSS color transition，无 React 动画 */}
         <div style={{
           position: 'absolute', right: '5vw', top: '50%',
           transform: 'translateY(-50%)',
@@ -1458,53 +1568,65 @@ function ChapterEndTransition({ onComplete }) {
           {phase === 0 ? '01' : '02'}
         </div>
 
-        {/* 内容 */}
-        <AnimatePresence mode="wait">
-          <motion.div key={phase}
-            initial={{ opacity: 0, y: 36 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -24 }}
-            transition={{ duration: 0.6, ease: EASE }}
-            style={{ position: 'relative', zIndex: 2 }}
+        {/* 主内容 — 布局完全静止，只有大字内部有动画 */}
+        <div style={{ position: 'relative', zIndex: 2 }}>
+
+          {/* 标签行 — 仅 opacity 淡入淡出，不做位移 */}
+          <motion.div
+            key={`tag-${phase}`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4, ease: EASE }}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 32 }}
           >
-            {/* 标签 */}
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 12, marginBottom: 32,
+            <div style={{ width: 20, height: 1, background: cur.tagColor }} />
+            <span style={{
+              fontFamily: MONO, fontSize: 8, color: cur.tagColor,
+              letterSpacing: '0.22em', textTransform: 'uppercase',
             }}>
-              <div style={{ width: 20, height: 1, background: cur.tagColor }} />
-              <span style={{
-                fontFamily: MONO, fontSize: 8, color: cur.tagColor,
-                letterSpacing: '0.22em', textTransform: 'uppercase',
-              }}>
-                {cur.tag}
-              </span>
+              {cur.tag}
+            </span>
+          </motion.div>
+
+          {/* 上分割线 — 完全静止 */}
+          <div style={{ height: 1, background: '#1a1a35', marginBottom: 48 }} />
+
+          {/* 标题区 */}
+          <div>
+            {/* Line 1 — GSAP 独占 DOM，React 不渲染子节点 */}
+            <div
+              ref={line1Ref}
+              style={{
+                fontFamily: '"Noto Serif SC", serif',
+                fontSize: 'clamp(40px, 6vw, 88px)',
+                color: '#e8e8f8',
+                fontWeight: 400, lineHeight: 1.15, letterSpacing: '0.01em',
+                marginBottom: 4,
+              }}
+            />
+
+            {/* Line 2 — 完全静止，永远显示 "数据知识" */}
+            <div style={{
+              fontFamily: '"Noto Serif SC", serif',
+              fontSize: 'clamp(32px, 4.8vw, 70px)',
+              color: 'rgba(232,232,248,0.55)',
+              fontWeight: 400, lineHeight: 1.15, letterSpacing: '0.01em',
+            }}>
+              数据知识
             </div>
+          </div>
 
-            <div style={{ height: 1, background: '#1a1a35', marginBottom: 48 }} />
+          {/* 下分割线 — 完全静止 */}
+          <div style={{ height: 1, background: '#1a1a35', marginTop: 48 }} />
 
-            {/* 主文字 */}
-            <div>
-              {cur.title.map((line, i) => (
-                <div key={i} style={{
-                  fontFamily: '"Noto Serif SC", serif',
-                  fontSize: i === 0
-                    ? 'clamp(40px, 6vw, 88px)'
-                    : 'clamp(32px, 4.8vw, 70px)',
-                  color: i === 0 ? '#e8e8f8' : 'rgba(232,232,248,0.55)',
-                  fontWeight: 400, lineHeight: 1.15, letterSpacing: '0.01em',
-                }}>
-                  {line}
-                </div>
-              ))}
-            </div>
-
-            <div style={{ height: 1, background: '#1a1a35', marginTop: 48 }} />
-
+          {/* Phase 1 专属导航按钮 */}
+          <AnimatePresence>
             {phase === 1 && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ duration: 0.5, ease: EASE, delay: 0.3 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.5, ease: EASE, delay: 0.35 }}
                 style={{ marginTop: 36 }}
               >
                 <div
@@ -1526,10 +1648,10 @@ function ChapterEndTransition({ onComplete }) {
                 </div>
               </motion.div>
             )}
-          </motion.div>
-        </AnimatePresence>
+          </AnimatePresence>
+        </div>
 
-        {/* 底部进度指示 */}
+        {/* 底部进度指示 — CSS transition 驱动，无 React 动画 */}
         <div style={{
           position: 'absolute', bottom: 36, left: '7vw',
           display: 'flex', alignItems: 'center', gap: 10,
@@ -1539,7 +1661,7 @@ function ChapterEndTransition({ onComplete }) {
               height: 1,
               width: phase === i ? 28 : 10,
               background: phase === i ? '#6b7fff' : 'rgba(107,127,255,0.2)',
-              transition: 'all 0.4s ease',
+              transition: 'width 0.4s ease, background 0.4s ease',
             }} />
           ))}
           <span style={{
@@ -1634,13 +1756,13 @@ export default function M1({ onComplete }) {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  const s = { height: '100vh', position: 'relative', overflow: 'hidden', background: '#04040f' }
+  const s = { height: '100vh', position: 'relative', overflow: 'hidden', background: 'transparent' }
 
   return (
-    <div ref={containerRef} data-module-scroll-target style={{ position: 'relative', background: '#04040f', cursor: showCursor ? 'none' : 'auto' }}>
+    <div ref={containerRef} data-module-scroll-target style={{ position: 'relative', background: 'transparent', cursor: showCursor ? 'none' : 'auto' }}>
 
       {/* Section 0–2: 400vh 容器，sticky Earth 在前三页共享 */}
-      <div style={{ position: 'relative', height: '400vh', background: '#04040f' }}>
+      <div style={{ position: 'relative', height: '400vh', background: 'transparent' }}>
 
         {/* 粘性地球层：两层叠加，scroll 驱动淡入淡出 */}
         <div style={{

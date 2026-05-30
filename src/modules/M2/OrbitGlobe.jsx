@@ -137,13 +137,14 @@ export default function OrbitGlobe({
 
   return (
     <div ref={wrapRef} style={{ height, background: 'transparent', width: '100%' }}>
-      <Canvas
-        frameloop={inView ? 'always' : 'never'}
-        camera={{ position: [0, 2.8, 9.0], fov: 52 }}
-        dpr={[1, 1]}
-        gl={{ antialias: true, alpha: true }}
-        style={{ background: 'transparent', width: '100%', height: '100%' }}
-      >
+      {inView && (
+        <Canvas
+          frameloop="always"
+          camera={{ position: [0, 2.8, 9.0], fov: 52 }}
+          dpr={[1, 1]}
+          gl={{ antialias: true, alpha: true }}
+          style={{ background: 'transparent', width: '100%', height: '100%' }}
+        >
         <ambientLight intensity={0.5} />
         <directionalLight position={[4, 5, 4]} intensity={0.62} color="#d5d0cc" />
         {/* 蓝紫补光，营造深空氛围 */}
@@ -175,7 +176,8 @@ export default function OrbitGlobe({
           maxPolarAngle={Math.PI * 0.82}
           minPolarAngle={Math.PI * 0.18}
         />
-      </Canvas>
+        </Canvas>
+      )}
     </div>
   )
 }

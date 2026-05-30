@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useCallback, Suspense, useEffect } from 'react'
+﻿import { useState, useRef, useMemo, useCallback, Suspense, useEffect } from 'react'
 import { Canvas, useFrame, useThree, useLoader } from '@react-three/fiber'
 import { Html, Line } from '@react-three/drei'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -505,25 +505,27 @@ export default function M3({ onComplete }) {
     <div style={{ color: '#e8e8f8' }}>
       <div ref={globeWrapRef} style={{ position: 'relative', width: '100%', height: '100vh', minHeight: 500, overflow: 'hidden', transform: 'scaleY(-1)' }}>
 
-        <Canvas
-          orthographic
-          frameloop={globeInView ? 'always' : 'never'}
-          camera={{ position: [0, 0, 100] }}
-          style={{ position: 'absolute', inset: 0 }}
-          dpr={[1, 1]}
-          gl={{ antialias: true, alpha: true }}
-        >
-          <Suspense fallback={null}>
-            <Scene
-              launchYear={launchYear}
-              hoveredId={hoveredEv?.id ?? null}
-              clickedIds={clickedIds}
-              onHover={onHover}
-              onLeave={onLeave}
-              onClick={onClick}
-            />
-          </Suspense>
-        </Canvas>
+        {globeInView && (
+          <Canvas
+            orthographic
+            frameloop="always"
+            camera={{ position: [0, 0, 100] }}
+            style={{ position: 'absolute', inset: 0 }}
+            dpr={[1, 1]}
+            gl={{ antialias: true, alpha: true }}
+          >
+            <Suspense fallback={null}>
+              <Scene
+                launchYear={launchYear}
+                hoveredId={hoveredEv?.id ?? null}
+                clickedIds={clickedIds}
+                onHover={onHover}
+                onLeave={onLeave}
+                onClick={onClick}
+              />
+            </Suspense>
+          </Canvas>
+        )}
 
         {/* Title overlay */}
         <div style={{

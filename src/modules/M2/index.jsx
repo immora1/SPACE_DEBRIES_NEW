@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef, Suspense } from 'react'
+﻿import { useState, useEffect, useRef, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { AnimateChars, ScrollReveal } from '../../animations'
 import useAppStore from '../../store/useAppStore'
 import { generateMissionStory, generateStoryOutline, generateOpeningStory, generateMaterialFeedback } from '../../services/ai'
 import OrbitGlobe from './OrbitGlobe'
@@ -299,33 +300,33 @@ export default function M2({ onComplete }) {
     <div style={{ background: 'transparent', color: '#e8e8f8', position: 'relative' }}>
 
       {/* ── 顶部标题区 ─────────────────────────────────────── */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.65, ease: EASE }}
-        style={{ padding: '44px 32px 40px', borderBottom: '1px solid #1a1a35', maxWidth: 640 }}
-      >
-        <div style={{
-          fontFamily: '"Space Mono", monospace', fontSize: 8,
-          color: '#484878', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 16,
-        }}>
-          02 · ORBIT · 轨道是什么
-        </div>
+      <div style={{ padding: '44px 32px 40px', borderBottom: '1px solid #1a1a35', maxWidth: 640 }}>
+        <ScrollReveal>
+          <div style={{
+            fontFamily: '"Space Mono", monospace', fontSize: 8,
+            color: '#484878', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 16,
+          }}>
+            02 · ORBIT · 轨道是什么
+          </div>
+        </ScrollReveal>
         <h2 style={{
           fontFamily: '"Noto Serif SC", serif',
           fontSize: 'clamp(22px, 2.6vw, 32px)',
           fontWeight: 400, color: '#e8e8f8', lineHeight: 1.55, marginBottom: 14, letterSpacing: '0.01em',
         }}>
-          轨道不是一条路，<br />是一个必须持续维护的状态。
+          <AnimateChars text="轨道不是一条路，" as="span" style={{ display: 'block' }} delay={0.05} />
+          <AnimateChars text="是一个必须持续维护的状态。" as="span" style={{ display: 'block' }} delay={0.22} />
         </h2>
-        <p style={{
-          fontFamily: '"Noto Sans SC", sans-serif',
-          fontSize: 13, color: 'rgba(232,232,248,0.5)', lineHeight: 1.9, maxWidth: 560, margin: 0,
-        }}>
-          卫星以 7–8 km/s 的速度持续下坠，恰好与地球曲率匹配，形成轨道。
-          停下来就意味着坠落。三层轨道区域，碎片风险各不相同。
-        </p>
-      </motion.div>
+        <ScrollReveal delay={0.4}>
+          <p style={{
+            fontFamily: '"Noto Sans SC", sans-serif',
+            fontSize: 13, color: 'rgba(232,232,248,0.5)', lineHeight: 1.9, maxWidth: 560, margin: 0,
+          }}>
+            卫星以 7–8 km/s 的速度持续下坠，恰好与地球曲率匹配，形成轨道。
+            停下来就意味着坠落。三层轨道区域，碎片风险各不相同。
+          </p>
+        </ScrollReveal>
+      </div>
 
       {/* ── 主体双栏 ─────────────────────────────────────────
           左列：三个 ~100vh 的滚动章节
