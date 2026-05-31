@@ -349,11 +349,11 @@ const EASE = [0.16, 1, 0.3, 1]
 // Earth GLB 模型 — 缓慢自转，仅用于 intro 页面
 const EARTH_GLB = '/earth%20globe%203d%20model.glb'
 
-function IntroEarthMesh() {
+function IntroEarthMesh({ scale = 1.2 }) {
   const { scene } = useGLTF(EARTH_GLB)
   const ref = useRef()
   useFrame((_, dt) => { ref.current.rotation.y += dt * 0.06 })
-  return <primitive ref={ref} object={scene} scale={1.2} />
+  return <primitive ref={ref} object={scene} scale={scale} />
 }
 useGLTF.preload(EARTH_GLB)
 
@@ -362,6 +362,13 @@ const SERIF = "'Noto Serif SC', serif"
 const SANS  = "'Noto Sans SC', sans-serif"
 
 function IntroOverlay({ satellite, initialArmor, damageLevel, storyOutline, onStart }) {
+  const [orbitProgress, setOrbitProgress] = useState(0)
+  const orbitDragRef = useRef(false)
+  const canvasContainerRef = useRef()
+
+  const earthScale = 1.2 + orbitProgress * (3.5 - 1.2)
+  const dashOpacity = Math.max(0, 1 - orbitProgress)
+
   const m4Beat = storyOutline?.checkpoints?.find((c) => c.id === 'm4')?.beat || '命运决战时刻'
 
   const briefRows = [
@@ -374,6 +381,44 @@ function IntroOverlay({ satellite, initialArmor, damageLevel, storyOutline, onSt
     { label: '决策轮次', value: `${TOTAL_ROUNDS} 轮` },
   ]
 
+  const handleOrbitDragStart = useCallback((e) => {
+    orbitDragRef.current = true
+    handleOrbitDragMove(e)
+  }, [])
+
+  const handleOrbitDragMove = useCallback((e) => {
+    if (!orbitDragRef.current || !canvasContainerRef.current) return
+    const rect = canvasContainerRef.current.getBoundingClientRect()
+    const centerX = rect.width / 2
+    const centerY = rect.height / 2
+    const x = e.clientX - rect.left - centerX
+    const y = e.clientY - rect.top - centerY
+
+    let angle = Math.atan2(y, x)
+    if (angle < 0) angle += Math.PI * 2
+
+    if (angle >= Math.PI / 2 && angle <= 3 * Math.PI / 2) {
+      const normalizedAngle = angle - Math.PI / 2
+      const progress = Math.max(0, Math.min(1, normalizedAngle / Math.PI))
+      setOrbitProgress(progress)
+    }
+  }, [])
+
+  const handleOrbitDragEnd = useCallback(() => {
+    orbitDragRef.current = false
+  }, [])
+
+  useEffect(() => {
+    if (orbitDragRef.current) {
+      document.addEventListener('mousemove', handleOrbitDragMove)
+      document.addEventListener('mouseup', handleOrbitDragEnd)
+      return () => {
+        document.removeEventListener('mousemove', handleOrbitDragMove)
+        document.removeEventListener('mouseup', handleOrbitDragEnd)
+      }
+    }
+  }, [handleOrbitDragMove, handleOrbitDragEnd])
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -385,6 +430,41 @@ function IntroOverlay({ satellite, initialArmor, damageLevel, storyOutline, onSt
         zIndex: 10,
       }}
     >
+      {/* 轨道交互 UI — 最上层 */}
+      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 50 }}>
+        {/* 虚线轨道背景 */}
+        <div style={{
+          position: 'absolute',
+          borderRadius: '50%',
+          border: `2px dashed rgba(107,127,255,${dashOpacity * 0.5})`,
+          top: '50%', left: '50%',
+          width: '36%', height: '36%',
+          transform: 'translate(-50%, -50%)',
+          pointerEvents: 'none',
+        }} />
+      </div>
+
+      {/* 白圆拖动控件 */}
+      <div
+        onMouseDown={handleOrbitDragStart}
+        style={{
+          position: 'absolute',
+          width: 28,
+          height: 28,
+          borderRadius: '50%',
+          background: '#ffffff',
+          boxShadow: `0 0 16px rgba(255,255,255,${0.6 + orbitProgress * 0.2}), 0 0 32px rgba(107,127,255,${0.3 + orbitProgress * 0.3})`,
+          border: `2px solid rgba(107,127,255,${0.7 + orbitProgress * 0.2})`,
+          cursor: 'grab',
+          left: `calc(50% + ${Math.cos(Math.PI / 2 + orbitProgress * Math.PI) * 18}%)`,
+          top: `calc(50% + ${Math.sin(Math.PI / 2 + orbitProgress * Math.PI) * 18}%)`,
+          transform: 'translate(-50%, -50%)',
+          transition: orbitDragRef.current ? 'none' : 'all 0.16s ease-out',
+          pointerEvents: 'auto',
+          zIndex: 100,
+        }}
+      />
+
       {/* ── 顶部：模块标签 + 大标题 ── */}
       <div style={{ textAlign: 'center', padding: '44px 0 0', flexShrink: 0 }}>
         <div style={{
@@ -460,7 +540,7 @@ function IntroOverlay({ satellite, initialArmor, damageLevel, storyOutline, onSt
         </motion.div>
 
         {/* 中心：3D 地球 */}
-        <div style={{ flex: 1, position: 'relative', minHeight: 0, height: '60vh' }}>
+        <div ref={canvasContainerRef} style={{ flex: 1, position: 'relative', minHeight: 0, height: '60vh' }}>
           <Canvas
             camera={{ position: [0, 0, 2.75], fov: 45 }}
             style={{ background: 'transparent', width: '100%', height: '100%' }}
@@ -471,7 +551,7 @@ function IntroOverlay({ satellite, initialArmor, damageLevel, storyOutline, onSt
             <directionalLight position={[-3, 1, -2]} intensity={1.2} color="#8899cc" />
             <pointLight position={[0, 4, 2]} intensity={2.5} color="#ffffff" />
             <Suspense fallback={null}>
-              <IntroEarthMesh />
+              <IntroEarthMesh scale={earthScale} />
             </Suspense>
           </Canvas>
 

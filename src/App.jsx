@@ -146,7 +146,7 @@ const MODULES = [
   { id: 'm1',       Component: M1,       connector: null, archDivider: '#04040f' },
   { id: 'm3',       Component: M3,       connector: null },
   { id: 'm2',       Component: M2,       connector: null },
-  { id: 'm4',       Component: M4,       connector: null },
+  { id: 'm4',       Component: M4,       connector: null, alwaysVisible: true },
   { id: 'm5',       Component: M5,       connector: '旅行结束了，那些留下来的，我们总是忘了还有机会处理。' },
   { id: 'm6',       Component: M6,       connector: '不要问还有没有人在乎，问你自己。' },
   { id: 'm7',       Component: M7,       connector: '最后，把这些碎片重新放回真实世界的信息里。' },
@@ -257,10 +257,10 @@ export default function App() {
         onStageClick={scrollToModule}
       />
 
-      {MODULES.map(({ id, Component, connector, archDivider }) => (
+      {MODULES.map(({ id, Component, connector, archDivider, alwaysVisible }) => (
         <Suspense key={id} fallback={<ModuleLoader />}>
           <ModuleWrapper
-            isUnlocked={unlockedModules.includes(id)}
+            isUnlocked={alwaysVisible || unlockedModules.includes(id)}
             connector={connector}
             archDivider={archDivider}
             noAnimation={id === 'm1'}
