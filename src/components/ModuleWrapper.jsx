@@ -76,11 +76,13 @@ const ModuleWrapper = forwardRef(function ModuleWrapper(
   { isUnlocked, connector, children, noAnimation, archDivider, mouseReactive, moduleId },
   ref
 ) {
-  if (!isUnlocked) return null
+  // 改动：即使未解锁也渲染，但用 visibility:hidden 隐藏未解锁的模块
+  // 这样保持在 DOM 流中，允许导航正确计算位置
+  const isVisible = isUnlocked
 
   // archDivider 可以是 string（颜色）或 { color, flip }
   return (
-    <div ref={ref} data-module={moduleId}>
+    <div ref={ref} data-module={moduleId} style={{ visibility: isVisible ? 'visible' : 'hidden', pointerEvents: isVisible ? 'auto' : 'none' }}>
       <motion.div
         initial={{ opacity: 0, y: noAnimation ? 0 : 40 }}
         animate={{ opacity: 1, y: 0 }}

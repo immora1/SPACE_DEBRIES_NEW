@@ -3,11 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion'
 import useAppStore from './store/useAppStore'
 import ProgressBar from './components/ProgressBar'
 import ModuleWrapper from './components/ModuleWrapper'
+import StageNav from './components/StageNav'
 
 const M1 = lazy(() => import('./modules/M1'))
 const M2 = lazy(() => import('./modules/M2'))
 const M3 = lazy(() => import('./modules/M3'))
-const M4 = lazy(() => import('./modules/M4'))
+const M4 = lazy(() => import('./modules/M4/M4New'))
 const M5 = lazy(() => import('./modules/M5'))
 const M6 = lazy(() => import('./modules/M6'))
 const M7 = lazy(() => import('./modules/M7'))
@@ -198,9 +199,63 @@ export default function App() {
     }
   }
 
+  function scrollToModule(id) {
+    console.log('开始跳转到模块:', id)
+
+    // 自动解锁目标模块（如果未解锁）
+    if (!unlockedModules.includes(id)) {
+      console.log('自动解锁模块:', id)
+      unlockModule(id)
+    }
+
+    // 优先使用 ref
+    let el = moduleRefs.current[id]
+    console.log('通过 ref 查找:', el)
+
+    // 备选：通过 data-module 属性查找
+    if (!el) {
+      el = document.querySelector(`[data-module="${id}"]`)
+      console.log('通过 DOM 查找:', el)
+    }
+
+    if (el) {
+      console.log('找到元素，offsetTop:', el.offsetTop)
+
+      // 强制解除滚动限制（最高优先级）
+      const originalOverflow = document.body.style.overflow
+      const originalHtmlOverflow = document.documentElement.style.overflow
+      console.log('原始 overflow 状态:', originalOverflow, originalHtmlOverflow)
+
+      document.body.style.overflow = 'auto'
+      document.documentElement.style.overflow = 'auto'
+      document.body.style.height = 'auto'
+      document.documentElement.style.height = 'auto'
+
+      // 执行滚动
+      console.log('执行滚动到:', el.offsetTop - 80)
+      window.scrollTo({
+        top: el.offsetTop - 80,
+        behavior: 'smooth'
+      })
+
+      // 延迟恢复原状态，确保滚动完成
+      setTimeout(() => {
+        document.body.style.overflow = originalOverflow
+        document.documentElement.style.overflow = originalHtmlOverflow
+        console.log('恢复 overflow 状态')
+      }, 600)
+    } else {
+      console.warn('模块未找到:', id)
+    }
+  }
+
   return (
     <div style={{ minHeight: '100vh' }}>
       <ProgressBar completed={completedModules.length} total={MODULES.length} />
+      <StageNav
+        completedModules={completedModules}
+        onStageClick={scrollToModule}
+      />
 
       {MODULES.map(({ id, Component, connector, archDivider }) => (
         <Suspense key={id} fallback={<ModuleLoader />}>

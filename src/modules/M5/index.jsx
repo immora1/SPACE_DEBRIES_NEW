@@ -516,7 +516,7 @@ function CaseArchive({ openedIds, onOpen }) {
               {active.summary}
             </p>
             <div style={{ height: 1, background: '#1a1a35', margin: '14px 0' }} />
-            <p style={{ fontFamily: SANS, fontSize: 12, color: '#6060808', lineHeight: 1.85, margin: 0, color: '#606080' }}>
+            <p style={{ fontFamily: SANS, fontSize: 12, color: '#606080', lineHeight: 1.85, margin: 0 }}>
               {active.detail}
             </p>
           </motion.div>

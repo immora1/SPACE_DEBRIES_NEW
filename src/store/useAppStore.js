@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware'
 
 const useAppStore = create(
   persist(
-    (set) => ({
+    (set, get) => ({
       // 用户信息
       user: { name: '', city: '', importantEvent: '' },
       setUser: (u) => set({ user: u }),
@@ -62,19 +62,13 @@ const useAppStore = create(
             : [...s.unlockedModules, id],
         })),
 
-      // completeModule / markModuleComplete 同义
       completeModule: (id) =>
         set((s) => ({
           completedModules: s.completedModules.includes(id)
             ? s.completedModules
             : [...s.completedModules, id],
         })),
-      markModuleComplete: (id) =>
-        set((s) => ({
-          completedModules: s.completedModules.includes(id)
-            ? s.completedModules
-            : [...s.completedModules, id],
-        })),
+      markModuleComplete: (id) => get().completeModule(id),
 
       // M4 游戏时锁定页面滚动
       scrollLocked: false,

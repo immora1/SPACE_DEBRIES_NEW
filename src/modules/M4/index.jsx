@@ -1,5 +1,7 @@
-﻿import { useState, useEffect, useCallback, useRef } from 'react'
+﻿import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import { Canvas, useFrame } from '@react-three/fiber'
+import { useGLTF } from '@react-three/drei'
 import useAppStore from '../../store/useAppStore'
 import {
   generateGameDecisionFeedback,
@@ -224,14 +226,16 @@ export default function M4({ onComplete }) {
   return (
     <div style={{ width: '100%', height: '100vh', position: 'relative', background: 'transparent', overflow: 'hidden' }}>
 
-      {/* 3D 场景 */}
-      <div style={{ position: 'absolute', inset: 0 }}>
-        <GameScene
-          damageLevel={damageLevel}
-          alertActive={alertActive}
-          satelliteInclination={satInclination}
-        />
-      </div>
+      {/* 3D 游戏场景 — 仅在游戏进行时显示，INTRO 不渲染 */}
+      {phase !== PHASE.INTRO && (
+        <div style={{ position: 'absolute', inset: 0 }}>
+          <GameScene
+            damageLevel={damageLevel}
+            alertActive={alertActive}
+            satelliteInclination={satInclination}
+          />
+        </div>
+      )}
 
       {/* 左侧白色磨砂玻璃面板 — 占屏幕 1/3 */}
       {(phase === PHASE.EVENT || phase === PHASE.FEEDBACK) && (
@@ -342,120 +346,232 @@ export default function M4({ onComplete }) {
 
 const EASE = [0.16, 1, 0.3, 1]
 
+// Earth GLB 模型 — 缓慢自转，仅用于 intro 页面
+const EARTH_GLB = '/earth%20globe%203d%20model.glb'
+
+function IntroEarthMesh() {
+  const { scene } = useGLTF(EARTH_GLB)
+  const ref = useRef()
+  useFrame((_, dt) => { ref.current.rotation.y += dt * 0.06 })
+  return <primitive ref={ref} object={scene} scale={1.2} />
+}
+useGLTF.preload(EARTH_GLB)
+
+const MONO  = "'Space Mono', monospace"
+const SERIF = "'Noto Serif SC', serif"
+const SANS  = "'Noto Sans SC', sans-serif"
+
 function IntroOverlay({ satellite, initialArmor, damageLevel, storyOutline, onStart }) {
   const m4Beat = storyOutline?.checkpoints?.find((c) => c.id === 'm4')?.beat || '命运决战时刻'
 
+  const briefRows = [
+    { label: '卫星',    value: satellite?.name || 'UNKNOWN' },
+    { label: '轨道高度', value: `${satellite?.altitudeKm || '--'} km` },
+    { label: '轨道类型', value: 'LEO' },
+    { label: '初始护甲', value: `${initialArmor}%`, color: initialArmor < 70 ? '#fbbf24' : '#34d399',
+      sub: damageLevel > 0 ? `M3 受损 −${damageLevel * 5}%` : null },
+    { label: '燃料储量', value: '100%', color: '#34d399' },
+    { label: '决策轮次', value: `${TOTAL_ROUNDS} 轮` },
+  ]
+
   return (
-    <div style={{
-      position: 'absolute', inset: 0,
-      background: 'rgba(4,4,14,0.90)',
-      backdropFilter: 'blur(6px)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      zIndex: 10,
-    }}>
-      <motion.div
-        initial={{ opacity: 0, y: 28 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.72, ease: EASE }}
-        style={{ maxWidth: 520, width: '100%', padding: '0 32px', textAlign: 'center' }}
-      >
-        {/* 模块标签 */}
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.65, ease: EASE }}
+      style={{
+        position: 'absolute', inset: 0,
+        display: 'flex', flexDirection: 'column',
+        zIndex: 10,
+      }}
+    >
+      {/* ── 顶部：模块标签 + 大标题 ── */}
+      <div style={{ textAlign: 'center', padding: '44px 0 0', flexShrink: 0 }}>
         <div style={{
-          fontFamily: "'Space Mono', monospace",
-          fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase',
-          color: '#484878', marginBottom: 22,
+          fontFamily: MONO, fontSize: 8, letterSpacing: '0.22em',
+          textTransform: 'uppercase', color: 'rgba(107,127,255,0.5)',
+          marginBottom: 16,
         }}>
           MODULE 04 · SURVIVAL MISSION
         </div>
 
-        {/* 主标题 */}
-        <h2 style={{
-          fontFamily: "'Noto Serif SC', serif",
-          fontSize: 'clamp(22px, 3vw, 32px)',
-          color: '#e8e8f8', fontWeight: 300, margin: '0 0 16px', letterSpacing: '0.04em',
+        <h1 style={{
+          fontFamily: SERIF,
+          fontSize: 'clamp(40px, 5.5vw, 72px)',
+          color: '#e8e8f8', fontWeight: 300,
+          letterSpacing: '0.05em', margin: 0, lineHeight: 1.1,
         }}>
           卫星生存任务
-        </h2>
+        </h1>
 
-        {/* 分割线 */}
         <div style={{
           height: 1,
-          background: 'linear-gradient(to right, transparent, rgba(107,127,255,0.35), transparent)',
-          margin: '0 auto 18px', width: '55%',
+          background: 'linear-gradient(to right, transparent, rgba(107,127,255,0.22), transparent)',
+          width: '36%', margin: '20px auto 0',
         }} />
+      </div>
 
-        {/* 故事节拍 */}
-        <p style={{
-          fontFamily: "'Noto Serif SC', serif",
-          fontSize: 13, color: 'rgba(232,232,248,0.40)',
-          lineHeight: 1.9, margin: '0 0 28px', fontStyle: 'italic',
-        }}>
-          {m4Beat}
-        </p>
+      {/* ── 主体：左栏 + 中心地球 + 右栏 ── */}
+      <div style={{
+        flex: 1, display: 'flex', alignItems: 'center',
+        padding: '0 5vw', gap: '2vw', minHeight: 0,
+      }}>
 
-        {/* 简报卡片 */}
-        <div style={{
-          background: 'rgba(8,8,26,0.72)',
-          border: '1px solid #1a1a35',
-          backdropFilter: 'blur(14px)',
-          padding: '18px 22px', marginBottom: 22, textAlign: 'left',
-        }}>
-          {/* 卡片标题行 */}
+        {/* 左栏：任务简报 */}
+        <motion.div
+          initial={{ opacity: 0, x: -24 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.65, ease: EASE, delay: 0.15 }}
+          style={{ width: '22%', flexShrink: 0 }}
+        >
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14,
+            display: 'flex', alignItems: 'center', gap: 8, marginBottom: 22,
           }}>
-            <div style={{ width: 12, height: 1, background: 'rgba(107,127,255,0.45)' }} />
+            <div style={{ width: 14, height: 1, background: 'rgba(107,127,255,0.4)' }} />
             <span style={{
-              fontFamily: "'Space Mono', monospace",
-              fontSize: 8, color: '#6b7fff', letterSpacing: '0.16em', textTransform: 'uppercase',
+              fontFamily: MONO, fontSize: 7, color: 'rgba(107,127,255,0.55)',
+              letterSpacing: '0.22em', textTransform: 'uppercase',
             }}>
               MISSION BRIEFING
             </span>
-            <div style={{ flex: 1, height: 1, background: 'linear-gradient(to right, rgba(107,127,255,0.25), transparent)' }} />
           </div>
 
-          <InfoRow label="卫星"    value={satellite?.name || 'UNKNOWN'} />
-          <InfoRow label="轨道"    value={`${satellite?.altitudeKm || '--'} km LEO`} />
-          <InfoRow label="初始护甲" value={`${initialArmor}%${damageLevel > 0 ? `  (M3受损 -${damageLevel * 5}%)` : ''}`}
-            color={initialArmor < 70 ? '#fbbf24' : '#34d399'} />
-          <InfoRow label="燃料"    value="100%" color="#34d399" />
-          <InfoRow label="决策轮次" value="6 轮" last />
+          {briefRows.map(({ label, value, color, sub }, i) => (
+            <div key={i} style={{
+              padding: '10px 0',
+              borderBottom: i < briefRows.length - 1 ? '1px solid rgba(26,26,53,0.55)' : 'none',
+            }}>
+              <div style={{
+                fontFamily: MONO, fontSize: 7, color: '#484878',
+                letterSpacing: '0.08em', marginBottom: 5,
+              }}>
+                {label}
+              </div>
+              <div style={{ fontFamily: MONO, fontSize: 11, color: color || '#8888a8' }}>
+                {value}
+                {sub && (
+                  <span style={{ fontFamily: MONO, fontSize: 8, color: '#fbbf24', marginLeft: 10 }}>
+                    {sub}
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </motion.div>
+
+        {/* 中心：3D 地球 */}
+        <div style={{ flex: 1, position: 'relative', minHeight: 0, height: '60vh' }}>
+          <Canvas
+            camera={{ position: [0, 0, 2.75], fov: 45 }}
+            style={{ background: 'transparent', width: '100%', height: '100%' }}
+            gl={{ alpha: true, antialias: true }}
+          >
+            <ambientLight intensity={2.2} />
+            <directionalLight position={[4, 3, 3]} intensity={4.0} color="#c8d8f0" />
+            <directionalLight position={[-3, 1, -2]} intensity={1.2} color="#8899cc" />
+            <pointLight position={[0, 4, 2]} intensity={2.5} color="#ffffff" />
+            <Suspense fallback={null}>
+              <IntroEarthMesh />
+            </Suspense>
+          </Canvas>
+
+          {/* 地球下方装饰标签 */}
+          <div style={{
+            position: 'absolute', bottom: '6%', left: '50%',
+            transform: 'translateX(-50%)',
+            fontFamily: MONO, fontSize: 7,
+            color: 'rgba(107,127,255,0.30)', letterSpacing: '0.18em',
+            textTransform: 'uppercase', whiteSpace: 'nowrap',
+            pointerEvents: 'none',
+          }}>
+            {satellite?.name || 'UNKNOWN'} · {satellite?.altitudeKm || '--'} KM LEO
+          </div>
         </div>
 
-        {/* 说明文字 */}
-        <p style={{
-          fontFamily: "'Noto Sans SC', sans-serif",
-          fontSize: 12, color: 'rgba(232,232,248,0.38)', lineHeight: 1.85, margin: '0 0 30px',
-        }}>
-          每轮遭遇一种真实轨道威胁。你的每一个选择将同步推进平行时空中那件最重要的事。
-        </p>
-
-        {/* 开始按钮 */}
-        <button
-          onClick={onStart}
-          onMouseEnter={e => {
-            e.currentTarget.style.background = 'rgba(107,127,255,0.12)'
-            e.currentTarget.style.borderColor = 'rgba(107,127,255,0.85)'
-            e.currentTarget.style.color = '#e8e8f8'
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = 'transparent'
-            e.currentTarget.style.borderColor = 'rgba(107,127,255,0.45)'
-            e.currentTarget.style.color = '#6b7fff'
-          }}
-          style={{
-            fontFamily: "'Space Mono', monospace",
-            fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase',
-            color: '#6b7fff', background: 'transparent',
-            border: '1px solid rgba(107,127,255,0.45)',
-            padding: '13px 52px', cursor: 'pointer',
-            transition: 'background 0.25s ease, border-color 0.25s ease, color 0.25s ease',
-          }}
+        {/* 右栏：故事情境 + 开始按钮 */}
+        <motion.div
+          initial={{ opacity: 0, x: 24 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.65, ease: EASE, delay: 0.15 }}
+          style={{ width: '22%', flexShrink: 0 }}
         >
-          开始任务 →
-        </button>
-      </motion.div>
-    </div>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8, marginBottom: 22,
+          }}>
+            <div style={{ width: 14, height: 1, background: 'rgba(107,127,255,0.4)' }} />
+            <span style={{
+              fontFamily: MONO, fontSize: 7, color: 'rgba(107,127,255,0.55)',
+              letterSpacing: '0.22em', textTransform: 'uppercase',
+            }}>
+              MISSION CONTEXT
+            </span>
+          </div>
+
+          {/* 故事节拍 */}
+          <p style={{
+            fontFamily: SERIF, fontSize: 13,
+            color: 'rgba(232,232,248,0.42)', lineHeight: 2.0,
+            fontStyle: 'italic', margin: '0 0 22px',
+          }}>
+            {m4Beat}
+          </p>
+
+          <div style={{ height: 1, background: 'rgba(26,26,53,0.55)', marginBottom: 22 }} />
+
+          {/* 说明文字 */}
+          <p style={{
+            fontFamily: SANS, fontSize: 11,
+            color: 'rgba(232,232,248,0.30)', lineHeight: 1.95,
+            margin: '0 0 36px',
+          }}>
+            每轮遭遇一种真实轨道威胁。你的每一个选择将同步推进平行时空中那件最重要的事。
+          </p>
+
+          {/* 开始按钮 */}
+          <button
+            onClick={onStart}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = 'rgba(107,127,255,0.12)'
+              e.currentTarget.style.borderColor = 'rgba(107,127,255,0.9)'
+              e.currentTarget.style.color = '#e8e8f8'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'transparent'
+              e.currentTarget.style.borderColor = 'rgba(107,127,255,0.4)'
+              e.currentTarget.style.color = '#6b7fff'
+            }}
+            style={{
+              fontFamily: MONO,
+              fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase',
+              color: '#6b7fff', background: 'transparent',
+              border: '1px solid rgba(107,127,255,0.4)',
+              padding: '14px 0', width: '100%', cursor: 'pointer',
+              transition: 'background 0.25s, border-color 0.25s, color 0.25s',
+            }}
+          >
+            开始任务 →
+          </button>
+
+          <div style={{
+            marginTop: 12, fontFamily: MONO, fontSize: 7,
+            color: 'rgba(107,127,255,0.22)', letterSpacing: '0.14em',
+            textAlign: 'center',
+          }}>
+            点击进入游戏
+          </div>
+        </motion.div>
+      </div>
+
+      {/* ── 底部状态行 ── */}
+      <div style={{
+        flexShrink: 0, padding: '0 0 28px',
+        textAlign: 'center',
+        fontFamily: MONO, fontSize: 7,
+        color: '#484878', letterSpacing: '0.16em', textTransform: 'uppercase',
+      }}>
+        ARMOR {initialArmor}% · FUEL 100% · {TOTAL_ROUNDS} ROUNDS
+      </div>
+    </motion.div>
   )
 }
 

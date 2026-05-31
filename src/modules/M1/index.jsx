@@ -1568,27 +1568,31 @@ function ChapterEndTransition({ onComplete }) {
           {phase === 0 ? '01' : '02'}
         </div>
 
-        {/* 主内容 — 布局完全静止，只有大字内部有动画 */}
+        {/* 标签行 — 绝对定位在顶部，不参与 flex 居中，不影响两条线位置 */}
+        <motion.div
+          key={`tag-${phase}`}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, ease: EASE }}
+          style={{
+            position: 'absolute', top: 36, left: '7vw',
+            display: 'flex', alignItems: 'center', gap: 12,
+            zIndex: 3,
+          }}
+        >
+          <div style={{ width: 20, height: 1, background: cur.tagColor }} />
+          <span style={{
+            fontFamily: MONO, fontSize: 8, color: cur.tagColor,
+            letterSpacing: '0.22em', textTransform: 'uppercase',
+          }}>
+            {cur.tag}
+          </span>
+        </motion.div>
+
+        {/* 主内容 — 只有「线 + 间距 + 标题 + 间距 + 线」，上下完全对称，两线与数字等距 */}
         <div style={{ position: 'relative', zIndex: 2 }}>
 
-          {/* 标签行 — 仅 opacity 淡入淡出，不做位移 */}
-          <motion.div
-            key={`tag-${phase}`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.4, ease: EASE }}
-            style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 32 }}
-          >
-            <div style={{ width: 20, height: 1, background: cur.tagColor }} />
-            <span style={{
-              fontFamily: MONO, fontSize: 8, color: cur.tagColor,
-              letterSpacing: '0.22em', textTransform: 'uppercase',
-            }}>
-              {cur.tag}
-            </span>
-          </motion.div>
-
-          {/* 上分割线 — 完全静止 */}
+          {/* 上分割线 */}
           <div style={{ height: 1, background: '#1a1a35', marginBottom: 48 }} />
 
           {/* 标题区 */}
@@ -1618,38 +1622,38 @@ function ChapterEndTransition({ onComplete }) {
 
           {/* 下分割线 — 完全静止 */}
           <div style={{ height: 1, background: '#1a1a35', marginTop: 48 }} />
-
-          {/* Phase 1 专属导航按钮 */}
-          <AnimatePresence>
-            {phase === 1 && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.5, ease: EASE, delay: 0.35 }}
-                style={{ marginTop: 36 }}
-              >
-                <div
-                  onClick={() => onComplete({ autoScroll: false })}
-                  style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 14, userSelect: 'none' }}
-                  onMouseEnter={e => { e.currentTarget.querySelector('span').style.color = '#e8e8f8' }}
-                  onMouseLeave={e => { e.currentTarget.querySelector('span').style.color = '#6b7fff' }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                    {[0,1,2].map(k => (
-                      <div key={k} style={{ height: 1, width: 5, background: `rgba(107,127,255,${0.3 + k * 0.2})` }} />
-                    ))}
-                  </div>
-                  <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#6b7fff', transition: 'color 0.3s' }}>
-                    进入下一章 · M2 轨道
-                  </span>
-                  <div style={{ width: 12, height: 1, background: '#6b7fff' }} />
-                  <div style={{ width: 5, height: 5, borderTop: '1.5px solid #6b7fff', borderRight: '1.5px solid #6b7fff', transform: 'rotate(45deg)' }} />
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
+
+        {/* Phase 1 专属导航 — 绝对定位，不影响上方内容流，分割线永远不动 */}
+        <AnimatePresence>
+          {phase === 1 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.5, ease: EASE, delay: 0.35 }}
+              style={{ position: 'absolute', bottom: 80, left: '7vw' }}
+            >
+              <div
+                onClick={() => onComplete({ autoScroll: false })}
+                style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 14, userSelect: 'none' }}
+                onMouseEnter={e => { e.currentTarget.querySelector('span').style.color = '#e8e8f8' }}
+                onMouseLeave={e => { e.currentTarget.querySelector('span').style.color = '#6b7fff' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                  {[0,1,2].map(k => (
+                    <div key={k} style={{ height: 1, width: 5, background: `rgba(107,127,255,${0.3 + k * 0.2})` }} />
+                  ))}
+                </div>
+                <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#6b7fff', transition: 'color 0.3s' }}>
+                  进入下一章 · M2 轨道
+                </span>
+                <div style={{ width: 12, height: 1, background: '#6b7fff' }} />
+                <div style={{ width: 5, height: 5, borderTop: '1.5px solid #6b7fff', borderRight: '1.5px solid #6b7fff', transform: 'rotate(45deg)' }} />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* 底部进度指示 — CSS transition 驱动，无 React 动画 */}
         <div style={{
