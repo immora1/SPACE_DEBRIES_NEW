@@ -17,22 +17,32 @@ export default function StageNav({ completedModules, onStageClick }) {
   return (
     <div style={{
       position: 'fixed',
-      top: '50%',
-      right: 24,
-      transform: 'translateY(-50%)',
+      top: 24,
+      right: 28,
       zIndex: 10000,
       display: 'flex',
-      flexDirection: 'column',
+      flexDirection: 'row',
       alignItems: 'center',
-      gap: 20,
+      gap: 14,
       pointerEvents: 'auto',
     }}>
-      {/* 竖直导航点列表 */}
+      {/* 横向导航标签 */}
+      <div style={{
+        fontFamily: 'Lexend, sans-serif',
+        fontSize: 8,
+        color: 'rgba(232,232,248,0.35)',
+        letterSpacing: '0.16em',
+        whiteSpace: 'nowrap',
+      }}>
+        STAGE NAVIGATION
+      </div>
+
+      {/* 横向导航点列表 */}
       <div style={{
         display: 'flex',
-        flexDirection: 'column',
+        flexDirection: 'row',
         alignItems: 'center',
-        gap: 16,
+        gap: 12,
       }}>
         {STAGES.map((stage, idx) => {
           const isCompleted = completedModules.includes(stage.id)
@@ -80,21 +90,6 @@ export default function StageNav({ completedModules, onStageClick }) {
             </button>
           )
         })}
-      </div>
-
-      {/* 竖直标签 */}
-      <div style={{
-        writingMode: 'vertical-rl',
-        textOrientation: 'mixed',
-        transform: 'rotate(180deg)',
-        fontFamily: 'Space Mono, monospace',
-        fontSize: 9,
-        color: 'rgba(232,232,248,0.35)',
-        letterSpacing: '0.1em',
-        whiteSpace: 'nowrap',
-        marginTop: 8,
-      }}>
-        STAGE NAVIGATION
       </div>
     </div>
   )

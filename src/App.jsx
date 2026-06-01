@@ -231,15 +231,16 @@ export default function App() {
       document.body.style.height = 'auto'
       document.documentElement.style.height = 'auto'
 
-      // 执行滚动
-      console.log('执行滚动到:', el.offsetTop - 80)
-      window.scrollTo({
-        top: el.offsetTop - 80,
-        behavior: 'smooth'
+      // 模块需要完整贴齐视口顶部，避免露出上一板块。
+      console.log('执行滚动到模块顶部:', el.offsetTop)
+      el.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
       })
 
       // 延迟恢复原状态，确保滚动完成
       setTimeout(() => {
+        el.scrollIntoView({ behavior: 'auto', block: 'start' })
         document.body.style.overflow = originalOverflow
         document.documentElement.style.overflow = originalHtmlOverflow
         console.log('恢复 overflow 状态')
