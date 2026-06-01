@@ -1382,7 +1382,7 @@ export default function M4New({ onComplete = () => {} }) {
       totalRounds: TOTAL_ROUNDS,
     })
     const isSuccess = result === 'success'
-    const material = materials?.frame?.label || materials?.frame || '铝合金'
+    const material = materials?.frame || '铝合金'
     const finalStory = finalStories[finalStories.length - 1]
 
     setLoading(true)

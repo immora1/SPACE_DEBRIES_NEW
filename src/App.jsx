@@ -200,53 +200,31 @@ export default function App() {
   }
 
   function scrollToModule(id) {
-    console.log('开始跳转到模块:', id)
-
-    // 自动解锁目标模块（如果未解锁）
     if (!unlockedModules.includes(id)) {
-      console.log('自动解锁模块:', id)
       unlockModule(id)
     }
 
-    // 优先使用 ref
     let el = moduleRefs.current[id]
-    console.log('通过 ref 查找:', el)
-
-    // 备选：通过 data-module 属性查找
     if (!el) {
       el = document.querySelector(`[data-module="${id}"]`)
-      console.log('通过 DOM 查找:', el)
     }
 
     if (el) {
-      console.log('找到元素，offsetTop:', el.offsetTop)
-
-      // 强制解除滚动限制（最高优先级）
       const originalOverflow = document.body.style.overflow
       const originalHtmlOverflow = document.documentElement.style.overflow
-      console.log('原始 overflow 状态:', originalOverflow, originalHtmlOverflow)
 
       document.body.style.overflow = 'auto'
       document.documentElement.style.overflow = 'auto'
       document.body.style.height = 'auto'
       document.documentElement.style.height = 'auto'
 
-      // 模块需要完整贴齐视口顶部，避免露出上一板块。
-      console.log('执行滚动到模块顶部:', el.offsetTop)
-      el.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
-      })
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
-      // 延迟恢复原状态，确保滚动完成
       setTimeout(() => {
         el.scrollIntoView({ behavior: 'auto', block: 'start' })
         document.body.style.overflow = originalOverflow
         document.documentElement.style.overflow = originalHtmlOverflow
-        console.log('恢复 overflow 状态')
       }, 600)
-    } else {
-      console.warn('模块未找到:', id)
     }
   }
 

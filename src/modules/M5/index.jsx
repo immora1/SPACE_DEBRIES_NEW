@@ -94,7 +94,7 @@ function computeBezPts(p0x, p0y, cpx, cpy, p2x, p2y, n) {
 
 // ─── Re-entry diagram (vintage engraving, looping) ────────────────────────────
 function ReentryVis({ material }) {
-  const MAT_KEYS = { titanium: '钛合金', carbon: '碳纤维', solar: '太阳能电池板', aluminum: '铝合金' }
+  const MAT_KEYS = { aluminum: '铝合金', titanium: '钛合金', cfrp: '碳纤维' }
   const matKey  = MAT_KEYS[material] ?? material
   const info    = MATERIAL_SURVIVAL[matKey] || MATERIAL_SURVIVAL['铝合金']
 

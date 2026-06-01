@@ -984,7 +984,6 @@ function SceneCountries({ hovIdxRef }) {
           pointerEvents: 'none',
         }}>⊙ 悬停查看历史详情</div>
       </div>
-{/* 调位右侧数字位置关系、颜色 */}
       {/* Stats overlay — 直接用全宽容器，left 精确定位到地球圆心上方 */}
       <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
         <div style={{

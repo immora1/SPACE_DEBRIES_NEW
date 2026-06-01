@@ -107,8 +107,11 @@ export default function M2({ onComplete }) {
   const [openingStory,   setOpeningStory]  = useState('')
   const [formError,      setFormError]     = useState(null)
 
+  const onCompleteRef = useRef(onComplete)
+  useEffect(() => { onCompleteRef.current = onComplete }, [onComplete])
+
   useEffect(() => {
-    if (mission) onComplete?.({ autoScroll: false })
+    if (mission) onCompleteRef.current?.({ autoScroll: false })
   }, [mission])
 
   // 四章节 ref

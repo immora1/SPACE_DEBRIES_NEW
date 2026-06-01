@@ -356,7 +356,7 @@ function DetailPanel({ video, onOpen, onClose }) {
             onClick={() => onOpen(video)}
             whileHover={{ opacity: 0.85 }} whileTap={{ scale: 0.97 }}
             style={{
-              background: '#6b7fff', border: 'none', color: 'transparent',
+              background: '#6b7fff', border: 'none', color: '#ffffff',
               fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em',
               padding: '9px 22px', cursor: 'pointer', borderRadius: 2,
             }}
@@ -372,7 +372,7 @@ function DetailPanel({ video, onOpen, onClose }) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function M7({ onComplete }) {
-  const { user, satellite, materials, gameResult, storyOutline, setStoryChapter } = useAppStore()
+  const { user, satellite, materials, gameResult, setStoryChapter } = useAppStore()
   const recommendedId = useMemo(() => getRecommendation({ gameResult, materials }), [gameResult, materials])
 
   const [visited, setVisited]               = useState({})
@@ -467,7 +467,6 @@ export default function M7({ onComplete }) {
       const res = await generateVideoQuestion({
         satellite: satellite || { name: 'UNKNOWN', altitudeKm: '未知' },
         user: user || { name: '用户', city: '' },
-        storyOutline,
       })
       setQuestion(res.question || `结合你的卫星 ${satellite?.name || ''}，哪种碎片风险最值得关注？`)
       setQuestionState('done')
@@ -848,7 +847,7 @@ export default function M7({ onComplete }) {
               whileHover={{ opacity: 0.85, y: -1 }} whileTap={{ scale: 0.97 }}
               style={{
                 fontFamily: MONO, fontSize: 12, letterSpacing: '0.12em',
-                color: 'transparent', background: '#6b7fff',
+                color: '#ffffff', background: '#6b7fff',
                 border: 'none', borderRadius: 2,
                 padding: '12px 40px', cursor: 'pointer',
               }}

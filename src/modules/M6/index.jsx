@@ -129,7 +129,7 @@ function buildDebrisSet({ gameResult, materials, debrisGenerated }) {
   const propulsion = materialInfo(materials, 'propulsion')
   const result = typeof gameResult === 'string' ? gameResult : gameResult?.result
   const failed = result === 'failure'
-  const highSurvival = ['titanium', 'kevlar'].includes(materials?.frame)
+  const highSurvival = materials?.frame === 'titanium'
     || ['ti_tank', 'copv'].includes(materials?.propulsion)
     || materials?.insulation === 'kevlar'
   const microSource = [solar, insulation].filter(Boolean).map(m => m.label).join(' + ') || '外露薄片与隔热层'
@@ -288,9 +288,9 @@ function fallbackFeedback(isCorrect) {
 export default function M6({ onComplete }) {
   const { user, satellite, materials, gameResult, debrisGenerated, storyOutline, setStoryChapter } = useAppStore()
 
-  const satName = satellite?.name ?? satellite?.OBJECT_NAME ?? '未知卫星'
-  const satAlt  = satellite?.altitudeKm ?? satellite?.APOGEE ?? 836
-  const satInc  = satellite?.inclination ?? satellite?.INCLINATION ?? 98
+  const satName = satellite?.name ?? '未知卫星'
+  const satAlt  = satellite?.altitudeKm ?? 836
+  const satInc  = satellite?.inclination ?? 98
   const satObj  = { name: satName, altitudeKm: satAlt, inclination: satInc }
 
   const debrisSet = useMemo(
