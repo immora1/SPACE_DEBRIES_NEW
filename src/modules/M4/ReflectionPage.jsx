@@ -338,10 +338,10 @@ export default function ReflectionPage({ reflection, gameResult, missionStats, o
         <footer className="m4-result-footer">
           <div>
             <div className="m4-result-label">NEXT STAGE</div>
-            <div className="m4-result-label">M5 · DEBRIS RE-ENTRY</div>
+            <div className="m4-result-label">SATELLITE RECOVERY · REENTRY</div>
           </div>
           <button className="m4-result-continue" onClick={onComplete}>
-            进入 M5 · 太空垃圾落地球 →
+            进入太空卫星回收 →
           </button>
         </footer>
       </section>

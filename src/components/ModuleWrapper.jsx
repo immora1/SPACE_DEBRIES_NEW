@@ -2,6 +2,7 @@ import { forwardRef, useEffect } from 'react'
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion'
 
 const EASE = [0.16, 1, 0.3, 1]
+const MotionDiv = motion.div
 
 function MouseReactiveVeil() {
   const pointerX = useMotionValue(0)
@@ -29,7 +30,7 @@ function MouseReactiveVeil() {
 
   return (
     <>
-      <motion.div
+      <MotionDiv
         aria-hidden="true"
         style={{
           position: 'absolute',
@@ -71,9 +72,34 @@ function ModuleLineDivider() {
   )
 }
 
+function ModuleBoundaryDivider() {
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        position: 'relative',
+        zIndex: 1,
+        display: 'grid',
+        height: 'clamp(76px, 10vh, 128px)',
+        placeItems: 'center',
+        pointerEvents: 'none',
+      }}
+    >
+      <div
+        style={{
+          width: 'min(960px, calc(100% - 48px))',
+          height: 1,
+          background: 'linear-gradient(90deg, transparent, rgba(107,127,255,0.18) 12%, rgba(232,232,248,0.34) 50%, rgba(107,127,255,0.18) 88%, transparent)',
+          boxShadow: '0 1px 0 rgba(4,4,15,0.62), 0 0 34px rgba(107,127,255,0.12)',
+        }}
+      />
+    </div>
+  )
+}
+
 /* ── ModuleWrapper ──────────────────────────────────────────────────────── */
 const ModuleWrapper = forwardRef(function ModuleWrapper(
-  { isUnlocked, connector, children, noAnimation, archDivider, mouseReactive, moduleId },
+  { isUnlocked, connector, children, noAnimation, archDivider, boundaryDivider, mouseReactive, moduleId },
   ref
 ) {
   // 改动：即使未解锁也渲染，但用 visibility:hidden 隐藏未解锁的模块
@@ -83,13 +109,14 @@ const ModuleWrapper = forwardRef(function ModuleWrapper(
   // archDivider 可以是 string（颜色）或 { color, flip }
   return (
     <div ref={ref} data-module={moduleId} style={{ visibility: isVisible ? 'visible' : 'hidden', pointerEvents: isVisible ? 'auto' : 'none' }}>
-      <motion.div
+      <MotionDiv
         initial={{ opacity: 0, y: noAnimation ? 0 : 40 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.72, ease: EASE }}
         style={{ position: 'relative', isolation: 'isolate' }}
       >
         {archDivider && <ModuleLineDivider />}
+        {boundaryDivider && <ModuleBoundaryDivider />}
 
         <div style={{ position: 'relative', zIndex: 1 }}>
           {!archDivider && connector && (
@@ -133,7 +160,7 @@ const ModuleWrapper = forwardRef(function ModuleWrapper(
         </div>
 
         {mouseReactive && <MouseReactiveVeil />}
-      </motion.div>
+      </MotionDiv>
     </div>
   )
 })

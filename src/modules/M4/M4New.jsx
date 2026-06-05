@@ -35,6 +35,7 @@ const GAME_PHASE = {
   EVENT: 'event',
   FEEDBACK: 'feedback',
   REFLECTION: 'reflection',
+  RECOVERY: 'recovery',
 }
 const THREAT_LABELS = {
   debris_approach: 'DEBRIS APPROACH',
@@ -43,6 +44,44 @@ const THREAT_LABELS = {
   cascade_fragment: 'CASCADE FRAGMENT',
   fuel_leak: 'FUEL LEAK',
 }
+const RECOVERY_STEPS = [
+  {
+    title: '任务结束',
+    label: 'MISSION END',
+    body: '卫星完成工作，进入退役状态。',
+    img: '/任务结束.png',
+  },
+  {
+    title: '关闭系统',
+    label: 'SYSTEM SHUTDOWN',
+    body: '关闭相机、通信设备、科学载荷等主要功能。',
+    img: '/关闭载荷.png',
+  },
+  {
+    title: '钝化处理',
+    label: 'PASSIVATION',
+    body: '释放剩余燃料、电池能量和高压气体，避免卫星在太空中爆炸。',
+    img: '/钝化处理.png',
+  },
+  {
+    title: '降轨减速',
+    label: 'DEORBIT BURN',
+    body: '卫星通过发动机点火或自然阻力降低轨道，逐渐靠近地球大气层。',
+    img: '/降轨减速.png',
+  },
+  {
+    title: '再入大气层',
+    label: 'ATMOSPHERIC REENTRY',
+    body: '卫星高速进入大气层，受到空气阻力和高温影响。',
+    img: '/再入烧蚀.png',
+  },
+  {
+    title: '燃烧解体 / 残骸坠落',
+    label: 'BREAKUP / IMPACT',
+    body: '大部分结构在大气层中烧毁，少量耐高温残骸可能落入海洋或地面。',
+    img: '/残骸处置.png',
+  },
+]
 const MotionAside = motion.aside
 const MotionDiv = motion.div
 const GUIDE_STYLES = `
@@ -491,6 +530,153 @@ const GAME_STYLES = `
     line-height: 1.95;
   }
 
+  .m4-recovery-panel {
+    position: absolute;
+    bottom: clamp(42px, 8vh, 84px);
+    left: clamp(28px, 4vw, 72px);
+    z-index: 4;
+    width: min(620px, 50vw);
+    color: #f4f4ff;
+    pointer-events: none;
+  }
+
+  .m4-recovery-panel::before {
+    display: block;
+    width: 44px;
+    height: 1px;
+    margin-bottom: 14px;
+    background: rgba(244,244,255,0.9);
+    content: "";
+  }
+
+  .m4-recovery-panel .m4-game-label {
+    font-size: 7px;
+  }
+
+  .m4-recovery-panel h2 {
+    margin: 14px 0 0;
+    color: #f4f4ff;
+    font-family: "Noto Serif SC", serif;
+    font-size: clamp(30px, 3.8vw, 52px);
+    font-weight: 300;
+    letter-spacing: 0.04em;
+    line-height: 1.16;
+  }
+
+  .m4-recovery-rule {
+    width: min(470px, 100%);
+    height: 1px;
+    margin: 20px 0 18px;
+    background: rgba(107,127,255,0.36);
+  }
+
+  .m4-recovery-panel p {
+    max-width: 620px;
+    margin: 0;
+    color: rgba(232,232,248,0.68);
+    font-family: "Noto Sans SC", sans-serif;
+    font-size: 13px;
+    line-height: 1.9;
+  }
+
+  .m4-recovery-steps {
+    position: absolute;
+    top: 0;
+    right: clamp(24px, 4vw, 58px);
+    bottom: 0;
+    z-index: 4;
+    width: min(520px, 42vw);
+    overflow-y: auto;
+    padding: 0 2px 0 46px;
+    scrollbar-width: none;
+  }
+
+  .m4-recovery-steps::-webkit-scrollbar {
+    display: none;
+  }
+
+  .m4-recovery-step-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1.14fr) minmax(150px, 0.86fr);
+    min-height: 132px;
+    margin-bottom: 18px;
+    color: #15151d;
+    background: rgba(250,249,246,0.98);
+    border: 1px solid rgba(255,255,255,0.65);
+    box-shadow: 0 14px 46px rgba(0,0,0,0.2);
+    transform: translateX(0);
+    transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 220ms ease, border-color 220ms ease;
+  }
+
+  .m4-recovery-step-card:hover,
+  .m4-recovery-step-card:focus-within {
+    transform: translateX(-34px);
+    border-color: rgba(255,255,255,0.9);
+    box-shadow: 0 18px 56px rgba(0,0,0,0.28);
+  }
+
+  .m4-recovery-step-copy {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    justify-content: center;
+    padding: 18px 19px 18px 22px;
+  }
+
+  .m4-recovery-step-kicker {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+    color: rgba(21,21,29,0.54);
+    font-family: "Lexend", "Noto Sans SC", sans-serif;
+    font-size: 8px;
+    letter-spacing: 0.12em;
+    line-height: 1.4;
+    text-transform: uppercase;
+  }
+
+  .m4-recovery-step-index {
+    color: rgba(80,70,229,0.8);
+    font-family: "Space Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+  }
+
+  .m4-recovery-step-copy h3 {
+    margin: 0 0 9px;
+    color: #15151d;
+    font-family: "Noto Serif SC", serif;
+    font-size: clamp(20px, 1.65vw, 28px);
+    font-weight: 400;
+    letter-spacing: 0.02em;
+    line-height: 1.22;
+  }
+
+  .m4-recovery-step-copy p {
+    margin: 0;
+    color: rgba(21,21,29,0.62);
+    font-family: "Noto Sans SC", sans-serif;
+    font-size: 11px;
+    line-height: 1.62;
+  }
+
+  .m4-recovery-step-media {
+    min-width: 0;
+    overflow: hidden;
+    background: #d8dbe4;
+  }
+
+  .m4-recovery-step-media img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 132px;
+    object-fit: cover;
+  }
+
   .m4-mission-progress {
     margin-top: 15px;
   }
@@ -516,6 +702,19 @@ const GAME_STYLES = `
     .m4-story-panel {
       width: min(390px, 44vw);
     }
+
+    .m4-recovery-panel {
+      width: min(560px, calc(100vw - 56px));
+    }
+
+    .m4-recovery-steps {
+      width: min(440px, 44vw);
+    }
+
+    .m4-recovery-step-card {
+      grid-template-columns: minmax(0, 1fr) minmax(124px, 0.74fr);
+      min-height: 122px;
+    }
   }
 
   @media (max-width: 720px) {
@@ -534,6 +733,37 @@ const GAME_STYLES = `
       bottom: auto;
       left: 22px;
       width: calc(100vw - 44px);
+    }
+
+    .m4-recovery-panel {
+      right: 22px;
+      bottom: 32px;
+      left: 22px;
+      width: auto;
+    }
+
+    .m4-recovery-panel h2 {
+      font-size: 30px;
+    }
+
+    .m4-recovery-steps {
+      top: auto;
+      right: 18px;
+      bottom: 18px;
+      left: 18px;
+      width: auto;
+      max-height: 46vh;
+      padding: 0 0 10px;
+    }
+
+    .m4-recovery-step-card,
+    .m4-recovery-step-card:hover,
+    .m4-recovery-step-card:focus-within {
+      transform: none;
+    }
+
+    .m4-recovery-step-copy h3 {
+      font-size: 19px;
     }
   }
 `
@@ -740,6 +970,69 @@ function StoryPanel({ month, story }) {
     >
       <div className="m4-game-label">PARALLEL TIMELINE · MONTH {String(month).padStart(2, '0')}</div>
       <p>{story}</p>
+    </MotionAside>
+  )
+}
+
+function RecoveryIntroPanel({ expanded }) {
+  return (
+    <MotionAside
+      className="m4-recovery-panel"
+      initial={{ opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
+      aria-label="太空卫星回收"
+    >
+      <style>{GAME_STYLES}</style>
+      <div className="m4-game-label">MODULE 05 · REENTRY</div>
+      <h2>太空卫星回收</h2>
+      {expanded && (
+        <MotionDiv
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <div className="m4-recovery-rule" />
+          <p>
+            每一颗卫星都有生命尽头。任务结束后，它们面临两种命运：受控离轨，或等待轨道衰减。
+            无论哪种，再入大气层的过程都在地球上留下了痕迹。
+          </p>
+        </MotionDiv>
+      )}
+    </MotionAside>
+  )
+}
+
+function RecoveryStepsPanel() {
+  const handleWheel = useCallback((event) => {
+    event.stopPropagation()
+  }, [])
+
+  return (
+    <MotionAside
+      className="m4-recovery-steps"
+      initial={{ opacity: 0, x: 28 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.12 }}
+      aria-label="卫星回收步骤展示"
+      onWheel={handleWheel}
+    >
+      <style>{GAME_STYLES}</style>
+      {RECOVERY_STEPS.map((step, index) => (
+        <article className="m4-recovery-step-card" key={step.title}>
+          <div className="m4-recovery-step-copy">
+            <div className="m4-recovery-step-kicker">
+              <span>{step.label}</span>
+              <span className="m4-recovery-step-index">{String(index + 1).padStart(2, '0')}</span>
+            </div>
+            <h3>{step.title}</h3>
+            <p>{step.body}</p>
+          </div>
+          <div className="m4-recovery-step-media" aria-hidden="true">
+            <img src={step.img} alt="" />
+          </div>
+        </article>
+      ))}
     </MotionAside>
   )
 }
@@ -1337,6 +1630,7 @@ export default function M4New({ onComplete = () => {} }) {
   } = useAppStore()
   const proxy = useRef({ scale: MIN_EARTH_SCALE, orbitOpacity: 1, x: 0 })
   const started = useRef(false)
+  const completionUnlocked = useRef(false)
   const progressRef = useRef(0)
   const [events] = useState(() => pickEvents(damageLevel, clickedHistoryEvents || [], TOTAL_ROUNDS))
   const [gameStatus, setGameStatus] = useState(() => ({
@@ -1356,6 +1650,7 @@ export default function M4New({ onComplete = () => {} }) {
   const [decisions, setDecisions] = useState([])
   const [reflection, setReflection] = useState(null)
   const [localResult, setLocalResult] = useState(null)
+  const [recoveryStepsVisible, setRecoveryStepsVisible] = useState(false)
   const initialStory = storyChapters?.m3
     || storyChapters?.opening
     || `${satellite?.name || '卫星'}进入近地轨道。监测系统开始记录每一次微小偏移。`
@@ -1365,7 +1660,7 @@ export default function M4New({ onComplete = () => {} }) {
   const latestStory = storyThread[storyThread.length - 1]
 
   useEffect(() => {
-    if (!gameStarted || phase === GAME_PHASE.REFLECTION) {
+    if (!gameStarted) {
       setScrollLocked(false)
       return
     }
@@ -1539,6 +1834,25 @@ export default function M4New({ onComplete = () => {} }) {
     setPhase(GAME_PHASE.EVENT)
   }, [feedback, handleGameEnd, round])
 
+  const unlockNextStageWithoutScroll = useCallback(() => {
+    if (completionUnlocked.current) return
+    completionUnlocked.current = true
+    onComplete({ autoScroll: false })
+  }, [onComplete])
+
+  const handleReflectionComplete = useCallback(() => {
+    setRecoveryStepsVisible(false)
+    setPhase(GAME_PHASE.RECOVERY)
+    unlockNextStageWithoutScroll()
+  }, [unlockNextStageWithoutScroll])
+
+  const handleModuleWheel = useCallback((event) => {
+    if (phase !== GAME_PHASE.RECOVERY) return
+    if (recoveryStepsVisible) return
+    event.preventDefault()
+    if (event.deltaY > 0) setRecoveryStepsVisible(true)
+  }, [phase, recoveryStepsVisible])
+
   const handleProgressChange = useCallback((progress) => {
     progressRef.current = progress
     setOrbitProgress(progress)
@@ -1566,7 +1880,10 @@ export default function M4New({ onComplete = () => {} }) {
   }, [handleProgressChange])
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100vh', overflow: 'hidden' }}>
+    <div
+      onWheel={handleModuleWheel}
+      style={{ position: 'relative', width: '100%', height: '100vh', overflow: 'hidden' }}
+    >
       {orbitVisible && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
           <OrbitBackdrop opacity={orbitOpacity * 0.9} />
@@ -1616,13 +1933,15 @@ export default function M4New({ onComplete = () => {} }) {
 
       {gameStarted && (
         <>
-          <GameStatusHud
-            month={currentMonth}
-            fuel={gameStatus.fuel}
-            armor={gameStatus.armor}
-            missionProgress={gameStatus.missionProgress}
-          />
-          {phase !== GAME_PHASE.REFLECTION && (
+          {(phase === GAME_PHASE.EVENT || phase === GAME_PHASE.FEEDBACK) && (
+            <GameStatusHud
+              month={currentMonth}
+              fuel={gameStatus.fuel}
+              armor={gameStatus.armor}
+              missionProgress={gameStatus.missionProgress}
+            />
+          )}
+          {(phase === GAME_PHASE.EVENT || phase === GAME_PHASE.FEEDBACK) && (
             <>
               <StoryPanel month={currentMonth} story={latestStory} />
               <GamePanel
@@ -1636,12 +1955,18 @@ export default function M4New({ onComplete = () => {} }) {
               />
             </>
           )}
+          {phase === GAME_PHASE.RECOVERY && (
+            <>
+              <RecoveryIntroPanel expanded={recoveryStepsVisible} />
+              {recoveryStepsVisible && <RecoveryStepsPanel />}
+            </>
+          )}
           {phase === GAME_PHASE.REFLECTION && (
             <ReflectionPage
               reflection={reflection}
               gameResult={localResult}
               missionStats={gameStatus}
-              onComplete={onComplete}
+              onComplete={handleReflectionComplete}
             />
           )}
         </>

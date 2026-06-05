@@ -8,9 +8,9 @@ const STAGES = [
   { id: 'm7', label: '科普视频' },
 ]
 
-export default function StageNav({ completedModules, onStageClick }) {
+export default function StageNav({ completedModules, availableModules = [], onStageClick }) {
   function handleStageClick(id) {
-    console.log('点击导航:', id)
+    if (!availableModules.includes(id)) return
     onStageClick?.(id)
   }
 
@@ -44,12 +44,16 @@ export default function StageNav({ completedModules, onStageClick }) {
         alignItems: 'center',
         gap: 12,
       }}>
-        {STAGES.map((stage, idx) => {
+        {STAGES.map((stage) => {
           const isCompleted = completedModules.includes(stage.id)
+          const isAvailable = availableModules.includes(stage.id)
 
           return (
             <button
               key={stage.id}
+              type="button"
+              disabled={!isAvailable}
+              aria-disabled={!isAvailable}
               onClick={() => handleStageClick(stage.id)}
               title={stage.label}
               style={{
@@ -57,9 +61,18 @@ export default function StageNav({ completedModules, onStageClick }) {
                 height: 14,
                 borderRadius: '50%',
                 border: '2px solid',
-                background: isCompleted ? 'rgba(52,211,153,0.6)' : 'rgba(255,255,255,0.2)',
-                borderColor: isCompleted ? '#34d399' : 'rgba(255,255,255,0.4)',
-                cursor: 'pointer',
+                background: isCompleted
+                  ? 'rgba(52,211,153,0.6)'
+                  : isAvailable
+                    ? 'rgba(255,255,255,0.2)'
+                    : 'rgba(255,255,255,0.06)',
+                borderColor: isCompleted
+                  ? '#34d399'
+                  : isAvailable
+                    ? 'rgba(255,255,255,0.4)'
+                    : 'rgba(255,255,255,0.18)',
+                cursor: isAvailable ? 'pointer' : 'not-allowed',
+                opacity: isAvailable ? 1 : 0.48,
                 transition: 'all 0.3s',
                 display: 'flex',
                 alignItems: 'center',
@@ -69,10 +82,12 @@ export default function StageNav({ completedModules, onStageClick }) {
                 zIndex: 10001,
               }}
               onMouseEnter={e => {
+                if (!isAvailable) return
                 e.currentTarget.style.transform = 'scale(1.3)'
                 e.currentTarget.style.borderColor = 'rgba(255,255,255,0.8)'
               }}
               onMouseLeave={e => {
+                if (!isAvailable) return
                 e.currentTarget.style.transform = 'scale(1)'
                 e.currentTarget.style.borderColor = isCompleted
                   ? '#34d399'
