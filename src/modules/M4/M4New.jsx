@@ -17,6 +17,9 @@ const SATELLITE_GLB = '/simple_satellite_low_poly_free.glb'
 const EARTH_SCALE = 1
 const MIN_EARTH_SCALE = 1.6
 const EXPANDED_EARTH_SCALE = 3
+const RECOVERY_MODEL_SCALE = 2.25
+const RECOVERY_MODEL_SHIFT_X = -1.12
+const RECOVERY_VIEW_OFFSET_FACTOR = 0.16
 const PERSONAL_ORBIT_SPEED = 0.075
 const PERSONAL_SATELLITE_SIZE = 0.1
 const ORBITAL_DEBRIS_BASE_COUNT = 2000
@@ -540,6 +543,10 @@ const GAME_STYLES = `
     pointer-events: none;
   }
 
+  .m4-recovery-panel.is-intro-only {
+    bottom: clamp(92px, 16vh, 154px);
+  }
+
   .m4-recovery-panel::before {
     display: block;
     width: 44px;
@@ -740,6 +747,10 @@ const GAME_STYLES = `
       bottom: 32px;
       left: 22px;
       width: auto;
+    }
+
+    .m4-recovery-panel.is-intro-only {
+      bottom: 82px;
     }
 
     .m4-recovery-panel h2 {
@@ -977,7 +988,7 @@ function StoryPanel({ month, story }) {
 function RecoveryIntroPanel({ expanded }) {
   return (
     <MotionAside
-      className="m4-recovery-panel"
+      className={`m4-recovery-panel${expanded ? '' : ' is-intro-only'}`}
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
@@ -1584,7 +1595,6 @@ function EarthScene({ proxy, satellite, damageLevel, showPersonalOrbit }) {
   useFrame((_, dt) => {
     if (!groupRef.current) return
     groupRef.current.scale.setScalar(proxy.current.scale)
-    groupRef.current.position.x = proxy.current.x
     if (earthRef.current) earthRef.current.rotation.y += dt * 0.055
   })
 
@@ -1611,6 +1621,52 @@ function EarthScene({ proxy, satellite, damageLevel, showPersonalOrbit }) {
         />
       )}
     </group>
+  )
+}
+
+function EarthOrbitControls({ proxy }) {
+  const controlsRef = useRef()
+  const lastViewOffsetRef = useRef(null)
+  const { camera, size } = useThree()
+
+  useFrame(() => {
+    const controls = controlsRef.current
+    if (!controls) return
+
+    controls.target.set(0, 0, 0)
+
+    const viewOffsetX = Math.max(0, -proxy.current.x) * size.width * RECOVERY_VIEW_OFFSET_FACTOR
+    const nextViewOffset = viewOffsetX < 0.5 ? 0 : viewOffsetX
+
+    if (Math.abs((lastViewOffsetRef.current ?? -1) - nextViewOffset) > 0.5) {
+      if (nextViewOffset === 0) {
+        camera.clearViewOffset()
+      } else {
+        camera.setViewOffset(size.width, size.height, nextViewOffset, 0, size.width, size.height)
+      }
+      camera.updateProjectionMatrix()
+      lastViewOffsetRef.current = nextViewOffset
+    }
+
+    controls.update()
+  })
+
+  useEffect(() => () => {
+    camera.clearViewOffset()
+    camera.updateProjectionMatrix()
+  }, [camera])
+
+  return (
+    <OrbitControls
+      ref={controlsRef}
+      enableDamping
+      dampingFactor={0.06}
+      enablePan={false}
+      enableZoom={false}
+      rotateSpeed={0.45}
+      minPolarAngle={Math.PI * 0.22}
+      maxPolarAngle={Math.PI * 0.78}
+    />
   )
 }
 
@@ -1668,6 +1724,21 @@ export default function M4New({ onComplete = () => {} }) {
     setScrollLocked(true)
     return () => setScrollLocked(false)
   }, [gameStarted, phase, setScrollLocked])
+
+  useEffect(() => {
+    if (!gameStarted) return
+
+    gsap.to(proxy.current, {
+      scale: phase === GAME_PHASE.RECOVERY && recoveryStepsVisible
+        ? RECOVERY_MODEL_SCALE
+        : EXPANDED_EARTH_SCALE,
+      x: phase === GAME_PHASE.RECOVERY && recoveryStepsVisible
+        ? RECOVERY_MODEL_SHIFT_X
+        : 0,
+      duration: 0.72,
+      ease: 'power3.out',
+    })
+  }, [gameStarted, phase, recoveryStepsVisible])
 
   const handleGameEnd = useCallback(async (allDecisions, finalStatus, finalStories) => {
     const result = evaluateResult({
@@ -1907,15 +1978,7 @@ export default function M4New({ onComplete = () => {} }) {
             showPersonalOrbit={gameStarted}
           />
         </Suspense>
-        <OrbitControls
-          enableDamping
-          dampingFactor={0.06}
-          enablePan={false}
-          enableZoom={false}
-          rotateSpeed={0.45}
-          minPolarAngle={Math.PI * 0.22}
-          maxPolarAngle={Math.PI * 0.78}
-        />
+        <EarthOrbitControls proxy={proxy} />
       </Canvas>
 
       {orbitVisible && (
