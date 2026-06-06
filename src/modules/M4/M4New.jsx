@@ -17,9 +17,26 @@ const SATELLITE_GLB = '/simple_satellite_low_poly_free.glb'
 const EARTH_SCALE = 1
 const MIN_EARTH_SCALE = 1.6
 const EXPANDED_EARTH_SCALE = 3
-const RECOVERY_MODEL_SCALE = 2.25
-const RECOVERY_MODEL_SHIFT_X = -1.12
+const RECOVERY_MODEL_SCALE = 1.08
+const RECOVERY_MODEL_SHIFT_X = -1.74
 const RECOVERY_VIEW_OFFSET_FACTOR = 0.16
+const DEFAULT_CAMERA_FOV = 44
+const RECOVERY_CAMERA_START_OFFSET = new THREE.Vector3(0.7, 0.36, 2.8)
+const RECOVERY_CAMERA_END_OFFSET = new THREE.Vector3(0.42, 0.2, 1.28)
+const RECOVERY_CAMERA_FOCUS_BLEND = 0.52
+const RECOVERY_CAMERA_DAMPING = 0.92
+const RECOVERY_CAMERA_ZOOM_DAMPING = 0.82
+const RECOVERY_CAMERA_START_ORBIT_RADIUS = 3.15
+const RECOVERY_CAMERA_END_ORBIT_RADIUS = 2.44
+const RECOVERY_CAMERA_START_FOCUS_DISTANCE = 1.26
+const RECOVERY_CAMERA_END_FOCUS_DISTANCE = 0.78
+const RECOVERY_MISSION_END_PHASE = Math.PI * 0.25
+const RECOVERY_MISSION_END_DURATION = 3.8
+const RECOVERY_MIN_FORWARD_ARC = Math.PI * 0.18
+const RECOVERY_ORBIT_ROTATION = [Math.PI * 0.12, 0.18, -0.42]
+const RECOVERY_ORBIT_SCALE = 2.35
+const RECOVERY_SATELLITE_SCALE = 1.62
+const RECOVERY_SHUTDOWN_DURATION = 2.6
 const PERSONAL_ORBIT_SPEED = 0.075
 const PERSONAL_SATELLITE_SIZE = 0.1
 const ORBITAL_DEBRIS_BASE_COUNT = 2000
@@ -40,6 +57,60 @@ const GAME_PHASE = {
   REFLECTION: 'reflection',
   RECOVERY: 'recovery',
 }
+const RECOVERY_ANIMATION_STEP = {
+  MISSION_END: 'mission-end',
+  SYSTEM_SHUTDOWN: 'system-shutdown',
+  PASSIVATION: 'passivation',
+}
+const PASSIVATION_BURST_CYCLE = 2.65
+const PASSIVATION_BURST_DURATION = 0.56
+const PASSIVATION_EJECTION_DURATION = 0.14
+const PASSIVATION_PARTICLE_COUNT = 18
+const PASSIVATION_CONE_RADIUS = 0.012
+const PASSIVATION_BURSTS = [
+  {
+    origin: [-0.044, 0.014, 0.006],
+    direction: [-1, 0.2, 0.08],
+    delay: 0,
+    length: 0.044,
+  },
+  {
+    origin: [-0.038, -0.018, -0.012],
+    direction: [-0.98, -0.16, -0.12],
+    delay: 0.34,
+    length: 0.038,
+  },
+  {
+    origin: [0.01, 0.036, 0.016],
+    direction: [0.12, 0.92, 0.36],
+    delay: 0.72,
+    length: 0.04,
+  },
+  {
+    origin: [0.008, -0.036, -0.012],
+    direction: [0.14, -0.94, -0.28],
+    delay: 1.04,
+    length: 0.042,
+  },
+  {
+    origin: [0.018, 0.004, 0.044],
+    direction: [0.18, 0.1, 0.98],
+    delay: 1.42,
+    length: 0.036,
+  },
+  {
+    origin: [0.018, -0.006, -0.044],
+    direction: [0.12, -0.08, -0.99],
+    delay: 1.76,
+    length: 0.04,
+  },
+  {
+    origin: [-0.03, 0.026, -0.018],
+    direction: [-0.7, 0.58, -0.4],
+    delay: 2.18,
+    length: 0.032,
+  },
+]
 const THREAT_LABELS = {
   debris_approach: 'DEBRIS APPROACH',
   solar_storm: 'SOLAR STORM',
@@ -611,15 +682,23 @@ const GAME_STYLES = `
     background: rgba(250,249,246,0.98);
     border: 1px solid rgba(255,255,255,0.65);
     box-shadow: 0 14px 46px rgba(0,0,0,0.2);
+    cursor: pointer;
     transform: translateX(0);
     transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 220ms ease, border-color 220ms ease;
   }
 
   .m4-recovery-step-card:hover,
-  .m4-recovery-step-card:focus-within {
+  .m4-recovery-step-card:focus-within,
+  .m4-recovery-step-card:focus-visible,
+  .m4-recovery-step-card.is-active {
     transform: translateX(-34px);
     border-color: rgba(255,255,255,0.9);
     box-shadow: 0 18px 56px rgba(0,0,0,0.28);
+    outline: none;
+  }
+
+  .m4-recovery-step-card.is-active {
+    border-color: rgba(107,127,255,0.58);
   }
 
   .m4-recovery-step-copy {
@@ -1014,23 +1093,78 @@ function RecoveryIntroPanel({ expanded }) {
   )
 }
 
-function RecoveryStepsPanel() {
+function RecoveryStepsPanel({ activeStepIndex, onActiveStepChange }) {
+  const stepsRef = useRef()
+
+  const updateActiveStep = useCallback(() => {
+    const stepsEl = stepsRef.current
+    if (!stepsEl) return
+
+    const cards = Array.from(stepsEl.querySelectorAll('.m4-recovery-step-card'))
+    if (cards.length === 0) return
+
+    const firstCardTop = cards[0].offsetTop
+    const topMarker = stepsEl.scrollTop + 42
+    let nextIndex = 0
+
+    cards.forEach((card, index) => {
+      const cardTop = card.offsetTop - firstCardTop
+      if (cardTop <= topMarker) nextIndex = index
+    })
+
+    onActiveStepChange(nextIndex)
+  }, [onActiveStepChange])
+
   const handleWheel = useCallback((event) => {
     event.stopPropagation()
   }, [])
 
+  const handleStepSelect = useCallback((index) => {
+    const stepsEl = stepsRef.current
+    const card = stepsEl?.querySelectorAll('.m4-recovery-step-card')?.[index]
+
+    onActiveStepChange(index)
+    if (stepsEl && card) {
+      const firstCardTop = stepsEl.querySelector('.m4-recovery-step-card')?.offsetTop || 0
+      stepsEl.scrollTo({
+        top: Math.max(0, card.offsetTop - firstCardTop),
+        behavior: 'smooth',
+      })
+    }
+  }, [onActiveStepChange])
+
+  const handleStepKeyDown = useCallback((event, index) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return
+    event.preventDefault()
+    handleStepSelect(index)
+  }, [handleStepSelect])
+
+  useEffect(() => {
+    updateActiveStep()
+  }, [updateActiveStep])
+
   return (
     <MotionAside
+      ref={stepsRef}
       className="m4-recovery-steps"
       initial={{ opacity: 0, x: 28 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.12 }}
       aria-label="卫星回收步骤展示"
+      onScroll={updateActiveStep}
       onWheel={handleWheel}
     >
       <style>{GAME_STYLES}</style>
       {RECOVERY_STEPS.map((step, index) => (
-        <article className="m4-recovery-step-card" key={step.title}>
+        <article
+          className={`m4-recovery-step-card${index === activeStepIndex ? ' is-active' : ''}`}
+          key={step.title}
+          onClick={() => handleStepSelect(index)}
+          onKeyDown={(event) => handleStepKeyDown(event, index)}
+          role="button"
+          tabIndex={0}
+          aria-current={index === activeStepIndex ? 'step' : undefined}
+        >
           <div className="m4-recovery-step-copy">
             <div className="m4-recovery-step-kicker">
               <span>{step.label}</span>
@@ -1312,10 +1446,50 @@ function toPersonalOrbitRadius(altitudeKm, earthRadius) {
   return earthRadius + 0.032 + normalizedAltitude * 0.006
 }
 
-function OrbitSatelliteModel({ spinRef }) {
+function isRecoveryFocusedStep(recoveryStep) {
+  return recoveryStep === RECOVERY_ANIMATION_STEP.MISSION_END
+    || recoveryStep === RECOVERY_ANIMATION_STEP.SYSTEM_SHUTDOWN
+    || recoveryStep === RECOVERY_ANIMATION_STEP.PASSIVATION
+}
+
+function isRecoveryPoweredDownStep(recoveryStep) {
+  return recoveryStep === RECOVERY_ANIMATION_STEP.SYSTEM_SHUTDOWN
+    || recoveryStep === RECOVERY_ANIMATION_STEP.PASSIVATION
+}
+
+function OrbitSatelliteModel({ spinRef, recoveryStep }) {
   const { scene } = useGLTF(SATELLITE_GLB)
-  const normalizedScene = useMemo(() => {
+  const { normalizedScene, materialRecords } = useMemo(() => {
     const clone = scene.clone(true)
+    const records = []
+
+    clone.traverse((object) => {
+      if (!object.isMesh || !object.material) return
+
+      const sourceMaterials = Array.isArray(object.material)
+        ? object.material
+        : [object.material]
+      const clonedMaterials = sourceMaterials.map((material) => {
+        const clonedMaterial = material.clone()
+        records.push({
+          material: clonedMaterial,
+          color: clonedMaterial.color?.clone() || null,
+          emissive: clonedMaterial.emissive?.clone() || null,
+          emissiveIntensity: clonedMaterial.emissiveIntensity || 0,
+          metalness: clonedMaterial.metalness,
+          opacity: typeof clonedMaterial.opacity === 'number' ? clonedMaterial.opacity : 1,
+          roughness: clonedMaterial.roughness,
+          transparent: clonedMaterial.transparent,
+        })
+        clonedMaterial.transparent = true
+        return clonedMaterial
+      })
+
+      object.material = Array.isArray(object.material)
+        ? clonedMaterials
+        : clonedMaterials[0]
+    })
+
     const bounds = new THREE.Box3().setFromObject(clone)
     const center = bounds.getCenter(new THREE.Vector3())
     const size = bounds.getSize(new THREE.Vector3())
@@ -1324,8 +1498,47 @@ function OrbitSatelliteModel({ spinRef }) {
 
     clone.position.copy(center).multiplyScalar(-modelScale)
     clone.scale.setScalar(modelScale)
-    return clone
+    return { normalizedScene: clone, materialRecords: records }
   }, [scene])
+  const shutdownProgressRef = useRef(0)
+  const shutdownColor = useMemo(() => new THREE.Color('#202432'), [])
+  const isSystemShutdown = isRecoveryPoweredDownStep(recoveryStep)
+
+  useFrame((_, delta) => {
+    shutdownProgressRef.current = THREE.MathUtils.damp(
+      shutdownProgressRef.current,
+      isSystemShutdown ? 1 : 0,
+      3.6 / RECOVERY_SHUTDOWN_DURATION,
+      delta,
+    )
+    const progress = THREE.MathUtils.smoothstep(shutdownProgressRef.current, 0, 1)
+
+    materialRecords.forEach((record) => {
+      if (record.color && record.material.color) {
+        record.material.color.copy(record.color).lerp(shutdownColor, progress * 0.94)
+      }
+      if (record.emissive && record.material.emissive) {
+        record.material.emissive.copy(record.emissive).lerp(shutdownColor, progress)
+      }
+      if (typeof record.material.opacity === 'number') {
+        record.material.opacity = THREE.MathUtils.lerp(record.opacity, 0.32, progress)
+        record.material.transparent = record.transparent || progress > 0.01
+      }
+      if (typeof record.material.emissiveIntensity === 'number') {
+        record.material.emissiveIntensity = THREE.MathUtils.lerp(
+          record.emissiveIntensity,
+          0,
+          progress,
+        )
+      }
+      if (typeof record.material.roughness === 'number' && typeof record.roughness === 'number') {
+        record.material.roughness = THREE.MathUtils.lerp(record.roughness, 0.96, progress)
+      }
+      if (typeof record.material.metalness === 'number' && typeof record.metalness === 'number') {
+        record.material.metalness = THREE.MathUtils.lerp(record.metalness, 0.18, progress)
+      }
+    })
+  })
 
   return (
     <group ref={spinRef} rotation={[0.2, 0.45, -0.16]}>
@@ -1334,16 +1547,304 @@ function OrbitSatelliteModel({ spinRef }) {
   )
 }
 
-function PersonalSatelliteOrbit({ altitudeKm, inclinationDeg, earthRadius }) {
+function SatelliteShutdownEffects({ recoveryStep }) {
+  const ringOneRef = useRef()
+  const ringTwoRef = useRef()
+  const ringOneMaterialRef = useRef()
+  const ringTwoMaterialRef = useRef()
+  const indicatorMaterialRef = useRef()
+  const payloadMaterialRef = useRef()
+  const statusLightRef = useRef()
+  const visibleProgressRef = useRef(0)
+  const shutdownProgressRef = useRef(0)
+  const colors = useMemo(() => ({
+    active: new THREE.Color('#9be7ff'),
+    warning: new THREE.Color('#ffd36a'),
+    off: new THREE.Color('#11131c'),
+  }), [])
+
+  useFrame((state, delta) => {
+    const isRecoveryFocusStep = isRecoveryFocusedStep(recoveryStep)
+    const isSystemShutdown = isRecoveryPoweredDownStep(recoveryStep)
+
+    visibleProgressRef.current = THREE.MathUtils.damp(
+      visibleProgressRef.current,
+      isRecoveryFocusStep ? 1 : 0,
+      1.8,
+      delta,
+    )
+    shutdownProgressRef.current = THREE.MathUtils.damp(
+      shutdownProgressRef.current,
+      isSystemShutdown ? 1 : 0,
+      3.25 / RECOVERY_SHUTDOWN_DURATION,
+      delta,
+    )
+
+    const visibleProgress = THREE.MathUtils.smoothstep(visibleProgressRef.current, 0, 1)
+    const shutdownProgress = THREE.MathUtils.smoothstep(shutdownProgressRef.current, 0, 1)
+    const flicker = isSystemShutdown
+      ? THREE.MathUtils.lerp(
+        0.42 + Math.abs(Math.sin(state.clock.elapsedTime * 24)) * 0.58,
+        1,
+        shutdownProgress,
+      )
+      : 1
+    const signalOpacity = visibleProgress * Math.max(0, 1 - shutdownProgress) * flicker
+    const signalScale = THREE.MathUtils.lerp(1, 0.34, shutdownProgress)
+
+    if (ringOneRef.current) ringOneRef.current.scale.setScalar(signalScale)
+    if (ringTwoRef.current) ringTwoRef.current.scale.setScalar(signalScale * 1.16)
+
+    if (ringOneMaterialRef.current) ringOneMaterialRef.current.opacity = signalOpacity * 0.54
+    if (ringTwoMaterialRef.current) ringTwoMaterialRef.current.opacity = signalOpacity * 0.32
+
+    if (indicatorMaterialRef.current) {
+      indicatorMaterialRef.current.color
+        .copy(colors.active)
+        .lerp(colors.warning, Math.min(shutdownProgress * 1.8, 1))
+        .lerp(colors.off, Math.max(0, shutdownProgress - 0.55) / 0.45)
+      indicatorMaterialRef.current.opacity = visibleProgress
+        * Math.max(0, 1 - shutdownProgress * 0.92)
+        * flicker
+    }
+
+    if (payloadMaterialRef.current) {
+      payloadMaterialRef.current.opacity = visibleProgress
+        * Math.max(0, 1 - shutdownProgress)
+        * 0.62
+        * flicker
+    }
+
+    if (statusLightRef.current) {
+      statusLightRef.current.intensity = signalOpacity * 0.86
+    }
+  })
+
+  return (
+    <group>
+      <pointLight ref={statusLightRef} color="#9be7ff" intensity={0} distance={0.45} />
+      <mesh position={[0, 0.026, 0.025]}>
+        <sphereGeometry args={[0.007, 12, 12]} />
+        <meshBasicMaterial ref={indicatorMaterialRef} color="#9be7ff" transparent opacity={0} />
+      </mesh>
+      <mesh position={[0.032, -0.014, 0.004]}>
+        <boxGeometry args={[0.03, 0.006, 0.006]} />
+        <meshBasicMaterial ref={payloadMaterialRef} color="#9be7ff" transparent opacity={0} />
+      </mesh>
+      <mesh ref={ringOneRef} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.118, 0.0016, 8, 96]} />
+        <meshBasicMaterial
+          ref={ringOneMaterialRef}
+          color="#9be7ff"
+          transparent
+          opacity={0}
+          depthWrite={false}
+        />
+      </mesh>
+      <mesh ref={ringTwoRef} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.172, 0.0011, 8, 96]} />
+        <meshBasicMaterial
+          ref={ringTwoMaterialRef}
+          color="#9be7ff"
+          transparent
+          opacity={0}
+          depthWrite={false}
+        />
+      </mesh>
+    </group>
+  )
+}
+
+function SatellitePassivationEffects({ recoveryStep }) {
+  const particleRefs = useRef([])
+  const particleMaterialRefs = useRef([])
+  const lightRef = useRef()
+  const visibilityRef = useRef(0)
+  const burstSpecs = useMemo(() => {
+    const sourceAxis = new THREE.Vector3(0, 1, 0)
+
+    return PASSIVATION_BURSTS.map((burst, index) => {
+      const direction = new THREE.Vector3(...burst.direction).normalize()
+      const quaternion = new THREE.Quaternion().setFromUnitVectors(sourceAxis, direction)
+      const side = index % 2 === 0 ? 1 : -1
+
+      return {
+        ...burst,
+        origin: new THREE.Vector3(...burst.origin),
+        quaternion,
+        particles: Array.from({ length: PASSIVATION_PARTICLE_COUNT }, (_, particleIndex) => {
+          const radialProgress = Math.sqrt((particleIndex + 0.5) / PASSIVATION_PARTICLE_COUNT)
+          const angle = index * 0.73 + particleIndex * 2.399963
+          const radius = PASSIVATION_CONE_RADIUS * radialProgress
+          const size = THREE.MathUtils.lerp(0.0028, 0.00145, radialProgress)
+
+          return {
+            delay: (particleIndex % 9) * 0.055,
+            x: Math.cos(angle) * radius * side,
+            z: Math.sin(angle) * radius,
+            size,
+          }
+        }),
+      }
+    })
+  }, [])
+  const isPassivation = recoveryStep === RECOVERY_ANIMATION_STEP.PASSIVATION
+
+  useFrame((state, delta) => {
+    visibilityRef.current = THREE.MathUtils.damp(
+      visibilityRef.current,
+      isPassivation ? 1 : 0,
+      8.5,
+      delta,
+    )
+    const visibleProgress = THREE.MathUtils.smoothstep(visibilityRef.current, 0, 1)
+    let lightIntensity = 0
+
+    burstSpecs.forEach((burst, index) => {
+      const localTime = THREE.MathUtils.euclideanModulo(
+        state.clock.elapsedTime - burst.delay,
+        PASSIVATION_BURST_CYCLE,
+      )
+      const active = isPassivation && localTime < PASSIVATION_BURST_DURATION
+      const lifeProgress = active
+        ? THREE.MathUtils.clamp(localTime / PASSIVATION_BURST_DURATION, 0, 1)
+        : 1
+      const burstStrength = active ? Math.pow(1 - lifeProgress, 0.48) : 0
+
+      lightIntensity += visibleProgress * burstStrength * 0.16
+
+      const burstParticles = particleRefs.current[index] || []
+      const burstParticleMaterials = particleMaterialRefs.current[index] || []
+
+      burst.particles.forEach((particle, particleIndex) => {
+        const particleMesh = burstParticles[particleIndex]
+        const particleMaterial = burstParticleMaterials[particleIndex]
+        const particleStartTime = particle.delay * PASSIVATION_EJECTION_DURATION
+        const particleMotionRaw = active
+          ? THREE.MathUtils.clamp(
+            (localTime - particleStartTime)
+              / Math.max(0.001, PASSIVATION_BURST_DURATION - particleStartTime),
+            0,
+            1,
+          )
+          : 1
+        const particleLifeProgress = active
+          ? THREE.MathUtils.clamp(
+            (localTime - particleStartTime)
+              / Math.max(0.001, PASSIVATION_BURST_DURATION - particleStartTime),
+            0,
+            1,
+          )
+          : 1
+        const particleStarted = active && localTime >= particleStartTime
+        const particleMotionProgress = 1 - Math.pow(1 - particleMotionRaw, 4.6)
+        const coneSpread = 0.12 + particleMotionProgress * 1.32
+        const particleFade = particleStarted
+          ? Math.pow(1 - particleLifeProgress, 0.48)
+          : 0
+
+        if (particleMesh) {
+          particleMesh.position.set(
+            particle.x * coneSpread,
+            burst.length * (0.1 + particleMotionProgress * 0.88),
+            particle.z * coneSpread,
+          )
+          particleMesh.scale.setScalar(
+            visibleProgress * particleFade * (0.72 + particleMotionProgress * 0.24),
+          )
+        }
+
+        if (particleMaterial) {
+          particleMaterial.opacity = visibleProgress * particleFade * 0.86
+        }
+      })
+    })
+
+    if (lightRef.current) {
+      lightRef.current.intensity = Math.min(0.22, lightIntensity)
+    }
+  })
+
+  return (
+    <group>
+      <pointLight ref={lightRef} color="#ffffff" intensity={0} distance={0.24} />
+      {burstSpecs.map((burst, index) => (
+        <group key={`${burst.delay}-${burst.length}`} position={burst.origin} quaternion={burst.quaternion}>
+          {burst.particles.map((particle, particleIndex) => (
+            <mesh
+              key={particleIndex}
+              ref={(node) => {
+                if (!particleRefs.current[index]) particleRefs.current[index] = []
+                particleRefs.current[index][particleIndex] = node
+              }}
+            >
+              <sphereGeometry args={[particle.size, 12, 12]} />
+              <meshBasicMaterial
+                ref={(node) => {
+                  if (!particleMaterialRefs.current[index]) particleMaterialRefs.current[index] = []
+                  particleMaterialRefs.current[index][particleIndex] = node
+                }}
+                color="#ffffff"
+                transparent
+                opacity={0}
+                depthWrite={false}
+                blending={THREE.AdditiveBlending}
+              />
+            </mesh>
+          ))}
+        </group>
+      ))}
+    </group>
+  )
+}
+
+function getForwardPhaseTarget(currentPhase, targetPhase) {
+  const fullTurn = Math.PI * 2
+  let target = targetPhase + Math.max(0, Math.ceil((currentPhase - targetPhase) / fullTurn)) * fullTurn
+
+  if (target - currentPhase < RECOVERY_MIN_FORWARD_ARC) target += fullTurn
+  return target
+}
+
+function dampAngle(current, target, damping, delta) {
+  const fullTurn = Math.PI * 2
+  const angleDelta = THREE.MathUtils.euclideanModulo(
+    target - current + Math.PI,
+    fullTurn,
+  ) - Math.PI
+
+  return current + angleDelta * (1 - Math.exp(-damping * delta))
+}
+
+function PersonalSatelliteOrbit({
+  altitudeKm,
+  inclinationDeg,
+  earthRadius,
+  recoveryStep,
+  focusRef,
+}) {
+  const orbitRef = useRef()
   const satelliteRef = useRef()
   const spinRef = useRef()
+  const markerMaterialRef = useRef()
+  const markerLightRef = useRef()
+  const phaseTweenRef = useRef(null)
   const phaseRef = useRef(Math.PI * 0.04)
+  const spinSpeedRef = useRef(0.18)
+  const shutdownProgressRef = useRef(0)
   const reduceMotionRef = useRef(false)
+  const isRecoveryFocusStep = isRecoveryFocusedStep(recoveryStep)
+  const isSystemShutdown = isRecoveryPoweredDownStep(recoveryStep)
   const radius = toPersonalOrbitRadius(altitudeKm, earthRadius)
   const parsedInclination = Number(inclinationDeg)
   const inclination = THREE.MathUtils.degToRad(
     Number.isFinite(parsedInclination) ? parsedInclination : 98.7,
   )
+  const defaultOrbitRotation = useMemo(() => [
+    inclination - Math.PI / 2,
+    0.38,
+    -0.14,
+  ], [inclination])
 
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -1356,13 +1857,115 @@ function PersonalSatelliteOrbit({ altitudeKm, inclinationDeg, earthRadius }) {
     return () => media.removeEventListener('change', updatePreference)
   }, [])
 
+  useEffect(() => {
+    phaseTweenRef.current?.kill()
+
+    if (!isRecoveryFocusStep) {
+      spinSpeedRef.current = 0.18
+      return undefined
+    }
+
+    if (reduceMotionRef.current) {
+      phaseRef.current = RECOVERY_MISSION_END_PHASE
+      spinSpeedRef.current = 0
+      return undefined
+    }
+
+    const tweenState = {
+      phase: phaseRef.current,
+      spinSpeed: spinSpeedRef.current,
+    }
+    const targetPhase = getForwardPhaseTarget(
+      phaseRef.current,
+      RECOVERY_MISSION_END_PHASE,
+    )
+
+    phaseTweenRef.current = gsap.to(tweenState, {
+      phase: targetPhase,
+      spinSpeed: 0,
+      duration: RECOVERY_MISSION_END_DURATION,
+      ease: 'power3.out',
+      onUpdate() {
+        phaseRef.current = tweenState.phase
+        spinSpeedRef.current = tweenState.spinSpeed
+      },
+      onComplete() {
+        phaseRef.current = RECOVERY_MISSION_END_PHASE
+        spinSpeedRef.current = 0
+      },
+    })
+
+    return () => phaseTweenRef.current?.kill()
+  }, [isRecoveryFocusStep])
+
   useFrame((_, delta) => {
     const canAnimate = !reduceMotionRef.current
       && (typeof document === 'undefined' || document.visibilityState === 'visible')
+    const targetOrbitRotation = isRecoveryFocusStep
+      ? RECOVERY_ORBIT_ROTATION
+      : defaultOrbitRotation
+    const targetOrbitScale = isRecoveryFocusStep ? RECOVERY_ORBIT_SCALE : 1
 
-    if (canAnimate) {
+    if (orbitRef.current) {
+      orbitRef.current.rotation.x = dampAngle(
+        orbitRef.current.rotation.x,
+        targetOrbitRotation[0],
+        1.15,
+        delta,
+      )
+      orbitRef.current.rotation.y = dampAngle(
+        orbitRef.current.rotation.y,
+        targetOrbitRotation[1],
+        1.15,
+        delta,
+      )
+      orbitRef.current.rotation.z = dampAngle(
+        orbitRef.current.rotation.z,
+        targetOrbitRotation[2],
+        1.15,
+        delta,
+      )
+      const nextOrbitScale = THREE.MathUtils.damp(
+        orbitRef.current.scale.x,
+        targetOrbitScale,
+        0.82,
+        delta,
+      )
+      orbitRef.current.scale.setScalar(nextOrbitScale)
+    }
+
+    if (canAnimate && !isRecoveryFocusStep) {
       phaseRef.current = (phaseRef.current + delta * PERSONAL_ORBIT_SPEED) % (Math.PI * 2)
-      if (spinRef.current) spinRef.current.rotation.y += delta * 0.18
+    }
+
+    if (isRecoveryFocusStep && !canAnimate) {
+      phaseRef.current = RECOVERY_MISSION_END_PHASE
+      spinSpeedRef.current = 0
+    }
+
+    if (canAnimate && spinRef.current) {
+      spinRef.current.rotation.y += delta * spinSpeedRef.current
+    }
+
+    shutdownProgressRef.current = THREE.MathUtils.damp(
+      shutdownProgressRef.current,
+      isSystemShutdown ? 1 : 0,
+      3.6 / RECOVERY_SHUTDOWN_DURATION,
+      delta,
+    )
+    const shutdownProgress = THREE.MathUtils.smoothstep(shutdownProgressRef.current, 0, 1)
+
+    if (markerLightRef.current) {
+      markerLightRef.current.intensity = THREE.MathUtils.lerp(0.36, 0.02, shutdownProgress)
+    }
+
+    if (markerMaterialRef.current) {
+      markerMaterialRef.current.opacity = THREE.MathUtils.lerp(1, 0.16, shutdownProgress)
+      markerMaterialRef.current.color.setRGB(
+        THREE.MathUtils.lerp(1, 0.08, shutdownProgress),
+        THREE.MathUtils.lerp(1, 0.09, shutdownProgress),
+        THREE.MathUtils.lerp(1, 0.13, shutdownProgress),
+      )
     }
 
     if (!satelliteRef.current) return
@@ -1371,10 +1974,18 @@ function PersonalSatelliteOrbit({ altitudeKm, inclinationDeg, earthRadius }) {
       Math.sin(phaseRef.current) * radius,
       0,
     )
+    const nextScale = THREE.MathUtils.damp(
+      satelliteRef.current.scale.x,
+      isRecoveryFocusStep ? RECOVERY_SATELLITE_SCALE : 1,
+      1.4,
+      delta,
+    )
+    satelliteRef.current.scale.setScalar(nextScale)
+    if (focusRef?.current) satelliteRef.current.getWorldPosition(focusRef.current)
   })
 
   return (
-    <group rotation={[inclination - Math.PI / 2, 0.38, -0.14]}>
+    <group ref={orbitRef} rotation={defaultOrbitRotation}>
       <mesh>
         <torusGeometry args={[radius, 0.0016, 5, 240]} />
         <meshBasicMaterial color="#ffffff" transparent opacity={0.96} depthWrite={false} />
@@ -1383,10 +1994,12 @@ function PersonalSatelliteOrbit({ altitudeKm, inclinationDeg, earthRadius }) {
       <group ref={satelliteRef}>
         <mesh>
           <sphereGeometry args={[0.008, 12, 12]} />
-          <meshBasicMaterial color="#ffffff" />
+          <meshBasicMaterial ref={markerMaterialRef} color="#ffffff" transparent opacity={1} />
         </mesh>
-        <pointLight color="#ffffff" intensity={0.36} distance={0.7} />
-        <OrbitSatelliteModel spinRef={spinRef} />
+        <pointLight ref={markerLightRef} color="#ffffff" intensity={0.36} distance={0.7} />
+        <OrbitSatelliteModel spinRef={spinRef} recoveryStep={recoveryStep} />
+        <SatelliteShutdownEffects recoveryStep={recoveryStep} />
+        <SatellitePassivationEffects recoveryStep={recoveryStep} />
       </group>
     </group>
   )
@@ -1577,7 +2190,14 @@ function OrbitalDebrisCloud({ earthRadius, damageLevel }) {
   )
 }
 
-function EarthScene({ proxy, satellite, damageLevel, showPersonalOrbit }) {
+function EarthScene({
+  proxy,
+  satellite,
+  damageLevel,
+  showPersonalOrbit,
+  recoveryStep,
+  satelliteFocusRef,
+}) {
   const { scene } = useGLTF(EARTH_GLB)
   const groupRef = useRef()
   const earthRef = useRef()
@@ -1606,14 +2226,16 @@ function EarthScene({ proxy, satellite, damageLevel, showPersonalOrbit }) {
           position={earthMetrics.centerOffset}
           scale={EARTH_SCALE}
         />
-        {showPersonalOrbit && (
-          <PersonalSatelliteOrbit
-            altitudeKm={satellite?.altitudeKm}
-            inclinationDeg={satellite?.inclination}
-            earthRadius={earthMetrics.radius}
-          />
-        )}
       </group>
+      {showPersonalOrbit && (
+        <PersonalSatelliteOrbit
+          altitudeKm={satellite?.altitudeKm}
+          inclinationDeg={satellite?.inclination}
+          earthRadius={earthMetrics.radius}
+          recoveryStep={recoveryStep}
+          focusRef={satelliteFocusRef}
+        />
+      )}
       {showPersonalOrbit && (
         <OrbitalDebrisCloud
           earthRadius={earthMetrics.radius}
@@ -1624,16 +2246,27 @@ function EarthScene({ proxy, satellite, damageLevel, showPersonalOrbit }) {
   )
 }
 
-function EarthOrbitControls({ proxy }) {
+function EarthOrbitControls({ proxy, recoveryStep, satelliteFocusRef }) {
   const controlsRef = useRef()
   const lastViewOffsetRef = useRef(null)
+  const zoomProgressRef = useRef(0)
   const { camera, size } = useThree()
+  const cameraVectors = useMemo(() => ({
+    fallbackFocus: new THREE.Vector3(0.84, 0.84, 0),
+    focus: new THREE.Vector3(),
+    target: new THREE.Vector3(),
+    zoomOffset: new THREE.Vector3(),
+    desiredPosition: new THREE.Vector3(),
+    currentSpherical: new THREE.Spherical(),
+    desiredSpherical: new THREE.Spherical(),
+    nextPosition: new THREE.Vector3(),
+    clearanceDirection: new THREE.Vector3(),
+  }), [])
+  const recoveryActive = isRecoveryFocusedStep(recoveryStep)
 
-  useFrame(() => {
+  useFrame((_, delta) => {
     const controls = controlsRef.current
     if (!controls) return
-
-    controls.target.set(0, 0, 0)
 
     const viewOffsetX = Math.max(0, -proxy.current.x) * size.width * RECOVERY_VIEW_OFFSET_FACTOR
     const nextViewOffset = viewOffsetX < 0.5 ? 0 : viewOffsetX
@@ -1648,6 +2281,97 @@ function EarthOrbitControls({ proxy }) {
       lastViewOffsetRef.current = nextViewOffset
     }
 
+    if (recoveryActive) {
+      const focusSource = satelliteFocusRef?.current
+      const hasSatelliteFocus = focusSource && focusSource.lengthSq() > 0.0001
+      const damping = 1 - Math.exp(-delta * RECOVERY_CAMERA_DAMPING)
+      zoomProgressRef.current = THREE.MathUtils.damp(
+        zoomProgressRef.current,
+        1,
+        RECOVERY_CAMERA_ZOOM_DAMPING,
+        delta,
+      )
+      const zoomEase = THREE.MathUtils.smoothstep(zoomProgressRef.current, 0, 1)
+      const minOrbitRadius = THREE.MathUtils.lerp(
+        RECOVERY_CAMERA_START_ORBIT_RADIUS,
+        RECOVERY_CAMERA_END_ORBIT_RADIUS,
+        zoomEase,
+      )
+      const minFocusDistance = THREE.MathUtils.lerp(
+        RECOVERY_CAMERA_START_FOCUS_DISTANCE,
+        RECOVERY_CAMERA_END_FOCUS_DISTANCE,
+        zoomEase,
+      )
+
+      cameraVectors.focus.copy(hasSatelliteFocus ? focusSource : cameraVectors.fallbackFocus)
+      cameraVectors.target
+        .copy(cameraVectors.focus)
+        .multiplyScalar(RECOVERY_CAMERA_FOCUS_BLEND)
+      cameraVectors.zoomOffset
+        .copy(RECOVERY_CAMERA_START_OFFSET)
+        .lerp(RECOVERY_CAMERA_END_OFFSET, zoomEase)
+      cameraVectors.desiredPosition
+        .copy(cameraVectors.target)
+        .add(cameraVectors.zoomOffset)
+      cameraVectors.currentSpherical.setFromVector3(camera.position)
+      cameraVectors.desiredSpherical.setFromVector3(cameraVectors.desiredPosition)
+
+      controls.enabled = false
+      controls.target.lerp(cameraVectors.target, damping)
+      cameraVectors.nextPosition.setFromSphericalCoords(
+        Math.max(
+          minOrbitRadius,
+          THREE.MathUtils.damp(
+            cameraVectors.currentSpherical.radius,
+            Math.max(cameraVectors.desiredSpherical.radius, minOrbitRadius),
+            RECOVERY_CAMERA_DAMPING,
+            delta,
+          ),
+        ),
+        THREE.MathUtils.clamp(
+          THREE.MathUtils.damp(
+            cameraVectors.currentSpherical.phi,
+            cameraVectors.desiredSpherical.phi,
+            RECOVERY_CAMERA_DAMPING,
+            delta,
+          ),
+          0.16,
+          Math.PI - 0.16,
+        ),
+        dampAngle(
+          cameraVectors.currentSpherical.theta,
+          cameraVectors.desiredSpherical.theta,
+          RECOVERY_CAMERA_DAMPING,
+          delta,
+        ),
+      )
+
+      if (
+        cameraVectors.nextPosition.distanceTo(cameraVectors.focus)
+        < minFocusDistance
+      ) {
+        cameraVectors.clearanceDirection
+          .copy(cameraVectors.nextPosition)
+          .sub(cameraVectors.focus)
+        if (cameraVectors.clearanceDirection.lengthSq() < 0.0001) {
+          cameraVectors.clearanceDirection.set(0, 0, 1)
+        }
+        cameraVectors.nextPosition
+          .copy(cameraVectors.focus)
+          .addScaledVector(
+            cameraVectors.clearanceDirection.normalize(),
+            minFocusDistance,
+          )
+      }
+
+      camera.position.copy(cameraVectors.nextPosition)
+      camera.lookAt(controls.target)
+      return
+    }
+
+    zoomProgressRef.current = 0
+    controls.enabled = true
+    controls.target.set(0, 0, 0)
     controls.update()
   })
 
@@ -1663,6 +2387,7 @@ function EarthOrbitControls({ proxy }) {
       dampingFactor={0.06}
       enablePan={false}
       enableZoom={false}
+      enableRotate={!recoveryActive}
       rotateSpeed={0.45}
       minPolarAngle={Math.PI * 0.22}
       maxPolarAngle={Math.PI * 0.78}
@@ -1685,6 +2410,7 @@ export default function M4New({ onComplete = () => {} }) {
     setStoryChapter,
   } = useAppStore()
   const proxy = useRef({ scale: MIN_EARTH_SCALE, orbitOpacity: 1, x: 0 })
+  const satelliteFocusRef = useRef(new THREE.Vector3())
   const started = useRef(false)
   const completionUnlocked = useRef(false)
   const progressRef = useRef(0)
@@ -1707,6 +2433,7 @@ export default function M4New({ onComplete = () => {} }) {
   const [reflection, setReflection] = useState(null)
   const [localResult, setLocalResult] = useState(null)
   const [recoveryStepsVisible, setRecoveryStepsVisible] = useState(false)
+  const [activeRecoveryStepIndex, setActiveRecoveryStepIndex] = useState(0)
   const initialStory = storyChapters?.m3
     || storyChapters?.opening
     || `${satellite?.name || '卫星'}进入近地轨道。监测系统开始记录每一次微小偏移。`
@@ -1714,6 +2441,15 @@ export default function M4New({ onComplete = () => {} }) {
   const currentEvent = events[round] || null
   const currentMonth = GAME_MONTHS[round] || GAME_MONTHS[GAME_MONTHS.length - 1]
   const latestStory = storyThread[storyThread.length - 1]
+  const recoveryStep = phase === GAME_PHASE.RECOVERY && recoveryStepsVisible
+    ? activeRecoveryStepIndex === 0
+      ? RECOVERY_ANIMATION_STEP.MISSION_END
+      : activeRecoveryStepIndex === 1
+        ? RECOVERY_ANIMATION_STEP.SYSTEM_SHUTDOWN
+        : activeRecoveryStepIndex === 2
+          ? RECOVERY_ANIMATION_STEP.PASSIVATION
+          : RECOVERY_ANIMATION_STEP.SYSTEM_SHUTDOWN
+    : null
 
   useEffect(() => {
     if (!gameStarted) {
@@ -1913,6 +2649,7 @@ export default function M4New({ onComplete = () => {} }) {
 
   const handleReflectionComplete = useCallback(() => {
     setRecoveryStepsVisible(false)
+    setActiveRecoveryStepIndex(0)
     setPhase(GAME_PHASE.RECOVERY)
     unlockNextStageWithoutScroll()
   }, [unlockNextStageWithoutScroll])
@@ -1921,7 +2658,10 @@ export default function M4New({ onComplete = () => {} }) {
     if (phase !== GAME_PHASE.RECOVERY) return
     if (recoveryStepsVisible) return
     event.preventDefault()
-    if (event.deltaY > 0) setRecoveryStepsVisible(true)
+    if (event.deltaY > 0) {
+      setActiveRecoveryStepIndex(0)
+      setRecoveryStepsVisible(true)
+    }
   }, [phase, recoveryStepsVisible])
 
   const handleProgressChange = useCallback((progress) => {
@@ -1962,7 +2702,7 @@ export default function M4New({ onComplete = () => {} }) {
       )}
 
       <Canvas
-        camera={{ position: [0, 1.4, 3.2], fov: 44 }}
+        camera={{ position: [0, 1.4, 3.2], fov: DEFAULT_CAMERA_FOV }}
         style={{ position: 'relative', zIndex: 1, width: '100%', height: '100%' }}
         gl={{ alpha: true, antialias: true }}
       >
@@ -1976,9 +2716,15 @@ export default function M4New({ onComplete = () => {} }) {
             satellite={satellite}
             damageLevel={damageLevel}
             showPersonalOrbit={gameStarted}
+            recoveryStep={recoveryStep}
+            satelliteFocusRef={satelliteFocusRef}
           />
         </Suspense>
-        <EarthOrbitControls proxy={proxy} />
+        <EarthOrbitControls
+          proxy={proxy}
+          recoveryStep={recoveryStep}
+          satelliteFocusRef={satelliteFocusRef}
+        />
       </Canvas>
 
       {orbitVisible && (
@@ -2021,7 +2767,12 @@ export default function M4New({ onComplete = () => {} }) {
           {phase === GAME_PHASE.RECOVERY && (
             <>
               <RecoveryIntroPanel expanded={recoveryStepsVisible} />
-              {recoveryStepsVisible && <RecoveryStepsPanel />}
+              {recoveryStepsVisible && (
+                <RecoveryStepsPanel
+                  activeStepIndex={activeRecoveryStepIndex}
+                  onActiveStepChange={setActiveRecoveryStepIndex}
+                />
+              )}
             </>
           )}
           {phase === GAME_PHASE.REFLECTION && (
