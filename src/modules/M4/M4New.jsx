@@ -343,7 +343,15 @@ const MATERIAL_RESIDUE_GROUPS = [
     label: '结构残件群',
     labelEn: 'STRUCTURE CLUSTER',
     itemIds: ['frame-selected', 'frame-fasteners'],
-    layout: { x: -168, y: -114, rotate: -7, detail: 'right' },
+    layout: {
+      labelX: 210,
+      labelY: -170,
+      elbowX: 126,
+      elbowY: -118,
+      targetX: 20,
+      targetY: -26,
+      align: 'left',
+    },
     summary: '主框架材料与连接残件会在解体瞬间同向脱落，数量多但轨迹更集中。',
     note: '承力结构 + 连接残件',
   },
@@ -352,7 +360,15 @@ const MATERIAL_RESIDUE_GROUPS = [
     label: '太阳翼碎片云',
     labelEn: 'SOLAR ARRAY CLOUD',
     itemIds: ['solar-selected', 'solar-glass', 'solar-circuit'],
-    layout: { x: 164, y: -100, rotate: 4, detail: 'left' },
+    layout: {
+      labelX: 240,
+      labelY: -50,
+      elbowX: 142,
+      elbowY: -34,
+      targetX: 24,
+      targetY: -8,
+      align: 'left',
+    },
     summary: '太阳翼外露面积最大，盖片、电路和电池层会形成薄片与微粒云。',
     note: '电池层 + 盖片 + 电路',
   },
@@ -361,7 +377,15 @@ const MATERIAL_RESIDUE_GROUPS = [
     label: '薄膜防护层',
     labelEn: 'THERMAL FILM LAYERS',
     itemIds: ['insulation-selected', 'insulation-foil'],
-    layout: { x: -150, y: 94, rotate: 6, detail: 'up-right' },
+    layout: {
+      labelX: 220,
+      labelY: 76,
+      elbowX: 126,
+      elbowY: 50,
+      targetX: -14,
+      targetY: 12,
+      align: 'left',
+    },
     summary: '隔热与防护材料更像片状云，通常先剥离，再被高温快速烧蚀。',
     note: '防护层 + 薄膜碎片',
   },
@@ -370,7 +394,15 @@ const MATERIAL_RESIDUE_GROUPS = [
     label: '推进高密度件',
     labelEn: 'PROPULSION DENSE PARTS',
     itemIds: ['propulsion-selected', 'propulsion-valve', 'propulsion-liner'],
-    layout: { x: 158, y: 82, rotate: -6, detail: 'up-left' },
+    layout: {
+      labelX: 204,
+      labelY: 198,
+      elbowX: 122,
+      elbowY: 136,
+      targetX: 8,
+      targetY: 30,
+      align: 'left',
+    },
     summary: '贮箱、阀体和内衬属于高密度压力部件，是最需要关注的一组。',
     note: '贮箱 + 阀体 + 内衬',
   },
@@ -1138,17 +1170,18 @@ const GAME_STYLES = `
     position: absolute;
     inset: 0;
     z-index: 6;
-    color: #15151d;
+    color: #f4f4ff;
     pointer-events: none;
   }
 
   .m4-material-board-inner {
     position: absolute;
-    top: 50%;
-    left: 45%;
+    top: var(--material-anchor-y, 58%);
+    left: var(--material-anchor-x, clamp(112px, 18vw, 260px));
     width: 0;
     height: 0;
-    transform: translate(-50%, -50%);
+    opacity: var(--material-anchor-opacity, 1);
+    transform: none;
   }
 
   .m4-material-board-header {
@@ -1181,164 +1214,115 @@ const GAME_STYLES = `
     height: 0;
   }
 
+  .m4-material-leaders {
+    position: absolute;
+    top: -210px;
+    left: -40px;
+    width: 460px;
+    height: 440px;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .m4-material-leader-line {
+    fill: none;
+    stroke: rgba(244,244,255,0.76);
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.1;
+    opacity: 1;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .m4-material-leader-halo {
+    fill: rgba(244,244,255,0.12);
+  }
+
+  .m4-material-leader-dot {
+    fill: rgba(244,244,255,0.92);
+  }
+
   .m4-material-card {
     position: absolute;
     top: 0;
     left: 0;
-    width: 182px;
+    width: 168px;
     min-height: 0;
-    padding: 8px 10px 8px 12px;
+    padding: 0;
     overflow: visible;
-    color: #15151d;
-    background: rgba(250,249,246,0.68);
-    border: 1px solid rgba(255,255,255,0.36);
-    box-shadow: 0 8px 22px rgba(0,0,0,0.08);
+    color: #ffffff;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
     pointer-events: auto;
-    backdrop-filter: blur(3px);
-    transform: translate(-50%, -50%) translate(var(--material-x), var(--material-y)) rotate(var(--material-rotate));
+    text-shadow: 0 1px 9px rgba(0,0,0,0.82), 0 0 2px rgba(0,0,0,0.5);
+    transform: translate(var(--material-x), var(--material-y)) translateY(-50%);
     animation: m4-material-callout-in 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
   .m4-material-card::before {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 3px;
-    height: 100%;
-    background: var(--material-color);
-    content: "";
-    opacity: 0.62;
+    display: none;
   }
 
   .m4-material-card.is-selected {
-    background: rgba(255,255,255,0.72);
+    background: transparent;
+  }
+
+  .m4-material-callout-meta {
+    margin-bottom: 5px;
+    color: rgba(244,244,255,0.7);
+    font-family: "Space Mono", monospace;
+    font-size: 6px;
+    letter-spacing: 0.18em;
+    line-height: 1;
+    text-transform: uppercase;
   }
 
   .m4-material-card h4 {
-    display: grid;
-    gap: 2px;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
     margin: 0;
-    color: #15151d;
+    color: #ffffff;
     font-family: "Noto Sans SC", sans-serif;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 400;
     letter-spacing: 0;
     line-height: 1.2;
   }
 
   .m4-material-card h4 span {
-    color: rgba(21,21,29,0.46);
-    font-family: "Space Mono", monospace;
-    font-size: 6px;
-    letter-spacing: 0.12em;
-    line-height: 1;
-    text-transform: uppercase;
+    color: rgba(244,244,255,0.88);
+    font-family: "Noto Sans SC", sans-serif;
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    line-height: 1.25;
   }
 
   .m4-material-card h4 strong {
-    color: #15151d;
-    font-family: "Noto Serif SC", serif;
-    font-size: 15px;
+    color: #ffffff;
+    font-family: "Lexend", sans-serif;
+    font-size: 24px;
     font-weight: 400;
-    line-height: 1.16;
+    letter-spacing: -0.02em;
+    line-height: 0.92;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .m4-material-card-detail {
-    position: absolute;
-    top: calc(100% + 7px);
-    left: 0;
-    z-index: 2;
-    width: 252px;
-    padding: 9px 10px 10px;
-    color: #15151d;
-    background: rgba(255,255,255,0.9);
-    border: 1px solid rgba(21,21,29,0.12);
-    box-shadow: 0 14px 34px rgba(0,0,0,0.18);
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(-3px);
-    transition: opacity 160ms ease, transform 160ms ease, visibility 160ms ease;
-  }
-
-  .m4-material-card:hover .m4-material-card-detail,
-  .m4-material-card:focus-visible .m4-material-card-detail {
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0);
-  }
-
-  .m4-material-card.is-detail-up .m4-material-card-detail {
-    top: auto;
-    bottom: calc(100% + 7px);
-    transform: translateY(3px);
-  }
-
-  .m4-material-card.is-detail-up:hover .m4-material-card-detail,
-  .m4-material-card.is-detail-up:focus-visible .m4-material-card-detail {
-    transform: translateY(0);
-  }
-
-  .m4-material-card.is-detail-left .m4-material-card-detail {
-    right: 0;
-    left: auto;
-  }
-
-  .m4-material-card-detail-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 6px;
-    color: rgba(21,21,29,0.46);
-    font-family: "Space Mono", monospace;
-    font-size: 6px;
-    letter-spacing: 0.1em;
-    line-height: 1;
-    text-transform: uppercase;
-  }
-
-  .m4-material-card-risk {
-    color: #6b7fff;
+    overflow-wrap: anywhere;
   }
 
   .m4-material-card p {
-    margin: 0;
-    color: rgba(21,21,29,0.62);
+    margin: 7px 0 0;
+    padding-left: 12px;
+    color: rgba(255,255,255,0.9);
+    border-left: 1px solid rgba(244,244,255,0.34);
     font-family: "Noto Sans SC", sans-serif;
-    font-size: 9px;
-    line-height: 1.55;
-  }
-
-  .m4-material-card-items {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-    margin-top: 8px;
-  }
-
-  .m4-material-card-chip {
-    max-width: 100%;
-    padding: 3px 5px;
-    overflow: hidden;
-    color: rgba(21,21,29,0.64);
-    background: color-mix(in srgb, var(--material-color) 12%, rgba(21,21,29,0.05));
-    border: 1px solid color-mix(in srgb, var(--material-color) 28%, rgba(21,21,29,0.08));
-    font-family: "Noto Sans SC", sans-serif;
-    font-size: 8px;
-    line-height: 1.2;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    font-size: 7px;
+    line-height: 1.65;
   }
 
   .m4-material-card-note {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: 8px;
-    color: rgba(21,21,29,0.42);
+    margin-top: 6px;
+    color: rgba(244,244,255,0.72);
     font-family: "Space Mono", monospace;
     font-size: 6px;
     letter-spacing: 0.1em;
@@ -1347,10 +1331,7 @@ const GAME_STYLES = `
   }
 
   .m4-material-card-note::before {
-    width: 11px;
-    height: 1px;
-    background: color-mix(in srgb, var(--material-color) 72%, rgba(21,21,29,0.24));
-    content: "";
+    display: none;
   }
 
   @media (max-width: 960px) {
@@ -1449,20 +1430,22 @@ const GAME_STYLES = `
     }
 
     .m4-material-board-inner {
-      left: 43%;
-      transform: translate(-50%, -50%) scale(0.86);
+      top: var(--material-anchor-y, 58%);
+      left: var(--material-anchor-x, clamp(112px, 18vw, 260px));
+      transform: scale(0.86);
+      transform-origin: 0 0;
     }
 
     .m4-material-card {
-      width: 172px;
+      width: 150px;
     }
 
     .m4-material-card h4 strong {
-      font-size: 13px;
+      font-size: 21px;
     }
 
     .m4-material-card p {
-      font-size: 7px;
+      font-size: 6px;
     }
   }
 
@@ -1472,13 +1455,14 @@ const GAME_STYLES = `
     }
 
     .m4-material-board-inner {
-      top: 40%;
-      left: 50%;
-      transform: translate(-50%, -50%) scale(0.72);
+      top: var(--material-anchor-y, 58%);
+      left: var(--material-anchor-x, clamp(86px, 16vw, 160px));
+      transform: scale(0.66);
+      transform-origin: 0 0;
     }
 
     .m4-material-card {
-      width: 168px;
+      width: 126px;
     }
   }
 
@@ -2868,14 +2852,16 @@ function getMaterialResidueCards(materials) {
       hasSelected: items.some((item) => item.source === 'selected'),
       itemCount: items.length,
       items,
+      countLabel: `${items.length}类`,
       material: `${items.length}类 · ${primaryItem?.material || '残余材料'}`,
+      materialDetail: primaryItem?.material || '残余材料',
       number: String(index + 1).padStart(2, '0'),
       risk: getHighestMaterialRisk(items),
     }
   })
 }
 
-function BreakupMaterialBoard({ recoveryStep, materials }) {
+function BreakupMaterialBoard({ recoveryStep, materials, anchor }) {
   const cards = useMemo(() => getMaterialResidueCards(materials), [materials])
   const isBreakup = recoveryStep === RECOVERY_ANIMATION_STEP.BREAKUP
 
@@ -2887,11 +2873,46 @@ function BreakupMaterialBoard({ recoveryStep, materials }) {
       aria-label="再入后遗留材料"
     >
       <style>{GAME_STYLES}</style>
-      <div className="m4-material-board-inner">
+      <div
+        className="m4-material-board-inner"
+        style={anchor ? {
+          '--material-anchor-x': `${anchor.x}px`,
+          '--material-anchor-y': `${anchor.y}px`,
+          '--material-anchor-opacity': anchor.visible ? 1 : 0,
+        } : undefined}
+      >
         <div className="m4-material-board-header">
           <span>REMAINING MATERIALS</span>
           <span>{cards.length} GROUPS</span>
         </div>
+        <svg
+          className="m4-material-leaders"
+          viewBox="-40 -210 460 440"
+          aria-hidden="true"
+        >
+          {cards.map((card) => (
+            <g
+              key={`${card.id}-leader`}
+            >
+              <polyline
+                className="m4-material-leader-line"
+                points={`${card.layout.targetX},${card.layout.targetY} ${card.layout.elbowX},${card.layout.elbowY} ${card.layout.labelX},${card.layout.labelY}`}
+              />
+              <circle
+                className="m4-material-leader-halo"
+                cx={card.layout.targetX}
+                cy={card.layout.targetY}
+                r="5"
+              />
+              <circle
+                className="m4-material-leader-dot"
+                cx={card.layout.targetX}
+                cy={card.layout.targetY}
+                r="1.6"
+              />
+            </g>
+          ))}
+        </svg>
         <div className="m4-material-board-grid">
           {cards.map((card, index) => (
             <article
@@ -2899,43 +2920,72 @@ function BreakupMaterialBoard({ recoveryStep, materials }) {
               className={[
                 'm4-material-card',
                 card.hasSelected ? 'is-selected' : '',
-                card.layout.detail.includes('up') ? 'is-detail-up' : '',
-                card.layout.detail.includes('left') ? 'is-detail-left' : '',
+                card.layout.align === 'right' ? 'is-align-right' : '',
               ].filter(Boolean).join(' ')}
               tabIndex={0}
               style={{
                 '--material-color': card.accent,
-                '--material-x': `${card.layout.x}px`,
-                '--material-y': `${card.layout.y}px`,
-                '--material-rotate': `${card.layout.rotate}deg`,
+                '--material-x': `${card.layout.labelX}px`,
+                '--material-y': `${card.layout.labelY}px`,
                 animationDelay: `${index * 70}ms`,
               }}
             >
+              <div className="m4-material-callout-meta">{card.labelEn} · {card.number} / {card.risk}</div>
               <h4>
+                <strong>{card.countLabel}</strong>
                 <span>{card.label}</span>
-                <strong>{card.material}</strong>
               </h4>
-              <div className="m4-material-card-detail">
-                <div className="m4-material-card-detail-header">
-                  <span>{card.labelEn}</span>
-                  <span className="m4-material-card-risk">{card.number} / {card.risk}</span>
-                </div>
-                <p>{card.summary}</p>
-                <div className="m4-material-card-items">
-                  {card.items.map((item) => (
-                    <span key={item.id} className="m4-material-card-chip">
-                      {item.material}
-                    </span>
-                  ))}
-                </div>
-                <div className="m4-material-card-note">{card.note}</div>
-              </div>
+              <p>{card.summary}</p>
+              <div className="m4-material-card-note">{card.materialDetail} · {card.note}</div>
             </article>
           ))}
         </div>
       </div>
     </aside>
   )
+}
+
+function MaterialBoardAnchorTracker({ recoveryStep, satelliteFocusRef, onAnchorChange }) {
+  const { camera, size } = useThree()
+  const projectedRef = useRef(new THREE.Vector3())
+  const elapsedRef = useRef(0)
+  const lastAnchorRef = useRef(null)
+  const isBreakup = recoveryStep === RECOVERY_ANIMATION_STEP.BREAKUP
+
+  useFrame((_, delta) => {
+    if (!isBreakup || !satelliteFocusRef?.current) return
+
+    elapsedRef.current += delta
+    if (elapsedRef.current < 1 / 30) return
+    elapsedRef.current = 0
+
+    projectedRef.current.copy(satelliteFocusRef.current).project(camera)
+    const x = (projectedRef.current.x * 0.5 + 0.5) * size.width
+    const y = (-projectedRef.current.y * 0.5 + 0.5) * size.height
+    const visible = projectedRef.current.z > -1 && projectedRef.current.z < 1
+    const lastAnchor = lastAnchorRef.current
+
+    if (
+      lastAnchor
+      && Math.abs(lastAnchor.x - x) < 0.5
+      && Math.abs(lastAnchor.y - y) < 0.5
+      && lastAnchor.visible === visible
+    ) {
+      return
+    }
+
+    const nextAnchor = { x, y, visible }
+    lastAnchorRef.current = nextAnchor
+    onAnchorChange(nextAnchor)
+  })
+
+  useEffect(() => {
+    if (isBreakup) return
+    lastAnchorRef.current = null
+    onAnchorChange(null)
+  }, [isBreakup, onAnchorChange])
+
+  return null
 }
 
 function DeorbitSpiralTrajectory({
@@ -3899,6 +3949,7 @@ export default function M4New({ onComplete = () => {} }) {
   const [localResult, setLocalResult] = useState(null)
   const [recoveryStepsVisible, setRecoveryStepsVisible] = useState(false)
   const [activeRecoveryStepIndex, setActiveRecoveryStepIndex] = useState(0)
+  const [materialBoardAnchor, setMaterialBoardAnchor] = useState(null)
   const initialStory = storyChapters?.m3
     || storyChapters?.opening
     || `${satellite?.name || '卫星'}进入近地轨道。监测系统开始记录每一次微小偏移。`
@@ -4241,9 +4292,18 @@ export default function M4New({ onComplete = () => {} }) {
           recoveryStep={recoveryStep}
           satelliteFocusRef={satelliteFocusRef}
         />
+        <MaterialBoardAnchorTracker
+          recoveryStep={recoveryStep}
+          satelliteFocusRef={satelliteFocusRef}
+          onAnchorChange={setMaterialBoardAnchor}
+        />
       </Canvas>
 
-      <BreakupMaterialBoard recoveryStep={recoveryStep} materials={materials} />
+      <BreakupMaterialBoard
+        recoveryStep={recoveryStep}
+        materials={materials}
+        anchor={materialBoardAnchor}
+      />
 
       {orbitVisible && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 2, opacity: orbitOpacity }}>
