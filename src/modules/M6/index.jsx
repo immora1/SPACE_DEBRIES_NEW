@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AnimateChars, ScrollReveal } from '../../animations'
 import useAppStore from '../../store/useAppStore'
@@ -291,7 +291,7 @@ export default function M6({ onComplete }) {
   const satName = satellite?.name ?? '未知卫星'
   const satAlt  = satellite?.altitudeKm ?? 836
   const satInc  = satellite?.inclination ?? 98
-  const satObj  = { name: satName, altitudeKm: satAlt, inclination: satInc }
+  const satObj = useMemo(() => ({ name: satName, altitudeKm: satAlt, inclination: satInc }), [satName, satAlt, satInc])
 
   const debrisSet = useMemo(
     () => buildDebrisSet({ gameResult, materials, debrisGenerated }),

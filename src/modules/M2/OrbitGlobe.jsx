@@ -3,7 +3,7 @@ import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 
-// ── 可视半径（压缩映射，非真实比例）────────────────────────────────────────────
+// 鈹€鈹€ 鍙鍗婂緞锛堝帇缂╂槧灏勶紝闈炵湡瀹炴瘮渚嬶級鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 const VR_LEO = 1.46
 const VR_MEO = 2.60
 const VR_GEO = 4.00
@@ -14,7 +14,7 @@ function toVisR(altKm) {
   return VR_GEO
 }
 
-// ── 地球本体 ──────────────────────────────────────────────────────────────────
+// 鈹€鈹€ 鍦扮悆鏈綋 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 function Earth() {
   const ref = useRef()
   useFrame((_, dt) => { ref.current.rotation.y += dt * 0.025 })
@@ -24,12 +24,12 @@ function Earth() {
         <sphereGeometry args={[1, 28, 18]} />
         <meshStandardMaterial color="#08101a" roughness={0.9} metalness={0.08} />
       </mesh>
-      {/* 赤道线 */}
+      {/* 璧ら亾绾?*/}
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
         <torusGeometry args={[1.002, 0.002, 2, 64]} />
         <meshBasicMaterial color="#1e2d3d" />
       </mesh>
-      {/* 大气光晕 */}
+      {/* 澶ф皵鍏夋檿 */}
       <mesh>
         <sphereGeometry args={[1.08, 16, 10]} />
         <meshBasicMaterial color="#1a4080" transparent opacity={0.09} side={THREE.BackSide} />
@@ -38,9 +38,9 @@ function Earth() {
   )
 }
 
-// ── 轨道带环 ─────────────────────────────────────────────────────────────────
-// active: null=默认 | true=高亮 | false=变暗
-// currentStep: 0=hover 交互 | 1=卫星高亮 | 2=任务模式
+// 鈹€鈹€ 杞ㄩ亾甯︾幆 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+// active: null=榛樿 | true=楂樹寒 | false=鍙樻殫
+// currentStep: 0=hover 浜や簰 | 1=鍗槦楂樹寒 | 2=浠诲姟妯″紡
 function ZoneRing({ r, baseOpacity, active, tube, hexColor, currentStep }) {
   const matRef = useRef()
 
@@ -50,7 +50,7 @@ function ZoneRing({ r, baseOpacity, active, tube, hexColor, currentStep }) {
   } else if (currentStep === 2) {
     target = active === null ? baseOpacity * 0.5  : (active ? 0.75 : 0.06)
   } else {
-    // step 0：hover 时激活环全亮，其余极暗，对比清晰
+    // step 0锛歨over 鏃舵縺娲荤幆鍏ㄤ寒锛屽叾浣欐瀬鏆楋紝瀵规瘮娓呮櫚
     target = active === null ? baseOpacity : (active ? 1.0 : 0.06)
   }
 
@@ -67,7 +67,7 @@ function ZoneRing({ r, baseOpacity, active, tube, hexColor, currentStep }) {
   )
 }
 
-// ── 用户卫星轨道 + 运动点 ────────────────────────────────────────────────────
+// 鈹€鈹€ 鐢ㄦ埛鍗槦杞ㄩ亾 + 杩愬姩鐐?鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 function SatOrbit({ altKm, incDeg, currentStep }) {
   const dotRef  = useRef()
   const glowRef = useRef()
@@ -90,17 +90,17 @@ function SatOrbit({ altKm, incDeg, currentStep }) {
 
   return (
     <group>
-      {/* 轨道环：step 1 时加粗加亮 */}
+      {/* 杞ㄩ亾鐜細step 1 鏃跺姞绮楀姞浜?*/}
       <mesh rotation={[rx, 0, 0]}>
         <torusGeometry args={[r, highlight ? 0.013 : 0.007, 4, 64]} />
         <meshBasicMaterial color="#6b7fff" transparent opacity={highlight ? 1.0 : 0.88} />
       </mesh>
-      {/* 卫星点 */}
+      {/* 鍗槦鐐?*/}
       <mesh ref={dotRef}>
         <sphereGeometry args={[highlight ? 0.044 : 0.022, 14, 14]} />
         <meshBasicMaterial color="#6b7fff" />
       </mesh>
-      {/* 发光光晕（仅 step 1 显示） */}
+      {/* 鍙戝厜鍏夋檿锛堜粎 step 1 鏄剧ず锛?*/}
       {highlight && (
         <mesh ref={glowRef}>
           <sphereGeometry args={[0.1, 14, 14]} />
@@ -111,13 +111,12 @@ function SatOrbit({ altKm, incDeg, currentStep }) {
   )
 }
 
-// ── 导出 ─────────────────────────────────────────────────────────────────────
+// 鈹€鈹€ 瀵煎嚭 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 export default function OrbitGlobe({
   satellite,
   height = 480,
   activeOrbit = null,
   currentStep = 0,
-  mission = null,
 }) {
   const alt = satellite?.altitudeKm ?? 836
   const inc = satellite?.inclination ?? 98.7
@@ -147,12 +146,12 @@ export default function OrbitGlobe({
         >
         <ambientLight intensity={0.5} />
         <directionalLight position={[4, 5, 4]} intensity={0.62} color="#d5d0cc" />
-        {/* 蓝紫补光，营造深空氛围 */}
+        {/* 钃濈传琛ュ厜锛岃惀閫犳繁绌烘皼鍥?*/}
         <directionalLight position={[-3, 2, -4]} intensity={0.18} color="#4a5ad0" />
 
         <Earth />
 
-        {/* 三轨道环：颜色分别为蓝、紫、青 */}
+        {/* 涓夎建閬撶幆锛氶鑹插垎鍒负钃濄€佺传銆侀潚 */}
         <ZoneRing
           r={VR_LEO} baseOpacity={0.65} active={leoActive}
           tube={0.011} hexColor="#6b7fff" currentStep={currentStep}

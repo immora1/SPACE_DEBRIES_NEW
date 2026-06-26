@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useMemo, useCallback, Suspense, useEffect } from 'react'
+import { useState, useRef, useMemo, useCallback, Suspense, useEffect } from 'react'
 import { Canvas, useFrame, useThree, useLoader } from '@react-three/fiber'
 import { Html, Line } from '@react-three/drei'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -469,7 +469,7 @@ export default function M3({ onComplete }) {
   const onHover  = useCallback(ev => setHoveredEv(ev), [])
   const onLeave  = useCallback(() => setHoveredEv(null), [])
 
-  useEffect(() => { onComplete?.({ autoScroll: false }) }, [])
+  useEffect(() => { onComplete?.({ autoScroll: false }) }, [onComplete])
 
   const onClick = useCallback(ev => {
     setSelectedEv(ev)

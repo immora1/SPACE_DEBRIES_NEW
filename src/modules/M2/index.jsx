@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AnimateChars, ScrollReveal } from '../../animations'
 import useAppStore from '../../store/useAppStore'
@@ -80,7 +80,6 @@ export default function M2({ onComplete }) {
   const satellite       = useAppStore((s) => s.satellite)
   const user            = useAppStore((s) => s.user)
   const storyOutline    = useAppStore((s) => s.storyOutline)
-  const storyChapters   = useAppStore((s) => s.storyChapters)
   const materials       = useAppStore((s) => s.materials)
   const setUser         = useAppStore((s) => s.setUser)
   const setSatellite    = useAppStore((s) => s.setSatellite)
@@ -252,7 +251,7 @@ export default function M2({ onComplete }) {
       window.removeEventListener('scroll', update)
       setScrollLocked(false)
     }
-  }, [])
+  }, [setScrollLocked])
 
   const safeMatls  = materials ?? {}
   const matAllDone = Object.values(safeMatls).filter(Boolean).length === 4

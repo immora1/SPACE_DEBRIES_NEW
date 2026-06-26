@@ -1,5 +1,4 @@
-import { createElement, lazy, Suspense, useEffect, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { createElement, lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import useAppStore from './store/useAppStore'
 import ProgressBar from './components/ProgressBar'
 import ModuleWrapper from './components/ModuleWrapper'
@@ -9,33 +8,95 @@ const M1 = lazy(() => import('./modules/M1'))
 const M2 = lazy(() => import('./modules/M2'))
 const M3 = lazy(() => import('./modules/M3'))
 const M4 = lazy(() => import('./modules/M4/M4New'))
+const LegalTreaties = lazy(() => import('./modules/LegalTreaties'))
 const M5 = lazy(() => import('./modules/M5'))
 const M6 = lazy(() => import('./modules/M6'))
 const M7 = lazy(() => import('./modules/M7'))
 const M8 = lazy(() => import('./modules/M8'))
 
-const EASE = [0.16, 1, 0.3, 1]
-const MotionDiv = motion.div
-const MotionButton = motion.button
+const MODULES = [
+  { id: 'm1', Component: M1, connector: null, archDivider: '#04040f' },
+  { id: 'm3', Component: M3, connector: null },
+  { id: 'm2', Component: M2, connector: null, boundaryDivider: true },
+  { id: 'm4', Component: M4, connector: null },
+  { id: 'law', Component: LegalTreaties, connector: null },
+  {
+    id: 'm5',
+    Component: M5,
+    connector: '旅行结束了，那些留下来的，我们总是忘了还有机会处理。',
+    boundaryDivider: true,
+  },
+  {
+    id: 'm6',
+    Component: M6,
+    connector: '不要问还有没有人在乎，问你自己。',
+  },
+  {
+    id: 'm7',
+    Component: M7,
+    connector: '最后，把这些碎片重新放回真实世界的信息里。',
+  },
+]
 
 function ModuleLoader() {
   return <div style={{ height: 120 }} />
 }
 
-// ── 可选模块卡（M8）───────────────────────────────────────────────────────────
+function DeferredModule({ Component, eager = false, onComplete }) {
+  const rootRef = useRef(null)
+  const [shouldRender, setShouldRender] = useState(eager)
+
+  useEffect(() => {
+    if (shouldRender) return undefined
+    const el = rootRef.current
+    if (!el) return undefined
+
+    if (!('IntersectionObserver' in window)) {
+      setShouldRender(true)
+      return undefined
+    }
+
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return
+        setShouldRender(true)
+        io.disconnect()
+      },
+      { rootMargin: '900px 0px' },
+    )
+
+    io.observe(el)
+    return () => io.disconnect()
+  }, [shouldRender])
+
+  return (
+    <div
+      ref={rootRef}
+      data-module-scroll-target
+      style={shouldRender ? undefined : { minHeight: 'clamp(420px, 70vh, 760px)' }}
+    >
+      {shouldRender ? (
+        <Suspense fallback={<ModuleLoader />}>
+          {createElement(Component, { onComplete })}
+        </Suspense>
+      ) : (
+        <ModuleLoader />
+      )}
+    </div>
+  )
+}
+
+const MemoDeferredModule = memo(DeferredModule)
+
 function OptionalModuleCard({ Component, isVisible }) {
   const [expanded, setExpanded] = useState(false)
 
   if (!isVisible) return null
 
   return (
-    <MotionDiv
-      initial={{ opacity: 0, y: 24 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, ease: EASE }}
+    <div
       style={{ margin: '0 auto', maxWidth: 1080, padding: '0 24px 80px' }}
     >
-      {/* 渐变分割线 */}
       <div style={{
         height: 1,
         background: 'linear-gradient(to right, transparent, rgba(107,127,255,0.25), transparent)',
@@ -43,8 +104,7 @@ function OptionalModuleCard({ Component, isVisible }) {
       }} />
 
       {!expanded ? (
-        /* 折叠态：小卡片 */
-        <MotionDiv
+        <div
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -57,14 +117,9 @@ function OptionalModuleCard({ Component, isVisible }) {
             backdropFilter: 'blur(14px)',
             cursor: 'pointer',
           }}
-          whileHover={{
-            borderColor: 'rgba(107,127,255,0.38)',
-            boxShadow: '0 0 32px rgba(107,127,255,0.08)',
-          }}
           onClick={() => setExpanded(true)}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            {/* 图标 */}
             <div style={{
               width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
               border: '1px solid rgba(107,127,255,0.30)',
@@ -79,7 +134,7 @@ function OptionalModuleCard({ Component, isVisible }) {
             </div>
             <div>
               <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 8, color: '#484878', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 5 }}>
-                BONUS MODULE · 08 · OPTIONAL
+                BONUS MODULE / 08 / OPTIONAL
               </div>
               <div style={{ fontFamily: 'Noto Serif SC, serif', fontSize: 17, color: '#e8e8f8', fontWeight: 300, marginBottom: 3 }}>
                 观测教学与社区
@@ -94,7 +149,7 @@ function OptionalModuleCard({ Component, isVisible }) {
             <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: '#484878', letterSpacing: '0.08em' }}>
               选读
             </span>
-            <MotionDiv
+            <div
               style={{
                 padding: '9px 20px',
                 border: '1px solid rgba(107,127,255,0.40)',
@@ -106,149 +161,139 @@ function OptionalModuleCard({ Component, isVisible }) {
                 textTransform: 'uppercase',
                 whiteSpace: 'nowrap',
               }}
-              whileHover={{ background: 'rgba(107,127,255,0.10)' }}
             >
-              进入探索 →
-            </MotionDiv>
+              进入探索
+            </div>
           </div>
-        </MotionDiv>
+        </div>
       ) : (
-        /* 展开态：完整模块 */
         <div>
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '12px 0', marginBottom: 4,
           }}>
             <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 9, color: '#484878', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-              MODULE 08 · OBSERVATION & COMMUNITY
+              MODULE 08 / OBSERVATION & COMMUNITY
             </div>
-            <MotionButton
+            <button
               onClick={() => setExpanded(false)}
-              whileHover={{ color: '#e8e8f8' }}
               style={{
                 background: 'none', border: '1px solid #1a1a35', borderRadius: 3,
                 color: '#484878', fontFamily: 'Space Mono, monospace', fontSize: 9,
                 letterSpacing: '0.08em', padding: '6px 12px', cursor: 'pointer',
               }}
             >
-              收起 ↑
-            </MotionButton>
+              收起
+            </button>
           </div>
           <Suspense fallback={<ModuleLoader />}>
             {createElement(Component, { onComplete: () => {} })}
           </Suspense>
         </div>
       )}
-    </MotionDiv>
+    </div>
   )
 }
 
-// ── 模块顺序 + 衔接句 ───────────────────────────────────────────────────────
-const MODULES = [
-  { id: 'm1',       Component: M1,       connector: null, archDivider: '#04040f' },
-  { id: 'm3',       Component: M3,       connector: null },
-  { id: 'm2',       Component: M2,       connector: null, boundaryDivider: true },
-  { id: 'm4',       Component: M4,       connector: null, alwaysVisible: true },
-  { id: 'm5',       Component: M5,       connector: '旅行结束了，那些留下来的，我们总是忘了还有机会处理。', boundaryDivider: true },
-  { id: 'm6',       Component: M6,       connector: '不要问还有没有人在乎，问你自己。' },
-  { id: 'm7',       Component: M7,       connector: '最后，把这些碎片重新放回真实世界的信息里。' },
-]
-
 export default function App() {
-  const {
-    unlockedModules, unlockModule,
-    markModuleComplete, completedModules,
-    scrollLocked,
-  } = useAppStore()
+  const unlockedModules = useAppStore((s) => s.unlockedModules)
+  const completedModules = useAppStore((s) => s.completedModules)
+  const scrollLocked = useAppStore((s) => s.scrollLocked)
+  const unlockModule = useAppStore((s) => s.unlockModule)
+  const markModuleComplete = useAppStore((s) => s.markModuleComplete)
 
-  // Always start at top on mount
+  const unlockedSet = useMemo(() => new Set(unlockedModules), [unlockedModules])
+  const completedSet = useMemo(() => new Set(completedModules), [completedModules])
+
   useEffect(() => { window.scrollTo(0, 0) }, [])
-
-  // M7 完成后显示 M8 可选卡片
-  const showM8 = completedModules.includes('m7')
 
   useEffect(() => {
     document.body.style.overflow = scrollLocked ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
   }, [scrollLocked])
 
-
-  // 兼容新增模块：静默补解锁，不触发滚动
   useEffect(() => {
     MODULES.forEach((module, idx) => {
       const next = MODULES[idx + 1]
-      if (next && completedModules.includes(module.id) && !unlockedModules.includes(next.id)) {
+      if (next && completedSet.has(module.id) && !unlockedSet.has(next.id)) {
         unlockModule(next.id)
       }
     })
-  }, [completedModules, unlockedModules, unlockModule])
+  }, [completedSet, unlockedSet, unlockModule])
 
-  // 滚动逻辑只在用户主动完成模块时触发，避免刷新时 persist 加载触发误滚
-  function handleComplete(currentId, options = {}) {
+  const handleComplete = useCallback((currentId, options = {}) => {
     markModuleComplete(currentId)
     const idx = MODULES.findIndex((m) => m.id === currentId)
-    if (idx !== -1 && idx < MODULES.length - 1) {
-      const nextId = MODULES[idx + 1].id
-      unlockModule(nextId)
-      if (options.autoScroll === false) return
-      setTimeout(() => {
-        const nextEl = document.querySelector(`[data-module="${nextId}"]`)
-        const scrollTarget = nextEl?.querySelector?.('[data-module-scroll-target]') ?? nextEl
-        scrollTarget?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      }, 150)
-    }
-  }
+    if (idx === -1 || idx >= MODULES.length - 1) return
 
-  function isModuleNavigable(id) {
-    const module = MODULES.find((item) => item.id === id)
-    return Boolean(module?.alwaysVisible || unlockedModules.includes(id) || completedModules.includes(id))
-  }
+    const nextId = MODULES[idx + 1].id
+    unlockModule(nextId)
+    if (options.autoScroll === false) return
 
-  function scrollToModule(id) {
-    if (scrollLocked) return
-    if (!isModuleNavigable(id)) return
+    window.setTimeout(() => {
+      const nextEl = document.querySelector(`[data-module="${nextId}"]`)
+      const scrollTarget = nextEl?.querySelector?.('[data-module-scroll-target]') ?? nextEl
+      scrollTarget?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 150)
+  }, [markModuleComplete, unlockModule])
 
+  const isModuleNavigable = useCallback((id) => (
+    unlockedSet.has(id) || completedSet.has(id)
+  ), [completedSet, unlockedSet])
+
+  const scrollToModule = useCallback((id) => {
+    if (scrollLocked || !isModuleNavigable(id)) return
     const el = document.querySelector(`[data-module="${id}"]`)
+    if (!el) return
 
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    window.setTimeout(() => {
+      el.scrollIntoView({ behavior: 'auto', block: 'start' })
+    }, 600)
+  }, [isModuleNavigable, scrollLocked])
 
-      setTimeout(() => {
-        el.scrollIntoView({ behavior: 'auto', block: 'start' })
-      }, 600)
-    }
-  }
+  const availableModules = useMemo(() => (
+    scrollLocked
+      ? []
+      : MODULES
+        .filter((module) => unlockedSet.has(module.id) || completedSet.has(module.id))
+        .map((module) => module.id)
+  ), [completedSet, scrollLocked, unlockedSet])
+
+  const showM8 = completedSet.has('m7')
 
   return (
     <div style={{ minHeight: '100vh' }}>
       <ProgressBar completed={completedModules.length} total={MODULES.length} />
       <StageNav
         completedModules={completedModules}
-        availableModules={scrollLocked
-          ? []
-          : MODULES
-            .filter((module) => module.alwaysVisible || unlockedModules.includes(module.id) || completedModules.includes(module.id))
-            .map((module) => module.id)}
+        availableModules={availableModules}
         onStageClick={scrollToModule}
       />
 
-      {MODULES.map(({ id, Component, connector, archDivider, boundaryDivider, alwaysVisible }) => (
-        <Suspense key={id} fallback={<ModuleLoader />}>
+      {MODULES.map(({ id, Component, connector, archDivider, boundaryDivider }) => {
+        const isAvailable = unlockedSet.has(id) || completedSet.has(id)
+        if (!isAvailable) return null
+
+        return (
           <ModuleWrapper
-            isUnlocked={alwaysVisible || unlockedModules.includes(id)}
+            key={id}
+            isUnlocked
             connector={connector}
             archDivider={archDivider}
             boundaryDivider={boundaryDivider}
-            noAnimation={id === 'm1'}
-            mouseReactive={id === 'm1' || id === 'm2'}
+            mouseReactive={id === 'm1'}
             moduleId={id}
           >
-            {createElement(Component, { onComplete: (options) => handleComplete(id, options) })}
+            <MemoDeferredModule
+              Component={Component}
+              eager={id === 'm1'}
+              onComplete={(options) => handleComplete(id, options)}
+            />
           </ModuleWrapper>
-        </Suspense>
-      ))}
+        )
+      })}
 
-      {/* ── M8：可选附加模块 ── */}
       <OptionalModuleCard Component={M8} isVisible={showM8} />
     </div>
   )

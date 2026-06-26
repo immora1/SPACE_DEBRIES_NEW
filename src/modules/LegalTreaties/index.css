@@ -1,0 +1,562 @@
+.law-section {
+  --law-bg: #070821;
+  --law-surface: #0c0e2d;
+  --law-ink: #eceefd;
+  --law-muted: #8d92b8;
+  --law-faint: #505679;
+  --law-line: rgba(126, 144, 255, 0.26);
+  --law-accent: #7e90ff;
+  --law-signal: #37d7ae;
+  --law-paper: #eeede8;
+  position: relative;
+  min-height: 100svh;
+  overflow: hidden;
+  padding: 0 5vw 9svh;
+  color: var(--law-ink);
+  background-color: var(--law-bg);
+  background-image:
+    linear-gradient(rgba(126, 144, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(126, 144, 255, 0.05) 1px, transparent 1px);
+  background-size: 88px 88px;
+  font-family: "Noto Sans SC", sans-serif;
+  letter-spacing: 0;
+}
+
+.law-section::before {
+  content: "";
+  position: absolute;
+  inset: 0 50% 0 auto;
+  width: 1px;
+  background: rgba(126, 144, 255, 0.08);
+  pointer-events: none;
+}
+
+.law-route-line {
+  position: absolute;
+  top: 21svh;
+  left: 4vw;
+  width: 35vw;
+  height: 22svh;
+  border-top: 1px solid rgba(126, 144, 255, 0.12);
+  border-right: 1px solid rgba(126, 144, 255, 0.12);
+  transform: skewY(-16deg);
+  transform-origin: left top;
+  pointer-events: none;
+}
+
+.law-ghost-index {
+  position: absolute;
+  left: 2vw;
+  bottom: -48px;
+  color: rgba(126, 144, 255, 0.07);
+  font-family: "Noto Serif SC", serif;
+  font-size: 250px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0;
+  pointer-events: none;
+  user-select: none;
+}
+
+.law-masthead {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  min-height: 92px;
+  padding: 24px 0 20px;
+  border-bottom: 1px solid var(--law-line);
+}
+
+.law-masthead-label {
+  display: flex;
+  gap: 28px;
+  color: var(--law-muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+.law-masthead-number {
+  color: var(--law-accent);
+  font-family: "Noto Serif SC", serif;
+  font-size: 46px;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.law-layout {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(300px, 0.82fr) 1px minmax(560px, 1.18fr);
+  gap: 0;
+  width: min(1520px, 100%);
+  margin: 0 auto;
+}
+
+.law-story,
+.law-knowledge {
+  min-width: 0;
+  padding-top: 8svh;
+}
+
+.law-story {
+  align-self: start;
+  padding-right: 5vw;
+}
+
+.law-knowledge {
+  padding-left: 5vw;
+}
+
+.law-axis {
+  position: relative;
+  width: 1px;
+  min-height: calc(100% - 7svh);
+  margin-top: 7svh;
+  background: var(--law-line);
+}
+
+.law-axis span {
+  position: sticky;
+  top: 48%;
+  display: block;
+  width: 9px;
+  height: 9px;
+  margin-left: -4px;
+  border: 1px solid var(--law-accent);
+  border-radius: 50%;
+  background: var(--law-bg);
+}
+
+.law-eyebrow {
+  margin-bottom: 24px;
+  color: var(--law-accent);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+
+.law-story h2,
+.law-knowledge h3,
+.law-document h4 {
+  font-family: "Noto Serif SC", serif;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.law-story h2 {
+  margin: 0;
+  font-size: 70px;
+  line-height: 1.08;
+}
+
+.law-story-lead {
+  max-width: 34em;
+  margin: 30px 0 0;
+  color: var(--law-muted);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.law-story blockquote {
+  position: relative;
+  max-width: 34em;
+  margin: 44px 0 0;
+  padding: 22px 0 22px 26px;
+  border-left: 2px solid var(--law-signal);
+  color: #c8cce8;
+  font-family: "Noto Serif SC", serif;
+  font-size: 17px;
+  line-height: 1.75;
+}
+
+.law-record {
+  width: min(430px, 100%);
+  margin: 50px 0 0;
+  border-top: 1px solid var(--law-line);
+}
+
+.law-record-row {
+  display: grid;
+  grid-template-columns: 94px 1fr;
+  gap: 22px;
+  margin: 0;
+  padding: 13px 0;
+  border-bottom: 1px solid rgba(126, 144, 255, 0.14);
+}
+
+.law-record-row dt,
+.law-record-row dd {
+  margin: 0;
+}
+
+.law-record-row dt {
+  color: var(--law-faint);
+  font-size: 10px;
+}
+
+.law-record-row dd {
+  color: #d8dbee;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.law-story-footnote {
+  max-width: 38em;
+  margin-top: 36px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(126, 144, 255, 0.14);
+  color: var(--law-faint);
+  font-size: 11px;
+  line-height: 1.65;
+}
+
+.law-knowledge-intro {
+  display: grid;
+  grid-template-columns: minmax(320px, 1.2fr) minmax(220px, 0.8fr);
+  gap: 38px;
+  align-items: end;
+}
+
+.law-knowledge h3 {
+  margin: 0;
+  font-size: 56px;
+  line-height: 1.1;
+}
+
+.law-knowledge-intro > p {
+  max-width: 34em;
+  margin: 0 0 4px;
+  color: var(--law-muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.law-treaty-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 44px;
+  border-top: 1px solid var(--law-line);
+  border-bottom: 1px solid var(--law-line);
+}
+
+.law-treaty-tabs button {
+  min-width: 0;
+  min-height: 92px;
+  padding: 15px 14px;
+  border: 0;
+  border-right: 1px solid rgba(126, 144, 255, 0.14);
+  color: var(--law-muted);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.law-treaty-tabs button:last-child {
+  border-right: 0;
+}
+
+.law-treaty-tabs button:hover,
+.law-treaty-tabs button.is-active {
+  color: var(--law-ink);
+  background: rgba(126, 144, 255, 0.1);
+}
+
+.law-treaty-tabs button:focus-visible,
+.law-footer button:focus-visible,
+.law-document a:focus-visible {
+  outline: 2px solid var(--law-signal);
+  outline-offset: 3px;
+}
+
+.law-treaty-tabs span {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--law-accent);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+.law-treaty-tabs strong {
+  display: block;
+  overflow-wrap: anywhere;
+  font-family: "Noto Serif SC", serif;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+.law-document {
+  position: relative;
+  min-height: 355px;
+  margin-top: 34px;
+  padding: 38px 42px 68px;
+  color: #242632;
+  background: var(--law-paper);
+}
+
+.law-document::before {
+  content: "";
+  position: absolute;
+  inset: 12px;
+  border: 1px solid rgba(36, 38, 50, 0.2);
+  pointer-events: none;
+}
+
+.law-document-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  color: #686b76;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.law-document h4 {
+  margin: 32px 0 16px;
+  color: #1f2028;
+  font-size: 44px;
+  line-height: 1.12;
+}
+
+.law-document > p {
+  max-width: 62ch;
+  margin: 0;
+  color: #555863;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.law-document-takeaway {
+  max-width: 60ch;
+  margin-top: 25px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(36, 38, 50, 0.22);
+  color: #30333f;
+  font-family: "Noto Serif SC", serif;
+  font-size: 17px;
+  line-height: 1.6;
+}
+
+.law-document a {
+  position: absolute;
+  right: 42px;
+  bottom: 28px;
+  color: #4f567e;
+  font-size: 10px;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(79, 86, 126, 0.4);
+}
+
+.law-principles {
+  margin-top: 48px;
+  border-top: 1px solid var(--law-line);
+}
+
+.law-principles-heading,
+.law-principle {
+  display: grid;
+  grid-template-columns: minmax(160px, 0.42fr) minmax(300px, 1fr);
+  gap: 34px;
+  padding: 18px 0;
+  border-bottom: 1px solid rgba(126, 144, 255, 0.14);
+}
+
+.law-principles-heading {
+  align-items: end;
+  color: var(--law-muted);
+  font-size: 11px;
+}
+
+.law-principles-heading strong {
+  justify-self: end;
+  color: var(--law-accent);
+  font-family: "Noto Serif SC", serif;
+  font-size: 34px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.law-principle > span {
+  color: var(--law-signal);
+  font-size: 10px;
+}
+
+.law-principle p {
+  max-width: 58ch;
+  margin: 0;
+  color: var(--law-muted);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.law-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 30px;
+  margin-top: 52px;
+  padding-top: 22px;
+  border-top: 1px solid var(--law-line);
+}
+
+.law-footer span {
+  color: var(--law-accent);
+  font-size: 10px;
+}
+
+.law-footer p {
+  max-width: 48ch;
+  margin: 8px 0 0;
+  color: var(--law-faint);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.law-footer button {
+  min-height: 46px;
+  padding: 0 24px;
+  border: 1px solid rgba(126, 144, 255, 0.5);
+  border-radius: 0;
+  color: var(--law-ink);
+  background: rgba(126, 144, 255, 0.12);
+  font-family: "Noto Sans SC", sans-serif;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.law-footer button:hover {
+  border-color: var(--law-signal);
+  background: rgba(55, 215, 174, 0.12);
+}
+
+@media (max-width: 1180px) {
+  .law-section {
+    padding-right: 28px;
+    padding-left: 28px;
+  }
+
+  .law-layout {
+    grid-template-columns: minmax(260px, 0.74fr) 1px minmax(470px, 1.26fr);
+  }
+
+  .law-story {
+    padding-right: 32px;
+  }
+
+  .law-knowledge {
+    padding-left: 32px;
+  }
+
+  .law-story h2 {
+    font-size: 56px;
+  }
+
+  .law-knowledge h3 {
+    font-size: 46px;
+  }
+
+  .law-knowledge-intro {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+}
+
+@media (max-width: 820px) {
+  .law-section {
+    padding: 0 20px 76px;
+  }
+
+  .law-section::before,
+  .law-route-line,
+  .law-axis {
+    display: none;
+  }
+
+  .law-masthead {
+    min-height: 78px;
+  }
+
+  .law-masthead-label {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .law-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .law-story,
+  .law-knowledge {
+    padding: 58px 0 0;
+  }
+
+  .law-story h2 {
+    font-size: 52px;
+  }
+
+  .law-story-footnote {
+    margin-bottom: 48px;
+  }
+
+  .law-treaty-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .law-treaty-tabs button:nth-child(2) {
+    border-right: 0;
+  }
+
+  .law-treaty-tabs button:nth-child(-n + 2) {
+    border-bottom: 1px solid rgba(126, 144, 255, 0.14);
+  }
+
+  .law-document {
+    padding: 30px 24px 70px;
+  }
+
+  .law-document h4 {
+    font-size: 36px;
+  }
+
+  .law-document a {
+    right: 24px;
+  }
+
+  .law-principles-heading,
+  .law-principle {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .law-principles-heading strong {
+    justify-self: start;
+  }
+
+  .law-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .law-footer button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .law-story h2 {
+    font-size: 44px;
+  }
+
+  .law-knowledge h3 {
+    font-size: 38px;
+  }
+
+  .law-treaty-tabs strong {
+    font-size: 14px;
+  }
+}

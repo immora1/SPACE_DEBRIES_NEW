@@ -39,8 +39,8 @@ const RECOVERY_SATELLITE_SCALE = 1.62
 const RECOVERY_SHUTDOWN_DURATION = 2.6
 const PERSONAL_ORBIT_SPEED = 0.075
 const PERSONAL_SATELLITE_SIZE = 0.1
-const ORBITAL_DEBRIS_BASE_COUNT = 2000
-const ORBITAL_DEBRIS_MAX_COUNT = 2600
+const ORBITAL_DEBRIS_BASE_COUNT = 900
+const ORBITAL_DEBRIS_MAX_COUNT = 1400
 const ORBIT_VIEWBOX_SIZE = 1000
 const ORBIT_CENTER_X = 500
 const ORBIT_CENTER_Y = 500
@@ -69,7 +69,7 @@ const DEORBIT_TARGET_ALTITUDE_OFFSET = -0.2
 const DEORBIT_RADIUS_DROP = 2
 const DEORBIT_SPIRAL_DURATION = 24
 const DEORBIT_SPIRAL_TURNS = 2
-const DEORBIT_SPIRAL_TRACE_POINTS = 420
+const DEORBIT_SPIRAL_TRACE_POINTS = 260
 const DEORBIT_SATELLITE_SHRINK_FACTOR = 0.2
 const DEORBIT_CAMERA_FOCUS_BLEND = 0.78
 const DEORBIT_CAMERA_END_OFFSET = new THREE.Vector3(0.23, 0.12, 0.40)
@@ -79,7 +79,7 @@ const REENTRY_FALL_DURATION = 12
 const REENTRY_LINEAR_DROP = 0.06
 const REENTRY_END_RADIUS_FACTOR = 0.18
 const REENTRY_SATELLITE_SHRINK_FACTOR = 0.055
-const REENTRY_FLAME_PARTICLE_COUNT = 54
+const REENTRY_FLAME_PARTICLE_COUNT = 36
 const REENTRY_CAMERA_DAMPING = 4.2
 const REENTRY_CAMERA_ZOOM_DAMPING = 3.8
 const REENTRY_CAMERA_FOCUS_BLEND = 0.96
@@ -89,7 +89,7 @@ const REENTRY_CAMERA_END_FOCUS_DISTANCE = 0.18
 const BREAKUP_FALL_DURATION = 14
 const BREAKUP_LINEAR_DROP = 0.055
 const BREAKUP_END_RADIUS_FACTOR = 0.12
-const BREAKUP_PARTICLE_COUNT = 72
+const BREAKUP_PARTICLE_COUNT = 48
 const BREAKUP_CORE_SHRINK_FACTOR = 0.035
 const BREAKUP_CORE_CLUSTER_RADIUS_FACTOR = 0.075
 const BREAKUP_CORE_MIN_SIZE_FACTOR = 0.055
@@ -161,7 +161,7 @@ const RECOVERY_STEPS = [
     img: '/任务结束.png',
   },
   {
-    title: '关闭系统',
+    title: '关闭载荷',
     label: 'SYSTEM SHUTDOWN',
     body: '关闭相机、通信设备、科学载荷等主要功能。',
     img: '/关闭载荷.png',
@@ -169,25 +169,25 @@ const RECOVERY_STEPS = [
   {
     title: '钝化处理',
     label: 'PASSIVATION',
-    body: '释放剩余燃料、电池能量和高压气体，避免卫星在太空中爆炸。',
+    body: '释放剩余燃料、电池能量和高压气体，避免在轨爆炸。',
     img: '/钝化处理.png',
   },
   {
     title: '降轨减速',
     label: 'DEORBIT BURN',
-    body: '卫星通过发动机点火或自然阻力降低轨道，逐渐靠近地球大气层。',
+    body: '通过发动机点火或自然阻力降低轨道，逐渐靠近大气层。',
     img: '/降轨减速.png',
   },
   {
-    title: '再入大气层',
+    title: '再入烧蚀',
     label: 'ATMOSPHERIC REENTRY',
     body: '卫星高速进入大气层，受到空气阻力和高温影响。',
     img: '/再入烧蚀.png',
   },
   {
-    title: '燃烧解体 / 残骸坠落',
+    title: '残骸处置',
     label: 'BREAKUP / IMPACT',
-    body: '大部分结构在大气层中烧毁，少量耐高温残骸可能落入海洋或地面。',
+    body: '大部分结构在大气层中烧蚀，少量耐高温残骸可能落入海洋或地面。',
     img: '/残骸处置.png',
   },
 ]
@@ -210,7 +210,7 @@ const MATERIAL_PART_META = {
     label: '隔热 / 防护层',
     labelEn: 'THERMAL LAYER',
     accent: '#fbbf24',
-    fallback: '多层铝箔隔热毯',
+    fallback: '多层隔热膜',
     note: '包覆层在冷热循环和再入烧蚀中更容易剥离。',
   },
   propulsion: {
@@ -229,15 +229,21 @@ const MATERIAL_OPTIONS = {
   },
   solar: {
     silicon: { label: '硅基电池板', summary: '玻璃盖片碎裂成粉尘，地面存活率低。', risk: 'LOW' },
-    gaas: { label: '砷化镓电池板', summary: '电池层可能形成液态滴落，部分材料残留。', risk: 'MED' },
-    flexible: { label: '柔性薄膜电池板', summary: '在轨剥离更频繁，易形成微粒云。', risk: 'LOW' },
+    gaas: { label: '砷化镓电池板', summary: '电池层可能形成熔滴，部分材料残留。', risk: 'MED' },
+    flexible: { label: '柔性薄膜电池板', summary: '薄膜更易卷曲烧蚀，残留较少。', risk: 'LOW' },
   },
   insulation: {
-    mli: { label: '多层铝箔隔热毯', summary: '在轨微粒最多，再入后通常完全烧毁。', risk: 'HIGH' },
+    kapton: { label: '聚酰亚胺薄膜', summary: '轻薄隔热层通常会快速烧蚀。', risk: 'LOW' },
+    ceramic: { label: '陶瓷隔热片', summary: '耐高温，小块陶瓷可能继续下落。', risk: 'HIGH' },
+    aluminized: { label: '镀铝薄膜', summary: '面积大、质量小，多数在再入中烧蚀。', risk: 'MED' },
+    mli: { label: '多层隔热膜', summary: '常见热控碎片，通常完全烧蚀。', risk: 'LOW' },
     honeycomb: { label: '铝蜂窝板', summary: '碰撞后产生规则碎片，综合风险中等。', risk: 'MED' },
-    kevlar: { label: '凯夫拉防护层', summary: '耐高温，厚层残片可能继续下落。', risk: 'HIGH' },
+    kevlar: { label: '凯夫拉防护层', summary: '厚层残片可能继续下落。', risk: 'HIGH' },
   },
   propulsion: {
+    'aluminum-tank': { label: '铝合金贮箱', summary: '壁薄，大部分会在再入时燃烧。', risk: 'LOW' },
+    'titanium-tank': { label: '钛合金贮箱', summary: '高密度厚壁，完整落地概率最高。', risk: 'HIGH' },
+    'composite-tank': { label: '复合材料贮箱', summary: '外层燃烧后，金属内衬仍可能存活。', risk: 'MED' },
     ti_tank: { label: '钛合金球形贮箱', summary: '高密度厚壁，完整落地概率最高。', risk: 'HIGH' },
     al_tank: { label: '铝合金贮箱', summary: '壁薄，大部分会在再入时燃烧。', risk: 'LOW' },
     copv: { label: '复合缠绕贮箱', summary: '外层燃烧后，金属内衬仍可能存活。', risk: 'MED' },
@@ -343,15 +349,7 @@ const MATERIAL_RESIDUE_GROUPS = [
     label: '结构残件群',
     labelEn: 'STRUCTURE CLUSTER',
     itemIds: ['frame-selected', 'frame-fasteners'],
-    layout: {
-      labelX: 210,
-      labelY: -170,
-      elbowX: 126,
-      elbowY: -118,
-      targetX: 20,
-      targetY: -26,
-      align: 'left',
-    },
+    layout: { labelX: 210, labelY: -170, elbowX: 126, elbowY: -118, targetX: 20, targetY: -26, align: 'left' },
     summary: '主框架材料与连接残件会在解体瞬间同向脱落，数量多但轨迹更集中。',
     note: '承力结构 + 连接残件',
   },
@@ -360,15 +358,7 @@ const MATERIAL_RESIDUE_GROUPS = [
     label: '太阳翼碎片云',
     labelEn: 'SOLAR ARRAY CLOUD',
     itemIds: ['solar-selected', 'solar-glass', 'solar-circuit'],
-    layout: {
-      labelX: 240,
-      labelY: -50,
-      elbowX: 142,
-      elbowY: -34,
-      targetX: 24,
-      targetY: -8,
-      align: 'left',
-    },
+    layout: { labelX: 240, labelY: -50, elbowX: 142, elbowY: -34, targetX: 24, targetY: -8, align: 'left' },
     summary: '太阳翼外露面积最大，盖片、电路和电池层会形成薄片与微粒云。',
     note: '电池层 + 盖片 + 电路',
   },
@@ -377,15 +367,7 @@ const MATERIAL_RESIDUE_GROUPS = [
     label: '薄膜防护层',
     labelEn: 'THERMAL FILM LAYERS',
     itemIds: ['insulation-selected', 'insulation-foil'],
-    layout: {
-      labelX: 220,
-      labelY: 76,
-      elbowX: 126,
-      elbowY: 50,
-      targetX: -14,
-      targetY: 12,
-      align: 'left',
-    },
+    layout: { labelX: 220, labelY: 76, elbowX: 126, elbowY: 50, targetX: -14, targetY: 12, align: 'left' },
     summary: '隔热与防护材料更像片状云，通常先剥离，再被高温快速烧蚀。',
     note: '防护层 + 薄膜碎片',
   },
@@ -394,15 +376,7 @@ const MATERIAL_RESIDUE_GROUPS = [
     label: '推进高密度件',
     labelEn: 'PROPULSION DENSE PARTS',
     itemIds: ['propulsion-selected', 'propulsion-valve', 'propulsion-liner'],
-    layout: {
-      labelX: 204,
-      labelY: 198,
-      elbowX: 122,
-      elbowY: 136,
-      targetX: 8,
-      targetY: 30,
-      align: 'left',
-    },
+    layout: { labelX: 204, labelY: 198, elbowX: 122, elbowY: 136, targetX: 8, targetY: 30, align: 'left' },
     summary: '贮箱、阀体和内衬属于高密度压力部件，是最需要关注的一组。',
     note: '贮箱 + 阀体 + 内衬',
   },
@@ -592,7 +566,7 @@ const GUIDE_STYLES = `
     transform: translateY(-1px);
   }
 
-  .m4-guide-jump-icon {
+          <span className="m4-guide-jump-icon" aria-hidden="true">→</span>
     font-size: 12px;
     line-height: 1;
   }
@@ -1004,7 +978,7 @@ const GAME_STYLES = `
     transform: translateX(-2px);
   }
 
-  .m4-recovery-back-icon {
+          <span className="m4-recovery-back-icon" aria-hidden="true">→</span>
     font-size: 13px;
     line-height: 1;
   }
@@ -1473,8 +1447,6 @@ const GAME_STYLES = `
   }
 `
 
-useGLTF.preload(EARTH_GLB)
-useGLTF.preload(SATELLITE_GLB)
 
 function StartGuide({ opacity, progress, onJumpToRecovery }) {
   const guideOpacity = opacity * Math.max(0, 1 - progress * 2.8)
@@ -1485,21 +1457,21 @@ function StartGuide({ opacity, progress, onJumpToRecovery }) {
 
       <aside
         className="m4-start-guide m4-start-guide-left"
-        aria-label="任务编号"
+        aria-label="浠诲姟缂栧彿"
         style={{ opacity: guideOpacity }}
       >
         <p className="m4-guide-eyebrow">ORBITAL SURVIVAL / SIMULATION 04</p>
         <div className="m4-guide-number">
           <strong>01</strong>
-          <span>初始轨道</span>
+          <span>鍒濆杞ㄩ亾</span>
         </div>
         <div className="m4-guide-rule" />
-        <p className="m4-guide-kicker">LOW EARTH ORBIT · DEBRIS RESPONSE</p>
+        <p className="m4-guide-kicker">LOW EARTH ORBIT 路 DEBRIS RESPONSE</p>
       </aside>
 
       <aside
         className="m4-start-guide m4-start-guide-right"
-        aria-label="游戏介绍"
+        aria-label="娓告垙浠嬬粛"
         style={{ opacity: guideOpacity }}
       >
         <div className="m4-guide-icon" aria-hidden="true">
@@ -1509,17 +1481,17 @@ function StartGuide({ opacity, progress, onJumpToRecovery }) {
             <circle cx="33" cy="7" r="1.8" fill="currentColor" />
           </svg>
         </div>
-        <h2>在碎片风暴中生存</h2>
+        <h2>鍦ㄧ鐗囬鏆翠腑鐢熷瓨</h2>
         <p>接管一颗受损卫星，在十二个月的近地轨道任务中躲避碎片。每一次判断都会消耗燃料或护甲，也会改变最终结局。</p>
-        <div className="m4-guide-action">12 MONTHS · ONE SATELLITE</div>
+        <div className="m4-guide-action">12 MONTHS 路 ONE SATELLITE</div>
         <button
           type="button"
           className="m4-guide-jump-button"
           onClick={onJumpToRecovery}
-          aria-label="直接进入卫星回收页面"
+          aria-label="鐩存帴杩涘叆鍗槦鍥炴敹椤甸潰"
         >
-          <span className="m4-guide-jump-icon" aria-hidden="true">↘</span>
-          <span>进入回收演示</span>
+          <span className="m4-guide-jump-icon" aria-hidden="true">→</span>
+          <span>杩涘叆鍥炴敹婕旂ず</span>
         </button>
       </aside>
     </>
@@ -1549,7 +1521,7 @@ function GameStatusHud({ month, fuel, armor, missionProgress }) {
         color: 'rgba(232,232,248,0.48)',
         marginBottom: 16,
       }}>
-        ORBITAL SURVIVAL · MISSION STATUS
+        ORBITAL SURVIVAL 路 MISSION STATUS
       </div>
 
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
@@ -1569,7 +1541,7 @@ function GameStatusHud({ month, fuel, armor, missionProgress }) {
           letterSpacing: '0.12em',
           color: 'rgba(232,232,248,0.76)',
         }}>
-          月
+          鏈?
         </span>
       </div>
 
@@ -1580,8 +1552,8 @@ function GameStatusHud({ month, fuel, armor, missionProgress }) {
       }} />
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
-        <StatusMetric label="燃料" english="FUEL" value={fuel} />
-        <StatusMetric label="护甲" english="ARMOR" value={armor} />
+        <StatusMetric label="鐕冩枡" english="FUEL" value={fuel} />
+        <StatusMetric label="鎶ょ敳" english="ARMOR" value={armor} />
       </div>
 
       <div className="m4-mission-progress">
@@ -1682,7 +1654,7 @@ function StoryPanel({ month, story }) {
       transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
       aria-live="polite"
     >
-      <div className="m4-game-label">PARALLEL TIMELINE · MONTH {String(month).padStart(2, '0')}</div>
+      <div className="m4-game-label">PARALLEL TIMELINE 路 MONTH {String(month).padStart(2, '0')}</div>
       <p>{story}</p>
     </MotionAside>
   )
@@ -1695,23 +1667,23 @@ function RecoveryIntroPanel({ expanded, onBackToResult }) {
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
-      aria-label="太空卫星回收"
+      aria-label="澶┖鍗槦鍥炴敹"
     >
       <style>{GAME_STYLES}</style>
       <div className="m4-recovery-header">
-        <div className="m4-game-label">MODULE 05 · REENTRY</div>
+        <div className="m4-game-label">MODULE 05 路 REENTRY</div>
         <button
           type="button"
           className="m4-recovery-back-button"
           onClick={onBackToResult}
-          title="返回游戏结束板块"
-          aria-label="返回游戏结束板块"
+          title="杩斿洖娓告垙缁撴潫鏉垮潡"
+          aria-label="杩斿洖娓告垙缁撴潫鏉垮潡"
         >
-          <span className="m4-recovery-back-icon" aria-hidden="true">←</span>
-          <span>返回结算</span>
+          <span className="m4-recovery-back-icon" aria-hidden="true">→</span>
+          <span>杩斿洖缁撶畻</span>
         </button>
       </div>
-      <h2>太空卫星回收</h2>
+      <h2>澶┖鍗槦鍥炴敹</h2>
       {expanded && (
         <MotionDiv
           initial={{ opacity: 0, y: 10 }}
@@ -1720,8 +1692,8 @@ function RecoveryIntroPanel({ expanded, onBackToResult }) {
         >
           <div className="m4-recovery-rule" />
           <p>
-            每一颗卫星都有生命尽头。任务结束后，它们面临两种命运：受控离轨，或等待轨道衰减。
-            无论哪种，再入大气层的过程都在地球上留下了痕迹。
+            姣忎竴棰楀崼鏄熼兘鏈夌敓鍛藉敖澶淬€備换鍔＄粨鏉熷悗锛屽畠浠潰涓翠袱绉嶅懡杩愶細鍙楁帶绂昏建锛屾垨绛夊緟杞ㄩ亾琛板噺銆?
+            鏃犺鍝锛屽啀鍏ュぇ姘斿眰鐨勮繃绋嬮兘鍦ㄥ湴鐞冧笂鐣欎笅浜嗙棔杩广€?
           </p>
         </MotionDiv>
       )}
@@ -1752,7 +1724,14 @@ function RecoveryStepsPanel({ activeStepIndex, onActiveStepChange }) {
   }, [onActiveStepChange])
 
   const handleWheel = useCallback((event) => {
-    event.stopPropagation()
+    const stepsEl = stepsRef.current
+    if (!stepsEl) return
+
+    const atTop = stepsEl.scrollTop <= 1
+    const atBottom = stepsEl.scrollTop + stepsEl.clientHeight >= stepsEl.scrollHeight - 1
+    const canScroll = event.deltaY < 0 ? !atTop : !atBottom
+
+    if (canScroll) event.stopPropagation()
   }, [])
 
   const handleStepSelect = useCallback((index) => {
@@ -1786,7 +1765,7 @@ function RecoveryStepsPanel({ activeStepIndex, onActiveStepChange }) {
       initial={{ opacity: 0, x: 28 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.12 }}
-      aria-label="卫星回收步骤展示"
+      aria-label="鍗槦鍥炴敹姝ラ灞曠ず"
       onScroll={updateActiveStep}
       onWheel={handleWheel}
     >
@@ -1840,10 +1819,10 @@ function GamePanel({
             className="m4-game-recovery-jump"
             onClick={onJumpToRecovery}
             disabled={loading}
-            aria-label="直接进入卫星回收页面"
+            aria-label="鐩存帴杩涘叆鍗槦鍥炴敹椤甸潰"
           >
-            <span aria-hidden="true">↘</span>
-            <span>回收</span>
+            <span aria-hidden="true">→</span>
+            <span>鍥炴敹</span>
           </button>
         </div>
       </div>
@@ -1857,8 +1836,8 @@ function GamePanel({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <div className="m4-game-label">GROUND CONTROL · ANALYZING</div>
-            <h2>正在回传任务日志</h2>
+            <div className="m4-game-label">GROUND CONTROL 路 ANALYZING</div>
+            <h2>姝ｅ湪鍥炰紶浠诲姟鏃ュ織</h2>
             <p>地面站正在比对轨道参数与历史案例。</p>
           </MotionDiv>
         )}
@@ -1872,7 +1851,7 @@ function GamePanel({
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="m4-game-label">{THREAT_LABELS[event.type] || 'ORBITAL THREAT'} · THREAT DETECTED</div>
+            <div className="m4-game-label">{THREAT_LABELS[event.type] || 'ORBITAL THREAT'} 路 THREAT DETECTED</div>
             <h2>{event.title}</h2>
             <p>{event.description}</p>
             <div className="m4-game-reference">{event.realRef}</div>
@@ -1903,7 +1882,7 @@ function GamePanel({
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="m4-game-label">MISSION LOG · RESPONSE RECORDED</div>
+            <div className="m4-game-label">MISSION LOG 路 RESPONSE RECORDED</div>
             <h2>{feedback.title}</h2>
             <div className="m4-feedback-note" style={{ '--feedback-color': feedback.color }}>
               <p>{feedback.aiLog || feedback.techNote}</p>
@@ -2079,7 +2058,7 @@ function OrbitControl({ progress, disabled, onProgressChange, onDragEnd }) {
 
       {!disabled && (
         <div className="m4-orbit-static-hint">
-          <span>按住节点向右拖动</span>
+          <span>鎸変綇鑺傜偣鍚戝彸鎷栧姩</span>
           <small>DRAG TO START</small>
         </div>
       )}
@@ -2852,8 +2831,8 @@ function getMaterialResidueCards(materials) {
       hasSelected: items.some((item) => item.source === 'selected'),
       itemCount: items.length,
       items,
-      countLabel: `${items.length}类`,
-      material: `${items.length}类 · ${primaryItem?.material || '残余材料'}`,
+      countLabel: String(items.length) + '类',
+      material: String(items.length) + '类 / ' + (primaryItem?.material || '残余材料'),
       materialDetail: primaryItem?.material || '残余材料',
       number: String(index + 1).padStart(2, '0'),
       risk: getHighestMaterialRisk(items),
@@ -2930,13 +2909,13 @@ function BreakupMaterialBoard({ recoveryStep, materials, anchor }) {
                 animationDelay: `${index * 70}ms`,
               }}
             >
-              <div className="m4-material-callout-meta">{card.labelEn} · {card.number} / {card.risk}</div>
+              <div className="m4-material-callout-meta">{card.labelEn} 路 {card.number} / {card.risk}</div>
               <h4>
                 <strong>{card.countLabel}</strong>
                 <span>{card.label}</span>
               </h4>
               <p>{card.summary}</p>
-              <div className="m4-material-card-note">{card.materialDetail} · {card.note}</div>
+              <div className="m4-material-card-note">{card.materialDetail} 路 {card.note}</div>
             </article>
           ))}
         </div>
@@ -3952,7 +3931,7 @@ export default function M4New({ onComplete = () => {} }) {
   const [materialBoardAnchor, setMaterialBoardAnchor] = useState(null)
   const initialStory = storyChapters?.m3
     || storyChapters?.opening
-    || `${satellite?.name || '卫星'}进入近地轨道。监测系统开始记录每一次微小偏移。`
+    || ((satellite?.name || '卫星') + '进入近地轨道。监测系统开始记录每一次微小偏移。')
   const [storyThread, setStoryThread] = useState([initialStory])
   const currentEvent = events[round] || null
   const currentMonth = GAME_MONTHS[round] || GAME_MONTHS[GAME_MONTHS.length - 1]
@@ -3972,6 +3951,9 @@ export default function M4New({ onComplete = () => {} }) {
                 ? RECOVERY_ANIMATION_STEP.BREAKUP
                 : RECOVERY_ANIMATION_STEP.SYSTEM_SHUTDOWN
     : null
+  const recoveryComplete = phase === GAME_PHASE.RECOVERY
+    && recoveryStepsVisible
+    && activeRecoveryStepIndex >= RECOVERY_STEPS.length - 1
 
   useEffect(() => {
     if (!gameStarted) {
@@ -3979,9 +3961,9 @@ export default function M4New({ onComplete = () => {} }) {
       return
     }
 
-    setScrollLocked(true)
+    setScrollLocked(!recoveryComplete)
     return () => setScrollLocked(false)
-  }, [gameStarted, phase, setScrollLocked])
+  }, [gameStarted, recoveryComplete, setScrollLocked])
 
   useEffect(() => {
     if (!gameStarted) return
@@ -4030,7 +4012,7 @@ export default function M4New({ onComplete = () => {} }) {
         satFate: isSuccess
           ? '卫星完成任务并保留了离轨能力。'
           : '卫星失去控制，成为新的轨道碎片来源。',
-        debrisDescription: `${material}碎片，来源于受损卫星，残留于近地轨道。`,
+        debrisDescription: material + '碎片，来源于受损卫星，残留于近地轨道。',
       }
     }
 
@@ -4101,8 +4083,8 @@ export default function M4New({ onComplete = () => {} }) {
       aiResult = {
         feedback: option.techNote,
         storyUpdate: option.outcome === 'correct'
-          ? `${satellite?.name || '卫星'}完成机动，轨道数据重新稳定。平行时空中的关键节点暂时没有偏离。`
-          : `${satellite?.name || '卫星'}的遥测信号出现新的波动。平行时空中的一个细节随之改变。`,
+          ? ((satellite?.name || '卫星') + '完成机动，轨道数据重新稳定。平行时空中的关键节点暂时没有偏离。')
+          : ((satellite?.name || '卫星') + '的遥测信号出现新的波动。平行时空中的一个细节随之改变。'),
       }
     }
 
@@ -4194,8 +4176,8 @@ export default function M4New({ onComplete = () => {} }) {
           '再入过程中大部分结构会烧蚀解体，少量耐高温残骸可能继续下落。',
         ],
         satFate: '演示模式已跳过十二个月任务，直接进入退役卫星回收流程。',
-        storyEnding: `${satellite?.name || '卫星'}结束任务演示，地面站切换到回收与再入处置视角。`,
-        debrisDescription: `${material}残骸演示样本，用于展示再入烧蚀后的碎片命运。`,
+        storyEnding: (satellite?.name || '卫星') + '结束任务演示，地面站切换到回收与再入处置视角。',
+        debrisDescription: material + '残骸演示样本，用于展示再入烧蚀后的碎片命运。',
       })
     }
 
@@ -4270,8 +4252,9 @@ export default function M4New({ onComplete = () => {} }) {
 
       <Canvas
         camera={{ position: [0, 1.4, 3.2], fov: DEFAULT_CAMERA_FOV }}
+        dpr={[0.75, 1.25]}
         style={{ position: 'relative', zIndex: 1, width: '100%', height: '100%' }}
-        gl={{ alpha: true, antialias: true }}
+        gl={{ alpha: true, antialias: false, powerPreference: 'high-performance' }}
       >
         <ambientLight intensity={2.2} />
         <directionalLight position={[4, 3, 3]} intensity={4.0} color="#c8d8f0" />

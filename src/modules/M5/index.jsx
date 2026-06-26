@@ -157,7 +157,7 @@ function ReentryVis({ material }) {
         t,
       }
     })
-  }, [])
+  }, [CP_X, CP_Y, ENT_X, ENT_Y, IMP_X, IMP_Y])
 
   const INK      = '#6b9fff'
   const INK_DIM  = '#1a2a52'

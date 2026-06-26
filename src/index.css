@@ -8,7 +8,7 @@
   --font-lexend: "Lexend", sans-serif;
   --font-zh:     "PingFang SC", "Microsoft YaHei", sans-serif;
 
-  /* ── Deep Space Blue-Purple Palette ── */
+  /* 鈹€鈹€ Deep Space Blue-Purple Palette 鈹€鈹€ */
   --color-void:    #04040f;
   --color-surface: #08081a;
   --color-dim:     #0d0d20;
@@ -18,12 +18,12 @@
   --color-paper:   #e8e8f8;
   --color-paper2:  rgba(232,232,248,0.72);
 
-  /* ── Brand Accent: Blue-Purple ── */
+  /* 鈹€鈹€ Brand Accent: Blue-Purple 鈹€鈹€ */
   --color-accent:  #6b7fff;
   --color-accent2: #8b6cf8;
   --color-accent3: #4e5df0;
 
-  /* ── Semantic / Legacy ── */
+  /* 鈹€鈹€ Semantic / Legacy 鈹€鈹€ */
   --color-sci:     #4b82f6;
   --color-inter:   #6b7fff;
   --color-ai:      #8b5cf6;
@@ -31,7 +31,7 @@
   --color-success: #34d399;
   --color-danger:  #f87171;
 
-  /* ── Old accent kept for compat ── */
+  /* 鈹€鈹€ Old accent kept for compat 鈹€鈹€ */
   --color-story:   #6b7fff;
   --color-link:    #6b7fff;
 }
@@ -44,14 +44,14 @@
   body {
     margin: 0;
     background-color: #04040f;
-    /* Mesh gradient – deep indigo/blue/purple blobs, fixed so it tiles behind all modules */
+    /* Mesh gradient 鈥?deep indigo/blue/purple blobs, fixed so it tiles behind all modules */
     background-image:
       radial-gradient(ellipse at 18% 18%, rgba(55, 65, 195, 0.22) 0px, transparent 52%),
       radial-gradient(ellipse at 82% 12%, rgba(107, 70, 220, 0.18) 0px, transparent 48%),
       radial-gradient(ellipse at 60% 55%, rgba(34, 90, 200, 0.14) 0px, transparent 48%),
       radial-gradient(ellipse at 22% 78%, rgba(80, 50, 190, 0.16) 0px, transparent 44%),
       radial-gradient(ellipse at 88% 82%, rgba(55, 100, 220, 0.12) 0px, transparent 44%);
-    background-attachment: fixed;
+    background-attachment: scroll;
     color: #e8e8f8;
     font-family: 'Noto Sans SC', sans-serif;
     font-size: 14px;
@@ -141,13 +141,13 @@
   .textarea-box::placeholder { color: #2a2a4a; }
   .textarea-box:focus { border-color: rgba(107, 127, 255, 0.6); }
 
-  /* ── Utility: gradient divider ── */
+  /* 鈹€鈹€ Utility: gradient divider 鈹€鈹€ */
   .gradient-line {
     height: 1px;
     background: linear-gradient(to right, transparent, rgba(107, 127, 255, 0.35), transparent);
   }
 
-  /* ── Glass card ── */
+  /* 鈹€鈹€ Glass card 鈹€鈹€ */
   .glass-card {
     background: rgba(8, 8, 26, 0.72);
     border: 1px solid #1a1a35;
@@ -160,7 +160,7 @@
     box-shadow: 0 0 28px rgba(107, 127, 255, 0.07), inset 0 0 0 0 transparent;
   }
 
-  /* ── Section label (top-of-section mono tag) ── */
+  /* 鈹€鈹€ Section label (top-of-section mono tag) 鈹€鈹€ */
   .section-tag {
     font-family: 'Space Mono', monospace;
     font-size: 9px;
@@ -172,14 +172,14 @@
     margin-bottom: 24px;
   }
 
-  /* ── Glow accent text ── */
+  /* 鈹€鈹€ Glow accent text 鈹€鈹€ */
   .text-accent-glow {
     color: #6b7fff;
     text-shadow: 0 0 20px rgba(107, 127, 255, 0.5);
   }
 }
 
-/* ── Animations ── */
+/* 鈹€鈹€ Animations 鈹€鈹€ */
 @keyframes ping {
   0%, 100% { opacity: .25; transform: scale(1); }
   50%       { opacity: .7;  transform: scale(1.1); }

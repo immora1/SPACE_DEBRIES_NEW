@@ -1,8 +1,6 @@
-﻿import React, { useState, useCallback, useEffect, useLayoutEffect, useRef, useMemo, Suspense } from 'react'
+import React, { useState, useCallback, useEffect, useLayoutEffect, useRef, useMemo, Suspense } from 'react'
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion'
-import { useGSAP } from '@gsap/react'
 import gsap from 'gsap'
-import useAppStore from '../../store/useAppStore'
 import DebrisEarth from './DebrisEarth'
 import DebrisEarthCountries from './DebrisEarthCountries'
 
@@ -144,8 +142,9 @@ function SceneHero({ normX, normY }) {
   const ghostX = useTransform(normX, [-1, 1], ['-50px', '50px'])
   const ghostY = useTransform(normY, [-1, 1], ['-28px', '28px'])
 
-  useGSAP(() => {
-    const q  = gsap.utils.selector(containerRef)
+  useLayoutEffect(() => {
+    const ctx = gsap.context(() => {
+      const q  = gsap.utils.selector(containerRef)
     const tl = gsap.timeline({ defaults: { ease: 'power3.out' } })
 
     // 顶部标签：从上方 16px 滑入
@@ -199,7 +198,9 @@ function SceneHero({ normX, normY }) {
       opacity: 0, y: 8, stagger: 0.09, duration: 0.72,
     }, 0.56)
 
-  }, { scope: containerRef })
+    }, containerRef)
+    return () => ctx.revert()
+  }, [])
 
   return (
     <div ref={containerRef} style={{ position: 'absolute', inset: 0 }}>
@@ -873,7 +874,7 @@ function SceneCountries({ hovIdxRef }) {
       cPctRef.current.textContent = idx < 0
         ? 'OBJECTS IN ORBIT'
         : `${(RING_SEGS[idx].pct * 100).toFixed(1)}% OF TOTAL`
-  }, [])
+  }, [hovIdxRef])
 
   return (
     <div style={{ position: 'absolute', inset: 0 }}>
@@ -1459,10 +1460,10 @@ function ChapterEndTransition({ onComplete }) {
   const phaseRef     = useRef(0)
   const animatingRef = useRef(false)
 
-  const PHASES = [
+  const PHASES = useMemo(() => ([
     { tag: '01 · SPACE DEBRIS · 本章总结', tagColor: '#484878',              title1: '太空垃圾' },
     { tag: '02 · ORBIT · 进入下一章',      tagColor: 'rgba(107,127,255,0.7)', title1: '轨道'    },
-  ]
+  ]), [])
 
   // 填充 GSAP 控制的大字 DOM
   function populateLine1(el, text, startHidden) {
@@ -1508,7 +1509,7 @@ function ChapterEndTransition({ onComplete }) {
   // 初始挂载：填充第一帧大字
   useEffect(() => {
     if (line1Ref.current) populateLine1(line1Ref.current, PHASES[0].title1, false)
-  }, [])
+  }, [PHASES])
 
   // 相位切换：逐字向上替换动画（仅大字，其余元素不动）
   useEffect(() => {
@@ -1540,7 +1541,7 @@ function ChapterEndTransition({ onComplete }) {
 
     phaseRef.current = phase
     return () => exitAnim?.kill()
-  }, [phase])
+  }, [PHASES, phase])
 
   const cur = PHASES[phase]
 
@@ -1682,10 +1683,6 @@ function ChapterEndTransition({ onComplete }) {
 
 /* ── Main M1 ── */
 export default function M1({ onComplete }) {
-  const satellite       = useAppStore(s => s.satellite)
-  const user            = useAppStore(s => s.user)
-  const storyOutline    = useAppStore(s => s.storyOutline)
-
   const containerRef         = useRef()
   const sideEarthWrapRef     = useRef()
   const countryEarthWrapRef  = useRef()
@@ -1707,7 +1704,7 @@ export default function M1({ onComplete }) {
     const h = e => { rawX.set(e.clientX); rawY.set(e.clientY) }
     window.addEventListener('mousemove', h)
     return () => window.removeEventListener('mousemove', h)
-  }, [])
+  }, [rawX, rawY])
 
   // 在首次绘制前同步设置过渡层初始 opacity，防止 React 重渲染覆盖 DOM 修改
   useLayoutEffect(() => {

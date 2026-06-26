@@ -80,7 +80,6 @@ function Body({ active }) {
 // ── Insulation outer shell — glows amber when active
 function Insulation({ active }) {
   const ref = useRef()
-  const tc  = useRef(new THREE.Color())
   useFrame(() => {
     if (!ref.current?.material) return
     const mat = ref.current.material

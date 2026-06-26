@@ -1,56 +1,69 @@
-import { forwardRef, useEffect } from 'react'
-import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion'
-
-const EASE = [0.16, 1, 0.3, 1]
-const MotionDiv = motion.div
+import { forwardRef, useEffect, useRef } from 'react'
 
 function MouseReactiveVeil() {
-  const pointerX = useMotionValue(0)
-  const pointerY = useMotionValue(0)
-  const smoothX = useSpring(pointerX, { stiffness: 52, damping: 24, mass: 0.8 })
-  const smoothY = useSpring(pointerY, { stiffness: 52, damping: 24, mass: 0.8 })
-
-  const gridX = useTransform(smoothX, (v) => `${v * 22}px`)
-  const gridY = useTransform(smoothY, (v) => `${v * 16}px`)
+  const veilRef = useRef(null)
+  const frameRef = useRef(0)
+  const targetRef = useRef({ x: 0, y: 0 })
+  const currentRef = useRef({ x: 0, y: 0 })
 
   useEffect(() => {
     const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')
-    if (reduceMotion?.matches) return undefined
+    const coarsePointer = window.matchMedia?.('(pointer: coarse)')
+    if (reduceMotion?.matches || coarsePointer?.matches) return undefined
+
+    const update = () => {
+      const current = currentRef.current
+      const target = targetRef.current
+      current.x += (target.x - current.x) * 0.12
+      current.y += (target.y - current.y) * 0.12
+      veilRef.current?.style.setProperty('--grid-x', `${current.x * 22}px`)
+      veilRef.current?.style.setProperty('--grid-y', `${current.y * 16}px`)
+
+      if (Math.abs(target.x - current.x) > 0.002 || Math.abs(target.y - current.y) > 0.002) {
+        frameRef.current = requestAnimationFrame(update)
+      } else {
+        frameRef.current = 0
+      }
+    }
 
     const handlePointerMove = (event) => {
       const width = window.innerWidth || 1
       const height = window.innerHeight || 1
-      pointerX.set((event.clientX / width - 0.5) * 2)
-      pointerY.set((event.clientY / height - 0.5) * 2)
+      targetRef.current = {
+        x: (event.clientX / width - 0.5) * 2,
+        y: (event.clientY / height - 0.5) * 2,
+      }
+      if (!frameRef.current) frameRef.current = requestAnimationFrame(update)
     }
 
     window.addEventListener('pointermove', handlePointerMove, { passive: true })
-    return () => window.removeEventListener('pointermove', handlePointerMove)
-  }, [pointerX, pointerY])
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove)
+      if (frameRef.current) cancelAnimationFrame(frameRef.current)
+    }
+  }, [])
 
   return (
-    <>
-      <MotionDiv
-        aria-hidden="true"
-        style={{
-          position: 'absolute',
-          inset: 0,
-          zIndex: 0,
-          pointerEvents: 'none',
-          opacity: 0.1,
-          mixBlendMode: 'screen',
-          backgroundImage: [
-            'linear-gradient(90deg, rgba(107,127,255,0.10) 1px, transparent 1px)',
-            'linear-gradient(0deg, rgba(107,127,255,0.06) 1px, transparent 1px)',
-          ].join(','),
-          backgroundSize: '112px 112px',
-          backgroundPositionX: gridX,
-          backgroundPositionY: gridY,
-          WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, #000 18%, #000 82%, transparent 100%)',
-          maskImage: 'linear-gradient(to bottom, transparent 0%, #000 18%, #000 82%, transparent 100%)',
-        }}
-      />
-    </>
+    <div
+      ref={veilRef}
+      aria-hidden="true"
+      style={{
+        position: 'absolute',
+        inset: 0,
+        zIndex: 0,
+        pointerEvents: 'none',
+        opacity: 0.1,
+        mixBlendMode: 'screen',
+        backgroundImage: [
+          'linear-gradient(90deg, rgba(107,127,255,0.10) 1px, transparent 1px)',
+          'linear-gradient(0deg, rgba(107,127,255,0.06) 1px, transparent 1px)',
+        ].join(','),
+        backgroundSize: '112px 112px',
+        backgroundPosition: 'var(--grid-x, 0px) var(--grid-y, 0px)',
+        WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, #000 18%, #000 82%, transparent 100%)',
+        maskImage: 'linear-gradient(to bottom, transparent 0%, #000 18%, #000 82%, transparent 100%)',
+      }}
+    />
   )
 }
 
@@ -97,24 +110,24 @@ function ModuleBoundaryDivider() {
   )
 }
 
-/* ── ModuleWrapper ──────────────────────────────────────────────────────── */
 const ModuleWrapper = forwardRef(function ModuleWrapper(
-  { isUnlocked, connector, children, noAnimation, archDivider, boundaryDivider, mouseReactive, moduleId },
-  ref
+  { isUnlocked, connector, children, archDivider, boundaryDivider, mouseReactive, moduleId },
+  ref,
 ) {
-  // 改动：即使未解锁也渲染，但用 visibility:hidden 隐藏未解锁的模块
-  // 这样保持在 DOM 流中，允许导航正确计算位置
   const isVisible = isUnlocked
 
-  // archDivider 可以是 string（颜色）或 { color, flip }
   return (
-    <div ref={ref} data-module={moduleId} style={{ visibility: isVisible ? 'visible' : 'hidden', pointerEvents: isVisible ? 'auto' : 'none' }}>
-      <MotionDiv
-        initial={{ opacity: 0, y: noAnimation ? 0 : 40 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.72, ease: EASE }}
-        style={{ position: 'relative', isolation: 'isolate' }}
-      >
+    <div
+      ref={ref}
+      data-module={moduleId}
+      style={{
+        visibility: isVisible ? 'visible' : 'hidden',
+        pointerEvents: isVisible ? 'auto' : 'none',
+        contentVisibility: isVisible ? 'auto' : undefined,
+        containIntrinsicSize: '900px',
+      }}
+    >
+      <div style={{ position: 'relative', isolation: 'isolate' }}>
         {archDivider && <ModuleLineDivider />}
         {boundaryDivider && <ModuleBoundaryDivider />}
 
@@ -160,7 +173,7 @@ const ModuleWrapper = forwardRef(function ModuleWrapper(
         </div>
 
         {mouseReactive && <MouseReactiveVeil />}
-      </MotionDiv>
+      </div>
     </div>
   )
 })

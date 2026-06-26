@@ -1,16 +1,22 @@
+﻿import { memo, useMemo } from 'react'
+
 const STAGES = [
-  { id: 'm1', label: '太空垃圾是什么' },
+  { id: 'm1', label: '太空垃圾是什么？' },
   { id: 'm3', label: '重大历史事件' },
-  { id: 'm2', label: '轨道是什么' },
+  { id: 'm2', label: '轨道是什么？' },
   { id: 'm4', label: '卫星生存任务游戏' },
-  { id: 'm5', label: '太空垃圾落地球' },
+  { id: 'law', label: '法律与国际条约' },
+  { id: 'm5', label: '太空垃圾落地理' },
   { id: 'm6', label: '怎么清理太空垃圾' },
   { id: 'm7', label: '科普视频' },
 ]
 
-export default function StageNav({ completedModules, availableModules = [], onStageClick }) {
+function StageNav({ completedModules, availableModules = [], onStageClick }) {
+  const completedSet = useMemo(() => new Set(completedModules), [completedModules])
+  const availableSet = useMemo(() => new Set(availableModules), [availableModules])
+
   function handleStageClick(id) {
-    if (!availableModules.includes(id)) return
+    if (!availableSet.has(id)) return
     onStageClick?.(id)
   }
 
@@ -26,7 +32,6 @@ export default function StageNav({ completedModules, availableModules = [], onSt
       gap: 14,
       pointerEvents: 'auto',
     }}>
-      {/* 横向导航标签 */}
       <div style={{
         fontFamily: 'Lexend, sans-serif',
         fontSize: 8,
@@ -37,7 +42,6 @@ export default function StageNav({ completedModules, availableModules = [], onSt
         STAGE NAVIGATION
       </div>
 
-      {/* 横向导航点列表 */}
       <div style={{
         display: 'flex',
         flexDirection: 'row',
@@ -45,8 +49,8 @@ export default function StageNav({ completedModules, availableModules = [], onSt
         gap: 12,
       }}>
         {STAGES.map((stage) => {
-          const isCompleted = completedModules.includes(stage.id)
-          const isAvailable = availableModules.includes(stage.id)
+          const isCompleted = completedSet.has(stage.id)
+          const isAvailable = availableSet.has(stage.id)
 
           return (
             <button
@@ -73,7 +77,7 @@ export default function StageNav({ completedModules, availableModules = [], onSt
                     : 'rgba(255,255,255,0.18)',
                 cursor: isAvailable ? 'pointer' : 'not-allowed',
                 opacity: isAvailable ? 1 : 0.48,
-                transition: 'all 0.3s',
+                transition: 'transform 0.2s ease, border-color 0.2s ease, opacity 0.2s ease',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -109,3 +113,5 @@ export default function StageNav({ completedModules, availableModules = [], onSt
     </div>
   )
 }
+
+export default memo(StageNav)

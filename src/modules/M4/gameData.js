@@ -1,353 +1,147 @@
-// M4 威胁事件数据、选项模板、权重配置
-// 每次游戏随机抽取 5-8 个事件，权重受 M3 clickedHistoryEvents 影响
-
 export const THREAT_TYPES = {
   DEBRIS_APPROACH: 'debris_approach',
-  SOLAR_STORM:     'solar_storm',
-  ORBITAL_DECAY:   'orbital_decay',
-  CASCADE_FRAGMENT:'cascade_fragment',
-  FUEL_LEAK:       'fuel_leak',
+  SOLAR_STORM: 'solar_storm',
+  ORBITAL_DECAY: 'orbital_decay',
+  CASCADE_FRAGMENT: 'cascade_fragment',
+  FUEL_LEAK: 'fuel_leak',
 }
 
-// 每种威胁的基础权重（M3事件可提升对应权重）
 export const BASE_WEIGHTS = {
-  [THREAT_TYPES.DEBRIS_APPROACH]:  35,
-  [THREAT_TYPES.SOLAR_STORM]:      15,
-  [THREAT_TYPES.ORBITAL_DECAY]:    20,
+  [THREAT_TYPES.DEBRIS_APPROACH]: 35,
+  [THREAT_TYPES.SOLAR_STORM]: 15,
+  [THREAT_TYPES.ORBITAL_DECAY]: 20,
   [THREAT_TYPES.CASCADE_FRAGMENT]: 20,
-  [THREAT_TYPES.FUEL_LEAK]:        10,
+  [THREAT_TYPES.FUEL_LEAK]: 10,
 }
 
-// M3 历史事件对应的权重加成
 export const EVENT_WEIGHT_BOOST = {
-  '铱星-33碰撞':    { [THREAT_TYPES.CASCADE_FRAGMENT]: +20, [THREAT_TYPES.DEBRIS_APPROACH]: +15 },
-  '风云一号反卫测试': { [THREAT_TYPES.CASCADE_FRAGMENT]: +25, [THREAT_TYPES.DEBRIS_APPROACH]: +10 },
-  'Cerise碰撞':     { [THREAT_TYPES.DEBRIS_APPROACH]:   +20 },
-  '2003万圣节风暴':  { [THREAT_TYPES.SOLAR_STORM]:      +30 },
+  '铱星-33 / Cosmos-2251 碰撞': { [THREAT_TYPES.CASCADE_FRAGMENT]: 20, [THREAT_TYPES.DEBRIS_APPROACH]: 15 },
+  '风云一号 C 反卫测试': { [THREAT_TYPES.CASCADE_FRAGMENT]: 25, [THREAT_TYPES.DEBRIS_APPROACH]: 10 },
+  'Cerise 首次碎片碰撞': { [THREAT_TYPES.DEBRIS_APPROACH]: 20 },
+  '2003 太阳风暴': { [THREAT_TYPES.SOLAR_STORM]: 30 },
 }
+
+const option = (id, label, subtext, outcome, armorDelta, fuelDelta, missionDelta, techNote) => ({
+  id,
+  label,
+  subtext,
+  outcome,
+  armorDelta,
+  fuelDelta,
+  missionDelta,
+  techNote,
+})
 
 export const THREAT_EVENTS = [
   {
     id: 'debris_close',
     type: THREAT_TYPES.DEBRIS_APPROACH,
-    title: '碎片接近警报',
-    description: '轨道预警系统检测到一枚直径约15cm的碎片，源自2009年铱星-33碰撞事件，接近概率1:1000，碰撞窗口72小时。',
-    realRef: '铱星-33/Cosmos-2251碰撞，2009年，产生超过2000块可追踪碎片。',
+    title: '近距离碎片交会',
+    description: '一块可追踪碎片将在数小时后穿过安全距离，碰撞概率超过任务阈值。',
+    realRef: '参考：铱星-33 与 Cosmos-2251 碰撞显示，低轨道高速交会会迅速制造碎片云。',
     options: [
-      {
-        id: 'maneuver_up',
-        label: '轨道抬升机动',
-        subtext: '消耗燃料 12%，规避概率 92%',
-        armorDelta: 0, fuelDelta: -12, missionDelta: +5,
-        outcome: 'correct',
-        techNote: '标准规避机动，NASA推荐碰撞概率>1:1000时执行。',
-      },
-      {
-        id: 'maneuver_down',
-        label: '轨道降低机动',
-        subtext: '消耗燃料 8%，进入更密集碎片带',
-        armorDelta: -10, fuelDelta: -8, missionDelta: -5,
-        outcome: 'wrong',
-        techNote: 'LEO低轨碎片密度更高，下降机动增加了后续碰撞风险。',
-      },
-      {
-        id: 'shield_passive',
-        label: '被动防护等待',
-        subtext: '不消耗燃料，依赖Whipple防护层',
-        armorDelta: -20, fuelDelta: 0, missionDelta: 0,
-        outcome: 'partial',
-        techNote: 'Whipple护盾可应对1cm以下碎片，15cm碎片将造成严重损伤。',
-      },
+      option('avoidance_burn', '执行规避机动', '消耗燃料，换取碰撞概率下降。', 'correct', 0, -12, 8, '规避机动是面对高置信交会预警的标准做法。'),
+      option('wait_tracking', '等待下一轮定轨', '节省燃料，但窗口会变窄。', 'partial', -8, 0, 0, '等待可以减少误报，但接近窗口内会压缩处置余量。'),
+      option('hold_course', '保持原轨道', '不消耗资源，但承担直接风险。', 'wrong', -25, 0, -8, '高速碎片无法靠装甲完全抵消，保持轨道会放大任务风险。'),
     ],
   },
   {
     id: 'solar_flare',
     type: THREAT_TYPES.SOLAR_STORM,
-    title: '太阳风暴爆发',
-    description: 'X级太阳耀斑事件，带电粒子流将在18小时内抵达。大气层膨胀将加速轨道衰减，电子设备面临单粒子翻转风险。',
-    realRef: '2003年万圣节太阳风暴，导致多颗卫星失联，ADEOS-2任务提前终止。',
+    title: '太阳风暴预警',
+    description: '强太阳活动将提高辐射剂量并扰动上层大气，通信链路和轨道预测都会变差。',
+    realRef: '参考：2003 年太阳风暴曾造成多颗卫星异常，并增加低轨道阻力。',
     options: [
-      {
-        id: 'safe_mode',
-        label: '进入安全模式',
-        subtext: '关闭非核心系统，任务中断24h',
-        armorDelta: 0, fuelDelta: 0, missionDelta: -10,
-        outcome: 'correct',
-        techNote: '标准应对方案，关闭冗余系统减少单粒子翻转风险，JAXA、NASA通用程序。',
-      },
-      {
-        id: 'boost_altitude',
-        label: '紧急轨道抬升',
-        subtext: '消耗燃料 18%，减少大气阻力',
-        armorDelta: 0, fuelDelta: -18, missionDelta: +5,
-        outcome: 'correct',
-        techNote: '太阳风暴期间大气层膨胀至更高高度，适当抬升可减缓轨道衰减。',
-      },
-      {
-        id: 'continue_mission',
-        label: '维持正常运行',
-        subtext: '不中断任务，承担设备损伤风险',
-        armorDelta: -25, fuelDelta: 0, missionDelta: +10,
-        outcome: 'wrong',
-        techNote: '2003年风暴中，多颗坚持运行的卫星遭受永久性传感器损坏。',
-      },
+      option('safe_mode', '切换安全模式', '暂停任务载荷，保护电源和姿控系统。', 'correct', 0, 0, -10, '安全模式会牺牲观测时间，但能显著降低单粒子事件风险。'),
+      option('raise_orbit', '小幅抬升轨道', '提前抵消大气阻力增加。', 'partial', 0, -16, 3, '抬升轨道有帮助，但不能替代电子系统保护。'),
+      option('continue_payload', '继续满负荷观测', '短期数据最多，硬件风险最高。', 'wrong', -22, 0, 8, '强辐射期间满负荷运行会增加载荷和存储异常概率。'),
     ],
   },
   {
-    id: 'orbital_decay_warning',
+    id: 'orbital_decay',
     type: THREAT_TYPES.ORBITAL_DECAY,
     title: '轨道衰减加速',
-    description: '高层大气密度异常升高，当前轨道衰减速率比预计高出40%。按此趋势，卫星将在19年内（非规定的25年）再入大气层。',
-    realRef: '25年离轨规定（IADC 2002年指南），低于500km轨道须在25年内自然再入。',
+    description: '近地点持续降低，卫星可能提前进入无法控制的再入轨迹。',
+    realRef: '参考：低轨道任务常用再提升机动维持高度，任务末期则需要预留离轨燃料。',
     options: [
-      {
-        id: 'reboost',
-        label: '执行轨道维持机动',
-        subtext: '消耗燃料 15%，恢复标准轨道高度',
-        armorDelta: 0, fuelDelta: -15, missionDelta: +10,
-        outcome: 'correct',
-        techNote: 'ISS每年需多次轨道维持机动，平均每月下降约2km。',
-      },
-      {
-        id: 'accept_decay',
-        label: '接受自然衰减',
-        subtext: '节省燃料，但任务寿命缩短',
-        armorDelta: 0, fuelDelta: 0, missionDelta: -15,
-        outcome: 'partial',
-        techNote: '符合25年离轨规定，但任务完成度将受影响。部分卫星运营商采用此策略节省燃料。',
-      },
-      {
-        id: 'emergency_boost',
-        label: '紧急大幅抬升轨道',
-        subtext: '消耗燃料 30%，进入更高轨道',
-        armorDelta: 0, fuelDelta: -30, missionDelta: +5,
-        outcome: 'wrong',
-        techNote: '过度消耗燃料将导致后续无法执行必要的规避机动，得不偿失。',
-      },
+      option('planned_reboost', '按计划再提升', '消耗可控，维持任务轨道。', 'correct', 0, -14, 9, '按计划再提升比紧急大推力机动更稳定。'),
+      option('lower_for_disposal', '转入处置轨道', '任务收益下降，但善后更清晰。', 'partial', 0, -8, -7, '任务末期转入处置轨道可以减少长期遗留。'),
+      option('ignore_decay', '忽略高度下降', '保留燃料，等待自然变化。', 'wrong', -10, 0, -18, '忽略衰减会把问题推迟到更难控制的阶段。'),
     ],
   },
   {
-    id: 'cascade_risk',
+    id: 'cascade_fragment',
     type: THREAT_TYPES.CASCADE_FRAGMENT,
-    title: '级联碎片云穿越',
-    description: '轨道前方出现高密度碎片云，源自近期一颗废弃卫星解体事件。碎片数量估计超过300块，你的轨道与碎片云交叉点在4.5小时后到达。',
-    realRef: '2007年风云一号反卫测试产生3000+碎片，至今仍有碎片威胁ISS。',
+    title: '碎片云扩散',
+    description: '历史碰撞产生的碎片云正在穿过相近轨道面，短时间内出现多次交会预警。',
+    realRef: '参考：风云一号 C 事件产生大量长期碎片，是典型级联风险源。',
     options: [
-      {
-        id: 'plane_change',
-        label: '轨道面调整机动',
-        subtext: '消耗燃料 20%，彻底规避碎片云',
-        armorDelta: 0, fuelDelta: -20, missionDelta: +10,
-        outcome: 'correct',
-        techNote: '轨道面变更是最有效但耗燃最高的规避方式，Delta-v代价最大。',
-      },
-      {
-        id: 'timing_maneuver',
-        label: '调整穿越时机',
-        subtext: '消耗燃料 8%，错开密集区域',
-        armorDelta: -8, fuelDelta: -8, missionDelta: +5,
-        outcome: 'correct',
-        techNote: '低成本规避策略，通过相位调整避开碎片云密集部分，有一定残余风险。',
-      },
-      {
-        id: 'direct_through',
-        label: '直接穿越碎片云',
-        subtext: '不消耗燃料，靠护盾硬扛',
-        armorDelta: -30, fuelDelta: 0, missionDelta: 0,
-        outcome: 'wrong',
-        techNote: '级联碎片云密度远超单一碎片，Whipple护盾无法抵御多次连续冲击。',
-      },
+      option('plane_bias', '调整轨道面偏置', '一次较大机动，避开密集区。', 'correct', 0, -20, 10, '改变轨道几何关系能同时降低多次交会风险。'),
+      option('timed_burns', '分两次定时机动', '降低单次燃料峰值。', 'partial', -6, -12, 5, '分段机动更温和，但需要持续精确定轨。'),
+      option('shield_only', '只依赖防护层', '不改变轨道。', 'wrong', -28, 0, -6, '防护层不能覆盖厘米级高速碎片的全部风险。'),
     ],
   },
   {
-    id: 'fuel_system_leak',
+    id: 'fuel_leak',
     type: THREAT_TYPES.FUEL_LEAK,
-    title: '推进系统燃料泄漏',
-    description: '传感器检测到推进舱压力异常，估计燃料泄漏速率 0.8kg/h。按当前速率，4小时后燃料将不足以执行任何规避机动。',
-    realRef: 'ANIK E1卫星推进系统故障，1994年太阳风暴后控制能力丧失。',
+    title: '推进系统泄漏',
+    description: '遥测显示推进剂压力缓慢下降，姿控余量开始收缩。',
+    realRef: '参考：推进系统异常会直接影响规避、再提升和任务末期离轨能力。',
     options: [
-      {
-        id: 'isolate_leak',
-        label: '隔离泄漏回路',
-        subtext: '关闭部分推进器，保留核心燃料',
-        armorDelta: 0, fuelDelta: +10, missionDelta: -8,
-        outcome: 'correct',
-        techNote: '通过冗余阀门隔离故障回路，现代卫星推进系统标准应急程序。',
-      },
-      {
-        id: 'emergency_burn',
-        label: '立即执行紧急机动',
-        subtext: '在燃料耗尽前完成关键变轨',
-        armorDelta: 0, fuelDelta: -25, missionDelta: +15,
-        outcome: 'partial',
-        techNote: '优先消耗剩余燃料完成任务，但后续将失去规避机动能力。',
-      },
-      {
-        id: 'ignore_leak',
-        label: '继续监控，不干预',
-        subtext: '等待地面指令，维持当前状态',
-        armorDelta: -5, fuelDelta: -20, missionDelta: 0,
-        outcome: 'wrong',
-        techNote: '延误处置导致燃料大量流失，历史案例中此类决策均以卫星失控告终。',
-      },
+      option('isolate_valve', '隔离疑似阀路', '暂停部分机动，保存剩余燃料。', 'correct', 2, 8, -8, '先隔离再重算机动预算，可以保留后续处置能力。'),
+      option('emergency_burn', '立即大推力转移', '争取高度，但燃料损失大。', 'partial', 0, -24, 5, '紧急点火可能解决高度问题，却会削弱后续规避能力。'),
+      option('keep_schedule', '继续原任务计划', '不打断任务，风险累积。', 'wrong', -16, -16, 4, '带故障推进系统继续原计划，会让下一次预警更难处置。'),
     ],
   },
   {
-    id: 'debris_swarm',
-    type: THREAT_TYPES.DEBRIS_APPROACH,
-    title: '多目标碎片追踪',
-    description: '太空监视网络同时追踪到3块独立碎片，轨道交叉时间不同：6h、14h、22h。任何单次机动都可能同时规避或加剧另一次风险。',
-    realRef: 'Space Fence系统（美军）追踪超过26000个直径>10cm物体。',
-    options: [
-      {
-        id: 'optimal_maneuver',
-        label: '计算最优单次机动',
-        subtext: '消耗燃料 10%，同时规避三个威胁',
-        armorDelta: 0, fuelDelta: -10, missionDelta: +10,
-        outcome: 'correct',
-        techNote: '多目标规避优化算法，现代任务控制中心标准流程，最小化Delta-v消耗。',
-      },
-      {
-        id: 'three_maneuvers',
-        label: '分三次独立机动',
-        subtext: '消耗燃料 28%，逐一规避',
-        armorDelta: 0, fuelDelta: -28, missionDelta: +5,
-        outcome: 'partial',
-        techNote: '安全但低效，每次独立机动均引入新的位置不确定性。',
-      },
-      {
-        id: 'prioritize_first',
-        label: '只规避最近威胁',
-        subtext: '消耗燃料 8%，忽略后续风险',
-        armorDelta: -20, fuelDelta: -8, missionDelta: 0,
-        outcome: 'wrong',
-        techNote: '忽略14h和22h威胁导致后续两次碰撞，短视决策的典型代价。',
-      },
-    ],
-  },
-  {
-    id: 'iss_warning',
-    type: THREAT_TYPES.DEBRIS_APPROACH,
-    title: 'ISS规避机动引发连锁',
-    description: 'ISS执行规避机动改变了轨道，其产生的喷气羽流将在8小时后抵达你的轨道区域，同时推动一批小型碎片向你靠近。',
-    realRef: 'ISS每年执行约3次规避机动，2020年后频率显著上升。',
-    options: [
-      {
-        id: 'monitor_wait',
-        label: '持续监控，待数据更新后再决策',
-        subtext: '不消耗燃料，等待精确预测',
-        armorDelta: -5, fuelDelta: 0, missionDelta: +5,
-        outcome: 'correct',
-        techNote: '信息不完整时等待更新是正确选择，过早机动可能适得其反。',
-      },
-      {
-        id: 'preemptive_maneuver',
-        label: '立即预防性机动',
-        subtext: '消耗燃料 12%，主动规避',
-        armorDelta: 0, fuelDelta: -12, missionDelta: +8,
-        outcome: 'correct',
-        techNote: '预防性机动消耗燃料，但将风险降至最低，尤其在数据不确定时是合理选择。',
-      },
-      {
-        id: 'comm_iss',
-        label: '联系ISS协调轨道',
-        subtext: '尝试跨机构协调，耗时24h',
-        armorDelta: -15, fuelDelta: 0, missionDelta: -10,
-        outcome: 'wrong',
-        techNote: '跨机构轨道协调耗时数天，在8小时窗口内不可行。',
-      },
-    ],
-  },
-  {
-    id: 'battery_debris',
+    id: 'end_of_life',
     type: THREAT_TYPES.ORBITAL_DECAY,
-    title: '废弃电池托盘再入威胁',
-    description: '地面监测到你轨道上方一个失控电池托盘正在衰减，预计在你轨道高度穿越时解体，产生新碎片云。',
-    realRef: '2024年ISS电池托盘再入，碎片穿透佛罗里达民宅屋顶，质量约0.7kg。',
+    title: '任务末期处置窗口',
+    description: '卫星仍可控制，但燃料只够一次关键机动：延长任务或进入离轨流程。',
+    realRef: '参考：国际减缓指南要求任务结束后尽快离开受保护轨道区域。',
     options: [
-      {
-        id: 'raise_orbit',
-        label: '轨道抬升至解体碎片云上方',
-        subtext: '消耗燃料 14%，彻底规避解体区',
-        armorDelta: 0, fuelDelta: -14, missionDelta: +8,
-        outcome: 'correct',
-        techNote: '在解体发生前完成高度分离，是最清洁的规避方案。',
-      },
-      {
-        id: 'lower_orbit',
-        label: '轨道下降，快速通过危险区',
-        subtext: '消耗燃料 10%，压缩暴露时间',
-        armorDelta: -12, fuelDelta: -10, missionDelta: 0,
-        outcome: 'partial',
-        techNote: '下降轨道虽缩短暴露时间，但进入更密集的低轨碎片带，综合风险未必更低。',
-      },
-      {
-        id: 'report_only',
-        label: '记录事件，上报地面站',
-        subtext: '不机动，依赖地面协调',
-        armorDelta: -22, fuelDelta: 0, missionDelta: -5,
-        outcome: 'wrong',
-        techNote: '地面协调响应时间通常超过4小时，在此场景中无法有效干预。',
-      },
+      option('controlled_disposal', '执行受控离轨', '结束任务，减少长期风险。', 'correct', 0, -18, -10, '受控离轨把风险从轨道环境中移除，是负责任的末期处置。'),
+      option('graveyard_plan', '进入弃置轨道', '适合高轨任务，低轨收益有限。', 'partial', 0, -12, -6, '弃置轨道要匹配轨道高度，低轨任务通常更适合离轨。'),
+      option('extend_mission', '继续延寿运行', '短期收益高，善后余量不足。', 'wrong', -12, -8, 12, '延寿不能消耗掉最后的处置能力，否则卫星会变成长期碎片源。'),
     ],
   },
 ]
 
-// 根据 damageLevel 和 clickedHistoryEvents 计算事件权重并随机抽取 count 个
+function normalizeText(value) {
+  if (!value) return ''
+  if (typeof value === 'string') return value
+  return [value.name, value.title, value.label].filter(Boolean).join(' ')
+}
+
+function scoreEvent(event, weights, index) {
+  return (weights[event.type] || 0) + index * 0.01
+}
+
 export function pickEvents(damageLevel = 0, clickedEvents = [], count = 6) {
   const weights = { ...BASE_WEIGHTS }
+  const history = clickedEvents.map(normalizeText).join(' ')
 
-  // M3 历史事件提升权重
-  clickedEvents.forEach((ev) => {
-    const boost = EVENT_WEIGHT_BOOST[ev.name]
-    if (boost) {
-      Object.entries(boost).forEach(([type, delta]) => {
-        weights[type] = (weights[type] || 0) + delta
-      })
-    }
-  })
-
-  // 按权重池随机抽取（不重复）
-  const pool = []
-  THREAT_EVENTS.forEach((ev) => {
-    const w = weights[ev.type] || 10
-    for (let i = 0; i < w; i++) pool.push(ev.id)
-  })
-
-  const picked = []
-  const usedIds = new Set()
-  let attempts = 0
-  while (picked.length < count && attempts < 500) {
-    const idx = Math.floor(Math.random() * pool.length)
-    const id = pool[idx]
-    if (!usedIds.has(id)) {
-      const ev = THREAT_EVENTS.find((e) => e.id === id)
-      if (ev) { picked.push(ev); usedIds.add(id) }
-    }
-    attempts++
-  }
-
-  // 不足时补全（去重后的所有事件）
-  if (picked.length < count) {
-    THREAT_EVENTS.forEach((ev) => {
-      if (!usedIds.has(ev.id) && picked.length < count) {
-        picked.push(ev); usedIds.add(ev.id)
-      }
+  Object.entries(EVENT_WEIGHT_BOOST).forEach(([keyword, boost]) => {
+    if (!history.includes(keyword)) return
+    Object.entries(boost).forEach(([type, delta]) => {
+      weights[type] = (weights[type] || 0) + delta
     })
-  }
+  })
 
-  return picked.slice(0, count)
+  if (damageLevel > 20) weights[THREAT_TYPES.CASCADE_FRAGMENT] += 10
+  if (damageLevel > 40) weights[THREAT_TYPES.FUEL_LEAK] += 12
+
+  return [...THREAT_EVENTS]
+    .sort((a, b) => scoreEvent(b, weights, THREAT_EVENTS.indexOf(b)) - scoreEvent(a, weights, THREAT_EVENTS.indexOf(a)))
+    .slice(0, Math.min(count, THREAT_EVENTS.length))
 }
 
-// 计算初始护甲值（来自 M3 damageLevel）
 export function calcInitialArmor(damageLevel = 0) {
-  return Math.max(40, 100 - damageLevel * 5)
+  const value = 100 - Number(damageLevel || 0) * 0.7
+  return Math.max(45, Math.min(100, Math.round(value)))
 }
 
-// 判断游戏胜负
-export function evaluateResult({ armor, fuel, missionProgress, totalRounds }) {
-  if (armor <= 0) return 'failure_armor'
-  if (fuel <= 0) return 'failure_fuel'
-  if (missionProgress >= 60) return 'success'
-  return 'failure_mission'
+export function evaluateResult({ armor, fuel, missionProgress }) {
+  const score = armor * 0.42 + fuel * 0.28 + missionProgress * 0.3
+  return score >= 55 && armor > 0 && fuel > 0 ? 'success' : 'failure'
 }

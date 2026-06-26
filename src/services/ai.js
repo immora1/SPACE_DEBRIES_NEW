@@ -1,8 +1,4 @@
-// 所有 AI 调用通过后端 /api/gpt，Key 不暴露前端
-// 架构：generateStoryOutline（Entrance）生成全站故事框架，各模块函数调用时传入 storyOutline 作为叙事约束
-// M4 每次决策更新故事走向，累积决定最终结局
-
-async function chat(systemPrompt, userPrompt, temperature = 0.7, maxTokens = 512) {
+async function chat(systemPrompt, userPrompt, temperature = 0.7, maxTokens = 360) {
   const res = await fetch('/api/gpt', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -10,199 +6,184 @@ async function chat(systemPrompt, userPrompt, temperature = 0.7, maxTokens = 512
   })
   if (!res.ok) throw new Error(`AI request failed: ${res.status}`)
   const data = await res.json()
-  if (!data.ok) throw new Error(data.error)
-  return data.content
+  if (!data.ok) throw new Error(data.error || 'AI request failed')
+  return data.content || ''
 }
 
-function extractJSON(raw) {
-  const match = raw.match(/\{[\s\S]*\}/)
-  if (!match) throw new Error('AI 返回格式异常')
-  return JSON.parse(match[0])
+function parseJSON(raw, fallback) {
+  const text = String(raw || '').trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```$/i, '').trim()
+  const start = text.indexOf('{')
+  const end = text.lastIndexOf('}')
+  if (start < 0 || end < start) return fallback
+  try {
+    return JSON.parse(text.slice(start, end + 1))
+  } catch {
+    return fallback
+  }
 }
 
-// 把大纲序列化为上下文字符串，注入各模块 prompt
-function outlineContext(storyOutline) {
+async function jsonChat(system, user, fallback, temperature = 0.7, maxTokens = 360) {
+  const raw = await chat(`${system}\n只返回 JSON，不要 Markdown。`, user, temperature, maxTokens)
+  return parseJSON(raw, fallback)
+}
+
+function satText(satellite) {
+  if (!satellite) return '未知卫星'
+  return `${satellite.name || '卫星'}，高度 ${satellite.altitudeKm || '?'} km，倾角 ${satellite.inclination || '?'}°`
+}
+
+function userText(user) {
+  if (!user) return '用户'
+  return `${user.name || '用户'}，来自 ${user.city || '未知城市'}，记忆事件：${user.importantEvent || '一件重要的事'}`
+}
+
+function outlineText(storyOutline) {
   if (!storyOutline) return ''
-  const beats = storyOutline.checkpoints
-    .map((c) => `[${c.label}] ${c.beat}`)
-    .join(' → ')
-  return `\n\n【故事框架（必须遵守，不得偏离）】\n前提：${storyOutline.premise}\n节点：${beats}\n成功结局内核：${storyOutline.successEnding}\n失败结局内核：${storyOutline.failureEnding}`
+  return `主线：${storyOutline.premise || ''}；成功结局：${storyOutline.successEnding || ''}；失败结局：${storyOutline.failureEnding || ''}`
 }
 
-// ENTRANCE · 故事大纲 — 全站唯一，生成一次后所有模块共用
-// 输出: { premise, checkpoints: [{id, label, beat}], successEnding, failureEnding }
 export async function generateStoryOutline({ name, city, importantEvent, satellite }) {
-  const system = `你是一个叙事架构师。基于用户信息生成一个太空垃圾平行叙事的故事大纲。
-规则：
-- 第三人称，卫星为载体，平行时空中映射用户现实中最重要的事
-- 结构：启程 → 展开 → 裂缝 → 高潮（M4游戏，最密集） → 余波 → 行动 → 结局
-- 每个节点（beat）描述必须发生的情节，20字以内，克制不煽情
-- successEnding 和 failureEnding 是情感内核，不是完整句子，各15字以内
-- 输出纯 JSON，格式严格如下：
-{
-  "premise": "...",
-  "checkpoints": [
-    {"id":"entrance","label":"启程","beat":"..."},
-    {"id":"m1","label":"第一个选择","beat":"..."},
-    {"id":"m2","label":"任务展开","beat":"..."},
-    {"id":"m3","label":"裂缝出现","beat":"..."},
-    {"id":"m4","label":"高潮·命运决战","beat":"..."},
-    {"id":"m5","label":"余波","beat":"..."},
-    {"id":"m6","label":"行动与尾声","beat":"..."}
-  ],
-  "successEnding": "...",
-  "failureEnding": "..."
-}`
-
-  const user_ = `用户叫${name}，来自${city}。
-对他/她现在最重要的事：${importantEvent}。
-匹配卫星：${satellite.name}，轨道高度${satellite.altitudeKm}km，发射于${satellite.launchYear}年。
-生成这个人的平行叙事大纲。`
-
-  const raw = await chat(system, user_, 0.85, 800)
-  return extractJSON(raw)
+  return jsonChat(
+    '你为太空碎片互动课程生成一条简短叙事主线。字段：premise, checkpoints, successEnding, failureEnding。checkpoints 用 6 个对象：id,label,beat。',
+    `学习者：${name}，城市：${city}，个人事件：${importantEvent}。卫星：${satText(satellite)}。`,
+    {
+      premise: `${name || '学习者'}把一颗卫星的命运和自己的重要记忆连接起来。`,
+      checkpoints: ['entrance', 'm1', 'm2', 'm3', 'm4', 'm5'].map((id) => ({ id, label: id.toUpperCase(), beat: '理解轨道碎片风险。' })),
+      successEnding: '卫星完成处置，记忆被保留下来。',
+      failureEnding: '卫星失控，记忆出现偏移。',
+    },
+    0.75,
+    520,
+  )
 }
 
-// ENTRANCE · 开场故事 — 输出: { story: string }
 export async function generateOpeningStory({ name, city, importantEvent, satellite, storyOutline }) {
-  const system = `你是一个克制、精准的叙事者。用第三人称描写卫星视角，语气真实不煽情，禁用"美丽""壮阔"等形容词。输出纯 JSON，格式：{"story": "..."}${outlineContext(storyOutline)}`
-  const user_ = `卫星名：${satellite.name}，轨道高度：${satellite.altitudeKm}km，倾角：${satellite.inclination}°，发射年份：${satellite.launchYear}。
-用户叫${name}，来自${city}，最重要的事是：${importantEvent}。
-按故事框架中"启程"节点写150字开场：卫星刚载入，平行时空中那件事处于前夜，结尾留悬念。`
-
-  const raw = await chat(system, user_, 0.8, 400)
-  return extractJSON(raw)
+  return jsonChat(
+    '写一段 120 字以内的开场故事。字段：story。',
+    `${userText({ name, city, importantEvent })}。${satText(satellite)}。${outlineText(storyOutline)}`,
+    { story: `${satellite?.name || '这颗卫星'}正在近地轨道运行。它的状态，将和${importantEvent || '那件重要的事'}一起被重新审视。` },
+    0.75,
+    260,
+  )
 }
 
-// M1 · 材料综合反馈 — 输出: { feedback: string }
 export async function generateMaterialFeedback({ materials, satellite, user, storyOutline }) {
-  const system = `你是航天材料专家，语气简洁克制，数据驱动，不煽情。输出纯 JSON，格式：{"feedback": "..."}${outlineContext(storyOutline)}`
-  const matDesc = `主框架：${materials.frame}；太阳能电池板：${materials.solar}；隔热毯：${materials.insulation}；推进贮箱：${materials.propulsion}`
-  const user_ = `用户${user.name}为卫星${satellite?.name ?? '未知卫星'}选择了以下材料组合：${matDesc}。
-写100字以内综合评价：基于这四个部位的材料特性，描述该卫星在轨碎片产生风险和最终再入大气层时的命运。引用至少一个真实历史卫星案例作为对比。`
-
-  const raw = await chat(system, user_, 0.7, 350)
-  return extractJSON(raw)
+  const materialText = Object.entries(materials || {}).map(([k, v]) => `${k}:${v}`).join('，')
+  return jsonChat(
+    '评价卫星材料选择，120 字以内。字段：feedback。',
+    `${userText(user)}。${satText(satellite)}。材料：${materialText}。${outlineText(storyOutline)}`,
+    { feedback: '材料选择决定了抗撞击、热防护和再入残留，需要在质量、强度和善后之间取舍。' },
+    0.65,
+    220,
+  )
 }
 
-// M2 · 任务选择故事段 — 输出: { story: string }
 export async function generateMissionStory({ mission, satellite, user, material, storyOutline }) {
-  const system = `你是一个克制、精准的叙事者。第三人称卫星视角，语气真实，禁用煽情形容词。输出纯 JSON，格式：{"story": "..."}${outlineContext(storyOutline)}`
-  const user_ = `卫星${satellite.name}，执行${mission}任务，主体材料${material}。
-用户叫${user.name}，最重要的事：${user.importantEvent}。
-按故事框架中"任务展开"节点写150字：卫星执行任务中遭遇轨道早期威胁，某项功能轻微受损，平行时空那件事的一个细节悄悄变了。`
-
-  const raw = await chat(system, user_, 0.8, 400)
-  return extractJSON(raw)
+  return jsonChat(
+    '写一段任务展开故事，120 字以内。字段：story。',
+    `${userText(user)}。${satText(satellite)}。任务：${mission}。主要材料：${material}。${outlineText(storyOutline)}`,
+    { story: `${satellite?.name || '卫星'}进入任务阶段，轨道、材料和燃料余量开始共同决定它的命运。` },
+    0.75,
+    260,
+  )
 }
 
-// M3 · 历史事件叙事 — 输出: { narrative: string }
-export async function generateEventNarrative({ event, satellite, user, storyOutline }) {
-  const system = `你是一个克制的叙事者，以卫星第一视角写作，语气客观冷静。输出纯 JSON，格式：{"narrative": "..."}${outlineContext(storyOutline)}`
-  const user_ = `历史事件：${event.year}年 ${event.name}，描述：${event.description}。
-卫星${satellite.name}，轨道高度${satellite.altitudeKm}km。
-写100字第一视角叙事：距碎片云多远、是否需要机动、传感器记录了什么。`
-
-  const raw = await chat(system, user_, 0.75, 300)
-  return extractJSON(raw)
+export async function generateEventNarrative({ event, satellite, user: _user, storyOutline }) {
+  return jsonChat(
+    '把历史航天事件连接到当前卫星，100 字以内。字段：narrative。',
+    `事件：${event?.year || ''} ${event?.name || event?.title || ''}，${event?.description || ''}。${satText(satellite)}。${outlineText(storyOutline)}`,
+    { narrative: '历史事件说明，轨道上的每一次遗留都会改变后来任务的风险边界。' },
+    0.7,
+    220,
+  )
 }
 
-// M3 · 全览完成故事段 — 输出: { story: string }
 export async function generateHistoryStory({ visitedEvents, satellite, user, damageLevel, storyOutline }) {
-  const system = `你是一个克制、精准的叙事者。第三人称卫星视角，输出纯 JSON，格式：{"story": "..."}${outlineContext(storyOutline)}`
-  const eventNames = visitedEvents.map((e) => `${e.year}年${e.name}`).join('、')
-  const user_ = `卫星${satellite.name}经历了：${eventNames}，累积受损值${damageLevel}。
-用户最重要的事：${user.importantEvent}。
-按故事框架中"裂缝出现"节点写150字：历史事件在平行时空制造偏移，那件事的走向开始不确定，为M4高潮蓄势。`
-
-  const raw = await chat(system, user_, 0.8, 400)
-  return extractJSON(raw)
+  const names = (visitedEvents || []).map((e) => `${e.year || ''} ${e.name || e.title || ''}`).join('；')
+  return jsonChat(
+    '总结学习者看过的历史事件，120 字以内。字段：story。',
+    `${userText(user)}。${satText(satellite)}。事件：${names}。损伤值：${damageLevel}。${outlineText(storyOutline)}`,
+    { story: '这些历史节点把碎片问题从个案推向系统风险，也为后续决策埋下约束。' },
+    0.75,
+    260,
+  )
 }
 
-// M4 · 游戏决策即时反馈 — 输出: { feedback: string, storyUpdate: string }
-export async function generateGameDecisionFeedback({
-  decision, threat, outcome, satellite, user, storyOutline,
-  decisionIndex = 0, totalDecisions = 6,
-}) {
-  const progress = `第${decisionIndex + 1}/${totalDecisions}个决策，故事正在向高潮推进`
-  const system = `你是航天任务控制专家，语气专业克制。输出纯 JSON，格式：{"feedback": "...", "storyUpdate": "..."}${outlineContext(storyOutline)}`
-  const user_ = `卫星${satellite.name}遭遇威胁：${threat}，用户选择：${decision}，结果：${outcome}。
-${progress}。用户最重要的事：${user.importantEvent}。
-feedback（60字以内）：${outcome === 'correct' ? '任务日志+真实历史数据支撑' : '故障报告+历史先例'}。
-storyUpdate（70字以内）：基于本次决策结果（${outcome}），写平行时空中那件最重要的事此刻发生了什么具体变化，要有细节感，随决策编号逐渐加重叙事张力，让用户感受到每一步选择的重量。`
-
-  const raw = await chat(system, user_, 0.75, 300)
-  return extractJSON(raw)
+export async function generateGameDecisionFeedback({ decision, threat, outcome, satellite, user, storyOutline, decisionIndex = 0, totalDecisions = 6 }) {
+  return jsonChat(
+    '评价一次轨道风险决策。字段：feedback, storyUpdate。每项 80 字以内。',
+    `${userText(user)}。${satText(satellite)}。第 ${decisionIndex + 1}/${totalDecisions} 轮，威胁：${threat}，决策：${decision}，结果：${outcome}。${outlineText(storyOutline)}`,
+    {
+      feedback: outcome === 'correct' ? '决策降低了主要风险，但也消耗了有限资源。' : '决策保留了部分资源，却让风险继续累积。',
+      storyUpdate: `${satellite?.name || '卫星'}的轨道状态发生变化，后续选择余量被重新计算。`,
+    },
+    0.65,
+    260,
+  )
 }
 
-// M4 · 游戏结束反思页 — 输出: { knowledgePoints: string[], satFate: string, debrisDescription: string }
 export async function generateGameReflection({ gameResult, decisions, satellite, user, material, storyOutline }) {
-  const system = `你是航天知识总结专家，语气克制准确。输出纯 JSON，格式：{"knowledgePoints": ["...","...","..."], "satFate": "...", "debrisDescription": "..."}${outlineContext(storyOutline)}`
-  const correctCount = decisions.filter((d) => d.outcome === 'correct').length
-  const user_ = `卫星${satellite.name}（${material}材质）游戏结果：${gameResult}，共${decisions.length}次决策，正确${correctCount}次。
-用户最重要的事：${user.importantEvent}，结果：${gameResult === 'success' ? '守住' : '改写'}。
-输出：knowledgePoints（3条知识点各30字）、satFate（卫星命运一句话）、debrisDescription（碎片描述一句话，用于M6匹配题）。`
-
-  const raw = await chat(system, user_, 0.7, 600)
-  return extractJSON(raw)
+  const correct = (decisions || []).filter((d) => d.outcome === 'correct').length
+  return jsonChat(
+    '生成任务复盘。字段：knowledgePoints(string[3]), satFate, debrisDescription, storyEnding。',
+    `${userText(user)}。${satText(satellite)}。结果：${gameResult}。正确决策：${correct}/${decisions?.length || 0}。材料：${material}。${outlineText(storyOutline)}`,
+    {
+      knowledgePoints: ['规避机动会消耗燃料。', '碎片越小越难跟踪。', '任务末期处置必须提前预留能力。'],
+      satFate: gameResult === 'success' ? '卫星保留了处置能力。' : '卫星失去控制，成为新的风险源。',
+      debrisDescription: `${material || '卫星'}残片留在近地轨道。`,
+      storyEnding: gameResult === 'success' ? '那件重要的事仍按原方向推进。' : '那件重要的事出现了无法忽视的偏移。',
+    },
+    0.65,
+    420,
+  )
 }
 
-// M5 · 再入故事结局 — 输出: { ending: string }
 export async function generateReentryEnding({ gameResult, material, satellite, user, storyOutline }) {
-  const system = `你是一个克制的叙事者，第三人称，不煽情。输出纯 JSON，格式：{"ending": "..."}${outlineContext(storyOutline)}`
-  const endingCore = gameResult === 'success'
-    ? storyOutline?.successEnding ?? '守住了'
-    : storyOutline?.failureEnding ?? '改写了'
-  const user_ = `卫星${satellite.name}，材质${material}，游戏结果：${gameResult}。
-本次结局内核：「${endingCore}」。用户最重要的事：${user.importantEvent}。
-按故事框架中"余波"和结局节点写120字：正式收尾平行时空，呼应开篇悬念。`
-
-  const raw = await chat(system, user_, 0.8, 400)
-  return extractJSON(raw)
+  return jsonChat(
+    '写再入结尾，120 字以内。字段：ending。',
+    `${userText(user)}。${satText(satellite)}。结果：${gameResult}。材料：${material}。${outlineText(storyOutline)}`,
+    { ending: gameResult === 'success' ? '卫星进入可控再入流程，大部分结构在大气中烧蚀。' : '卫星继续漂移，未来仍可能制造新的碎片风险。' },
+    0.75,
+    260,
+  )
 }
 
-// M6 · 拖拽匹配反馈 — 输出: { feedback: string }
 export async function generateCleanupFeedback({ debris, debrisDetail = '', debrisSource = '', debrisContext = '', technology, isCorrect }) {
-  const system = `你是太空垃圾清理技术专家，语气简洁。输出纯 JSON，格式：{"feedback": "..."}`
-  const user_ = `碎片类型：${debris}
-碎片细节：${debrisDetail}
-来源：${debrisSource}
-个性化依据：${debrisContext}
-选择清理技术：${technology}
-匹配结果：${isCorrect ? '匹配正确' : '匹配错误'}
-写55字以内反馈：必须点到材料或事件来源，说明匹配${isCorrect ? '正确' : '错误'}的原因。`
-
-  const raw = await chat(system, user_, 0.7, 150)
-  return extractJSON(raw)
+  return jsonChat(
+    '评价碎片清除技术选择，80 字以内。字段：feedback。',
+    `碎片：${debris}。细节：${debrisDetail}。来源：${debrisSource}。情境：${debrisContext}。技术：${technology}。是否正确：${isCorrect}。`,
+    { feedback: isCorrect ? '这个方案匹配碎片尺寸、轨道和处置目标。' : '这个方案与碎片特征不匹配，可能增加成本或风险。' },
+    0.6,
+    180,
+  )
 }
 
-// M6 · 全部匹配完成尾声 — 输出: { epilogue: string }
-export async function generateCleanupEpilogue({ accuracy, satellite, user, storyOutline }) {
-  const system = `你是一个克制的叙事者，输出纯 JSON，格式：{"epilogue": "..."}${outlineContext(storyOutline)}`
-  const user_ = `用户${user.name}完成清理匹配，准确率${Math.round(accuracy * 100)}%。
-按故事框架中"行动与尾声"节点写80字尾声：平行时空的用户开始行动，最后一句是开口不是结论。`
-
-  const raw = await chat(system, user_, 0.8, 300)
-  return extractJSON(raw)
+export async function generateCleanupEpilogue({ accuracy, satellite: _satellite, user, storyOutline }) {
+  return jsonChat(
+    '写课程尾声，100 字以内。字段：epilogue。',
+    `${userText(user)}。清理正确率：${Math.round((accuracy || 0) * 100)}%。${outlineText(storyOutline)}`,
+    { epilogue: '清理不是任务之后的附加题，而是每一次发射之前就必须写进方案的责任。' },
+    0.7,
+    220,
+  )
 }
 
-// M7 · 视频结束生成问题 — 输出: { question: string }
 export async function generateVideoQuestion({ satellite, user }) {
-  const system = `你是太空垃圾科普专家，基于卫星数据提问。输出纯 JSON，格式：{"question": "..."}`
-  const user_ = `卫星${satellite.name}，轨道高度${satellite.altitudeKm}km，用户来自${user.city}。
-生成一个具体问题，让用户思考这颗卫星与太空垃圾问题的关联。（50字以内）`
-
-  const raw = await chat(system, user_, 0.8, 200)
-  return extractJSON(raw)
+  return jsonChat(
+    '生成一个观测辨析问题，60 字以内。字段：question。',
+    `${userText(user)}。${satText(satellite)}。主题：区分再入碎片、流星和卫星过境。`,
+    { question: '如果夜空中出现一串缓慢移动的亮点，你会先检查哪些线索来判断它是不是卫星星座？' },
+    0.75,
+    160,
+  )
 }
 
-// M7 · 用户作答解释 — 输出: { explanation: string }
 export async function generateAnswerExplanation({ question, answer, satellite, user }) {
-  const system = `你是太空垃圾科普专家，语气友善克制，不评价对错。输出纯 JSON，格式：{"explanation": "..."}`
-  const user_ = `问题：${question}
-用户${user.name}的回答：${answer}
-基于卫星${satellite.name}给出100字以内的解释，补充用户回答中缺失的关键视角。`
-
-  const raw = await chat(system, user_, 0.7, 350)
-  return extractJSON(raw)
+  return jsonChat(
+    '解释用户答案，120 字以内。字段：explanation。',
+    `${userText(user)}。${satText(satellite)}。问题：${question}。回答：${answer}。`,
+    { explanation: '判断时要结合速度、持续时间、方向、亮度变化和是否出现碎裂轨迹，不能只看亮度。' },
+    0.65,
+    240,
+  )
 }
