@@ -1457,21 +1457,21 @@ function StartGuide({ opacity, progress, onJumpToRecovery }) {
 
       <aside
         className="m4-start-guide m4-start-guide-left"
-        aria-label="浠诲姟缂栧彿"
+        aria-label="任务编号"
         style={{ opacity: guideOpacity }}
       >
         <p className="m4-guide-eyebrow">ORBITAL SURVIVAL / SIMULATION 04</p>
         <div className="m4-guide-number">
           <strong>01</strong>
-          <span>鍒濆杞ㄩ亾</span>
+          <span>初始轨道</span>
         </div>
         <div className="m4-guide-rule" />
-        <p className="m4-guide-kicker">LOW EARTH ORBIT 路 DEBRIS RESPONSE</p>
+        <p className="m4-guide-kicker">LOW EARTH ORBIT · DEBRIS RESPONSE</p>
       </aside>
 
       <aside
         className="m4-start-guide m4-start-guide-right"
-        aria-label="娓告垙浠嬬粛"
+        aria-label="游戏介绍"
         style={{ opacity: guideOpacity }}
       >
         <div className="m4-guide-icon" aria-hidden="true">
@@ -1481,17 +1481,17 @@ function StartGuide({ opacity, progress, onJumpToRecovery }) {
             <circle cx="33" cy="7" r="1.8" fill="currentColor" />
           </svg>
         </div>
-        <h2>鍦ㄧ鐗囬鏆翠腑鐢熷瓨</h2>
+        <h2>在碎片风暴中生存</h2>
         <p>接管一颗受损卫星，在十二个月的近地轨道任务中躲避碎片。每一次判断都会消耗燃料或护甲，也会改变最终结局。</p>
-        <div className="m4-guide-action">12 MONTHS 路 ONE SATELLITE</div>
+        <div className="m4-guide-action">12 MONTHS · ONE SATELLITE</div>
         <button
           type="button"
           className="m4-guide-jump-button"
           onClick={onJumpToRecovery}
-          aria-label="鐩存帴杩涘叆鍗槦鍥炴敹椤甸潰"
+          aria-label="直接进入卫星回收页面"
         >
           <span className="m4-guide-jump-icon" aria-hidden="true">→</span>
-          <span>杩涘叆鍥炴敹婕旂ず</span>
+          <span>进入回收演示</span>
         </button>
       </aside>
     </>
@@ -1521,7 +1521,7 @@ function GameStatusHud({ month, fuel, armor, missionProgress }) {
         color: 'rgba(232,232,248,0.48)',
         marginBottom: 16,
       }}>
-        ORBITAL SURVIVAL 路 MISSION STATUS
+        ORBITAL SURVIVAL · MISSION STATUS
       </div>
 
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
@@ -1541,8 +1541,7 @@ function GameStatusHud({ month, fuel, armor, missionProgress }) {
           letterSpacing: '0.12em',
           color: 'rgba(232,232,248,0.76)',
         }}>
-          鏈?
-        </span>
+          月</span>
       </div>
 
       <div style={{
@@ -1552,7 +1551,7 @@ function GameStatusHud({ month, fuel, armor, missionProgress }) {
       }} />
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
-        <StatusMetric label="鐕冩枡" english="FUEL" value={fuel} />
+        <StatusMetric label="燃料" english="FUEL" value={fuel} />
         <StatusMetric label="鎶ょ敳" english="ARMOR" value={armor} />
       </div>
 
@@ -1654,7 +1653,7 @@ function StoryPanel({ month, story }) {
       transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
       aria-live="polite"
     >
-      <div className="m4-game-label">PARALLEL TIMELINE 路 MONTH {String(month).padStart(2, '0')}</div>
+      <div className="m4-game-label">PARALLEL TIMELINE · MONTH {String(month).padStart(2, '0')}</div>
       <p>{story}</p>
     </MotionAside>
   )
@@ -1667,23 +1666,23 @@ function RecoveryIntroPanel({ expanded, onBackToResult }) {
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
-      aria-label="澶┖鍗槦鍥炴敹"
+      aria-label="太空卫星回收"
     >
       <style>{GAME_STYLES}</style>
       <div className="m4-recovery-header">
-        <div className="m4-game-label">MODULE 05 路 REENTRY</div>
+        <div className="m4-game-label">MODULE 05 · REENTRY</div>
         <button
           type="button"
           className="m4-recovery-back-button"
           onClick={onBackToResult}
-          title="杩斿洖娓告垙缁撴潫鏉垮潡"
-          aria-label="杩斿洖娓告垙缁撴潫鏉垮潡"
+          title="返回游戏结算板块"
+          aria-label="返回游戏结算板块"
         >
           <span className="m4-recovery-back-icon" aria-hidden="true">→</span>
-          <span>杩斿洖缁撶畻</span>
+          <span>返回结算</span>
         </button>
       </div>
-      <h2>澶┖鍗槦鍥炴敹</h2>
+      <h2>太空卫星回收</h2>
       {expanded && (
         <MotionDiv
           initial={{ opacity: 0, y: 10 }}
@@ -1692,8 +1691,10 @@ function RecoveryIntroPanel({ expanded, onBackToResult }) {
         >
           <div className="m4-recovery-rule" />
           <p>
-            姣忎竴棰楀崼鏄熼兘鏈夌敓鍛藉敖澶淬€備换鍔＄粨鏉熷悗锛屽畠浠潰涓翠袱绉嶅懡杩愶細鍙楁帶绂昏建锛屾垨绛夊緟杞ㄩ亾琛板噺銆?
-            鏃犺鍝锛屽啀鍏ュぇ姘斿眰鐨勮繃绋嬮兘鍦ㄥ湴鐞冧笂鐣欎笅浜嗙棔杩广€?
+
+            每一颗卫星都有生命尽头。任务结束后，它们面临两种命运：受控离轨，或等待轨道衰减。
+            无论哪种，再入大气层的过程都在地球上留下了痕迹。
+
           </p>
         </MotionDiv>
       )}
@@ -1765,7 +1766,7 @@ function RecoveryStepsPanel({ activeStepIndex, onActiveStepChange }) {
       initial={{ opacity: 0, x: 28 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.12 }}
-      aria-label="鍗槦鍥炴敹姝ラ灞曠ず"
+      aria-label="卫星回收步骤展示"
       onScroll={updateActiveStep}
       onWheel={handleWheel}
     >
@@ -1819,10 +1820,10 @@ function GamePanel({
             className="m4-game-recovery-jump"
             onClick={onJumpToRecovery}
             disabled={loading}
-            aria-label="鐩存帴杩涘叆鍗槦鍥炴敹椤甸潰"
+            aria-label="直接进入卫星回收页面"
           >
             <span aria-hidden="true">→</span>
-            <span>鍥炴敹</span>
+            <span>回收</span>
           </button>
         </div>
       </div>
@@ -1836,8 +1837,8 @@ function GamePanel({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <div className="m4-game-label">GROUND CONTROL 路 ANALYZING</div>
-            <h2>姝ｅ湪鍥炰紶浠诲姟鏃ュ織</h2>
+            <div className="m4-game-label">GROUND CONTROL · ANALYZING</div>
+            <h2>正在回传任务日志</h2>
             <p>地面站正在比对轨道参数与历史案例。</p>
           </MotionDiv>
         )}
@@ -1851,7 +1852,7 @@ function GamePanel({
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="m4-game-label">{THREAT_LABELS[event.type] || 'ORBITAL THREAT'} 路 THREAT DETECTED</div>
+            <div className="m4-game-label">{THREAT_LABELS[event.type] || 'ORBITAL THREAT'} · THREAT DETECTED</div>
             <h2>{event.title}</h2>
             <p>{event.description}</p>
             <div className="m4-game-reference">{event.realRef}</div>
@@ -1882,7 +1883,7 @@ function GamePanel({
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="m4-game-label">MISSION LOG 路 RESPONSE RECORDED</div>
+            <div className="m4-game-label">MISSION LOG · RESPONSE RECORDED</div>
             <h2>{feedback.title}</h2>
             <div className="m4-feedback-note" style={{ '--feedback-color': feedback.color }}>
               <p>{feedback.aiLog || feedback.techNote}</p>
@@ -2058,7 +2059,7 @@ function OrbitControl({ progress, disabled, onProgressChange, onDragEnd }) {
 
       {!disabled && (
         <div className="m4-orbit-static-hint">
-          <span>鎸変綇鑺傜偣鍚戝彸鎷栧姩</span>
+          <span>按住节点向右拖动</span>
           <small>DRAG TO START</small>
         </div>
       )}
@@ -2909,13 +2910,13 @@ function BreakupMaterialBoard({ recoveryStep, materials, anchor }) {
                 animationDelay: `${index * 70}ms`,
               }}
             >
-              <div className="m4-material-callout-meta">{card.labelEn} 路 {card.number} / {card.risk}</div>
+              <div className="m4-material-callout-meta">{card.labelEn} · {card.number} / {card.risk}</div>
               <h4>
                 <strong>{card.countLabel}</strong>
                 <span>{card.label}</span>
               </h4>
               <p>{card.summary}</p>
-              <div className="m4-material-card-note">{card.materialDetail} 路 {card.note}</div>
+              <div className="m4-material-card-note">{card.materialDetail} · {card.note}</div>
             </article>
           ))}
         </div>
@@ -4205,13 +4206,19 @@ export default function M4New({ onComplete = () => {} }) {
 
   const handleModuleWheel = useCallback((event) => {
     if (phase !== GAME_PHASE.RECOVERY) return
-    if (recoveryStepsVisible) return
+    if (recoveryStepsVisible) {
+      if (event.deltaY < 0) {
+        event.preventDefault()
+        handleRecoveryBackToResult()
+      }
+      return
+    }
     event.preventDefault()
     if (event.deltaY > 0) {
       setActiveRecoveryStepIndex(0)
       setRecoveryStepsVisible(true)
     }
-  }, [phase, recoveryStepsVisible])
+  }, [handleRecoveryBackToResult, phase, recoveryStepsVisible])
 
   const handleProgressChange = useCallback((progress) => {
     progressRef.current = progress

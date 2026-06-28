@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useLayoutEffect, useRef, useMemo, Suspense } from 'react'
-import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion'
+import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion'
 import gsap from 'gsap'
 import DebrisEarth from './DebrisEarth'
 import DebrisEarthCountries from './DebrisEarthCountries'
@@ -112,30 +112,7 @@ const ZONE_STATS = [
     zone: 'GEO', zoneColor: '#6b7fff', zoneDesc: '35,786 KM' },
 ]
 
-/* ── CustomCursor ── */
-function CustomCursor({ mouseX, mouseY, smoothX, smoothY }) {
-  const dotL  = useTransform(mouseX,  v => v - 3)
-  const dotT  = useTransform(mouseY,  v => v - 3)
-  const ringL = useTransform(smoothX, v => v - 16)
-  const ringT = useTransform(smoothY, v => v - 16)
-  return (
-    <>
-      <motion.div style={{
-        position: 'fixed', pointerEvents: 'none', zIndex: 9999,
-        width: 6, height: 6, borderRadius: '50%', background: '#e8e8f8',
-        left: dotL, top: dotT,
-      }} />
-      <motion.div style={{
-        position: 'fixed', pointerEvents: 'none', zIndex: 9998,
-        width: 32, height: 32, borderRadius: '50%',
-        border: '1px solid rgba(107,127,255,0.55)',
-        left: ringL, top: ringT,
-      }} />
-    </>
-  )
-}
-
-/* ── Scene 0: HERO — GSAP timeline ── */
+/* -- Scene 0: Hero -- */
 function SceneHero({ normX, normY }) {
   const containerRef = useRef()
   const ghostNumRef  = useRef()
@@ -658,7 +635,7 @@ function SceneSources() {
           onMouseMove={(e) => handleMouseMove(e, i)}
           style={{
             flex: 1, overflow: 'hidden', position: 'relative',
-            cursor: 'none', minWidth: 0,
+            cursor: 'default', minWidth: 0,
             transition: 'flex 0.55s cubic-bezier(0.16,1,0.3,1)',
           }}
         >
@@ -1689,14 +1666,11 @@ export default function M1({ onComplete }) {
   const countriesTextRef     = useRef()
   const countriesProgressRef = useRef(0)
   const hovIdxRef            = useRef(-1)
-  const [showCursor,   setShowCursor]   = useState(false)
   const [scaleVisible, setScaleVisible] = useState(false)
   const scaleRef = useRef()
 
   const rawX    = useMotionValue(0)
   const rawY    = useMotionValue(0)
-  const smoothX = useSpring(rawX, { stiffness: 80, damping: 22 })
-  const smoothY = useSpring(rawY, { stiffness: 80, damping: 22 })
   const normX   = useTransform(rawX, [0, typeof window !== 'undefined' ? window.innerWidth  : 1], [-1, 1])
   const normY   = useTransform(rawY, [0, typeof window !== 'undefined' ? window.innerHeight : 1], [-1, 1])
 
@@ -1717,7 +1691,6 @@ export default function M1({ onComplete }) {
   useEffect(() => {
     const io = new IntersectionObserver(([entry]) => {
       m1InViewRef.current = entry.isIntersecting
-      setShowCursor(entry.isIntersecting)
     }, { threshold: 0.01 })
     if (containerRef.current) io.observe(containerRef.current)
     return () => io.disconnect()
@@ -1759,7 +1732,7 @@ export default function M1({ onComplete }) {
   const s = { height: '100vh', position: 'relative', overflow: 'hidden', background: 'transparent' }
 
   return (
-    <div ref={containerRef} data-module-scroll-target style={{ position: 'relative', background: 'transparent', cursor: showCursor ? 'none' : 'auto' }}>
+    <div ref={containerRef} data-module-scroll-target style={{ position: 'relative', background: 'transparent', cursor: 'auto' }}>
 
       {/* Section 0–2: 400vh 容器，sticky Earth 在前三页共享 */}
       <div style={{ position: 'relative', height: '400vh', background: 'transparent' }}>
@@ -1813,9 +1786,6 @@ export default function M1({ onComplete }) {
 
       <ChapterEndTransition onComplete={onComplete} />
 
-      {showCursor && (
-        <CustomCursor mouseX={rawX} mouseY={rawY} smoothX={smoothX} smoothY={smoothY} />
-      )}
     </div>
   )
 }

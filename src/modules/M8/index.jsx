@@ -1,12 +1,9 @@
 ﻿import { useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import useAppStore from '../../store/useAppStore'
+import './index.css'
 
-const MONO = 'Space Mono, monospace'
-const SERIF = 'Noto Serif SC, serif'
-const SANS = 'Noto Sans SC, sans-serif'
 const EASE = [0.16, 1, 0.3, 1]
-const CONTENT_MAX = 1080
 
 const REQUIRED_FIELDS = [
   { id: 'time', label: '时间', hint: '例如 2026-05-02 21:37，尽量精确到分钟。' },
@@ -104,24 +101,39 @@ export default function M8({ onComplete }) {
   const [reports, setReports] = useState([])
   const [activeCommunityId, setActiveCommunityId] = useState('obs01')
 
-  const selected = OBSERVATION_SET.find(o => o.id === selectedId) || OBSERVATION_SET[0]
-  const activeCommunity = OBSERVATION_SET.find(o => o.id === activeCommunityId) || selected
+  const selected = OBSERVATION_SET.find((item) => item.id === selectedId) || OBSERVATION_SET[0]
+  const activeCommunity = OBSERVATION_SET.find((item) => item.id === activeCommunityId) || selected
   const reportScore = scoreReport(report)
   const practiceScore = useMemo(() => {
     const answered = Object.keys(practice)
     if (!answered.length) return 0
-    const correct = answered.filter(id => practice[id] === OBSERVATION_SET.find(o => o.id === id)?.type).length
+    const correct = answered.filter((id) => practice[id] === OBSERVATION_SET.find((item) => item.id === id)?.type).length
     return Math.round((correct / answered.length) * 100)
   }, [practice])
   const practiceDone = Object.keys(practice).length >= 6 && practiceScore >= 66
-  const canSubmit = selected && reportScore >= 75
+  const canSubmit = Boolean(selected && reportScore >= 75)
   const canComplete = reports.length > 0 && practiceDone
+  const communityComments = [
+    ...(SAMPLE_COMMENTS[activeCommunity.id] || []),
+    ...reports
+      .filter((item) => item.imageId === activeCommunity.id)
+      .map((item) => ({
+        name: item.author,
+        text: `${item.report.time || '未填时间'} · ${item.report.location || '未填地点'} · ${item.report.note}`,
+      })),
+  ]
 
   function setField(key, value) {
-    setReport(prev => ({ ...prev, [key]: value }))
+    setReport((current) => ({ ...current, [key]: value }))
   }
 
-  function submitReport() {
+  function selectObservation(item) {
+    setSelectedId(item.id)
+    setActiveCommunityId(item.id)
+  }
+
+  function submitReport(event) {
+    event.preventDefault()
     if (!canSubmit) return
     const next = {
       id: `${selected.id}-${Date.now()}`,
@@ -132,318 +144,244 @@ export default function M8({ onComplete }) {
       score: reportScore,
       createdAt: new Date().toLocaleString('zh-CN', { hour12: false }),
     }
-    setReports(prev => [next, ...prev])
+    setReports((current) => [next, ...current])
     setActiveCommunityId(selected.id)
     setReport(emptyReport(user?.city))
   }
 
   function handleComplete() {
     if (!canComplete) return
-    setStoryChapter('m8', `用户提交了一份观测报告，并进入社区学习他人的补充细节。`)
+    setStoryChapter('m8', '用户提交了一份观测报告，并进入社区学习他人的补充细节。')
     onComplete()
   }
 
+  function goTo(sectionId) {
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   return (
-    <div style={{ background: 'transparent', color: '#e8e8f8', padding: '80px 24px' }}>
-      <div style={{ maxWidth: CONTENT_MAX, margin: '0 auto' }}>
-        <div style={{ marginBottom: 46 }}>
-          <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.15em', color: '#5a5a56', marginBottom: 12 }}>
-            MODULE 08 · OBSERVATION & COMMUNITY
-          </div>
-          <h2 style={{ fontFamily: SERIF, fontSize: 28, fontWeight: 300, color: '#e8e8f8', margin: '0 0 14px' }}>
-            学会写一份有效的太空垃圾观测报告。
-          </h2>
-          <p style={{ fontFamily: SANS, fontSize: 13, color: '#6a6a64', margin: 0, lineHeight: 1.75, maxWidth: 780 }}>
-            科学家通常只能稳定追踪较大的在轨物体。更小、更短暂、更接近地面的再入事件，需要公众报告补足细节。
-            这一节把你从“观看者”转成“记录者”。
-          </p>
+    <section className="m8" data-module-scroll-target>
+      <header className="m8-header">
+        <span>MODULE 08 / OBSERVATION & COMMUNITY</span>
+        <div>
+          <h2>把一次目击，写成可以复核的记录。</h2>
+          <p>先学会区分再入碎片、流星与卫星，再完成一份包含时间、地点、运动特征和证据的观测报告。</p>
+        </div>
+      </header>
+
+      <nav className="m8-flow" aria-label="观测报告流程">
+        {[
+          ['01', 'm8-compare', '识别有效信息', true],
+          ['02', 'm8-practice', '完成分类练习', practiceDone],
+          ['03', 'm8-report', '提交观测报告', reports.length > 0],
+          ['04', 'm8-community', '查看社区补充', reports.length > 0],
+        ].map(([index, id, label, done]) => (
+          <button key={id} type="button" className={done ? 'is-done' : ''} onClick={() => goTo(id)}>
+            <span>{index}</span><b>{label}</b><i aria-hidden="true">{done ? '✓' : '→'}</i>
+          </button>
+        ))}
+      </nav>
+
+      <section id="m8-compare" className="m8-band m8-compare">
+        <div className="m8-section-heading">
+          <span>01 / REPORT ANATOMY</span>
+          <div><h3>一句感受，不是一份报告。</h3><p>有效记录必须让其他人知道何时、何地、向哪里看，以及事件如何运动。</p></div>
+        </div>
+        <div className="m8-report-compare">
+          <article className="is-bad">
+            <span>信息不足</span>
+            <blockquote>{BAD_REPORT.text}</blockquote>
+            <div>{BAD_REPORT.missing.map((item) => <small key={item}>{item}</small>)}</div>
+          </article>
+          <article className="is-good">
+            <span>可复核记录</span>
+            <blockquote>{GOOD_REPORT.text}</blockquote>
+            <div>{GOOD_REPORT.fields.map((item) => <small key={item}>{item}</small>)}</div>
+          </article>
+        </div>
+      </section>
+
+      <section id="m8-practice" className="m8-band m8-training">
+        <div className="m8-section-heading">
+          <span>02 / CLASSIFICATION LAB</span>
+          <div><h3>先看运动，再判断对象。</h3><p>亮度不是充分证据。持续时间、碎裂方式与运动稳定性更有区分度。</p></div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 18, marginBottom: 44 }}>
-          <div style={{
-            background: '#0d0d0b',
-            border: '1px solid #1c1c1a',
-            borderRadius: 4,
-            padding: 18,
-            alignSelf: 'start',
-            position: 'sticky',
-            top: 72,
-          }}>
-            {[
-              ['01', '身份转变', '从被动观看变成可复核的记录者'],
-              ['02', '观测教学', '知道一份报告为什么有效'],
-              ['03', '事件与报告', '选图并写结构化报告'],
-              ['04', '社区互动', '阅读他人补充并学习盲点'],
-            ].map(([n, title, desc], idx) => (
-              <button
-                key={n}
-                onClick={() => setLessonStep(Math.min(idx, 2))}
-                style={{
-                  width: '100%',
-                  textAlign: 'left',
-                  background: lessonStep === idx ? 'rgba(107,127,255,0.06)' : 'transparent',
-                  border: `1px solid ${lessonStep === idx ? 'rgba(107,127,255,0.25)' : 'transparent'}`,
-                  borderRadius: 4,
-                  padding: '12px 10px',
-                  marginBottom: 8,
-                  cursor: 'pointer',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ fontFamily: MONO, fontSize: 9, color: '#6b7fff' }}>{n}</span>
-                  <span style={{ fontFamily: MONO, fontSize: 8, color: '#3a3a38' }}>{idx < 3 ? 'LESSON' : 'COMMUNITY'}</span>
-                </div>
-                <div style={{ fontFamily: SERIF, fontSize: 15, color: '#f0efe8', marginBottom: 4 }}>{title}</div>
-                <div style={{ fontFamily: SANS, fontSize: 11, color: '#6a6a64', lineHeight: 1.55 }}>{desc}</div>
-              </button>
-            ))}
-          </div>
-
-          <div style={{ display: 'grid', gap: 18 }}>
-            <section style={{ background: '#0d0d0b', border: '1px solid #1c1c1a', borderRadius: 4, padding: 22 }}>
-              <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em', color: '#5a5a56', marginBottom: 16 }}>
-                01 · 身份转变衔接
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div style={{ border: '1px solid #242420', padding: 16, borderRadius: 4 }}>
-                  <div style={{ fontFamily: MONO, fontSize: 9, color: '#3a3a38', marginBottom: 8 }}>BAD REPORT</div>
-                  <p style={{ fontFamily: SERIF, fontSize: 15, color: '#9a9a92', lineHeight: 1.8, margin: '0 0 12px' }}>{BAD_REPORT.text}</p>
-                  {BAD_REPORT.missing.map(m => (
-                    <span key={m} style={{ display: 'inline-block', fontFamily: MONO, fontSize: 8, color: '#e07030', border: '1px solid rgba(224,112,48,0.22)', padding: '2px 6px', margin: '0 5px 5px 0' }}>{m}</span>
-                  ))}
-                </div>
-                <div style={{ border: '1px solid rgba(107,127,255,0.22)', padding: 16, borderRadius: 4, background: 'rgba(107,127,255,0.025)' }}>
-                  <div style={{ fontFamily: MONO, fontSize: 9, color: '#6b7fff', marginBottom: 8 }}>VALID REPORT</div>
-                  <p style={{ fontFamily: SERIF, fontSize: 15, color: '#d8d3c8', lineHeight: 1.8, margin: '0 0 12px' }}>{GOOD_REPORT.text}</p>
-                  {GOOD_REPORT.fields.map(m => (
-                    <span key={m} style={{ display: 'inline-block', fontFamily: MONO, fontSize: 8, color: '#78c88c', border: '1px solid rgba(120,200,140,0.22)', padding: '2px 6px', margin: '0 5px 5px 0' }}>{m}</span>
-                  ))}
-                </div>
-              </div>
-            </section>
-
-            <section style={{ background: '#0d0d0b', border: '1px solid #1c1c1a', borderRadius: 4, padding: 22 }}>
-              <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em', color: '#5a5a56', marginBottom: 16 }}>
-                02 · 观测教学模块
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 18 }}>
-                {STANDARD_CARDS.map((card, idx) => (
-                  <motion.button
-                    key={card.id}
-                    onClick={() => setLessonStep(idx)}
-                    whileHover={{ y: -3 }}
-                    style={{
-                      textAlign: 'left',
-                      background: lessonStep === idx ? 'rgba(107,127,255,0.055)' : '#090908',
-                      border: `1px solid ${lessonStep === idx ? 'rgba(107,127,255,0.35)' : '#20201e'}`,
-                      borderRadius: 4,
-                      padding: 14,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <div style={{ fontFamily: MONO, fontSize: 9, color: '#6b7fff', marginBottom: 10 }}>步骤 {idx + 1}</div>
-                    <div style={{ fontFamily: SERIF, fontSize: 16, color: '#f0efe8', marginBottom: 8 }}>{card.title}</div>
-                    <div style={{ fontFamily: SANS, fontSize: 11, color: '#7a7a72', lineHeight: 1.65 }}>{card.signal}</div>
-                  </motion.button>
-                ))}
-              </div>
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={lessonStep}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.25, ease: EASE }}
-                  style={{ borderLeft: '3px solid #6b7fff', padding: '10px 14px', background: 'rgba(107,127,255,0.025)' }}
-                >
-                  <div style={{ fontFamily: MONO, fontSize: 9, color: '#6b7fff', marginBottom: 5 }}>判断提醒</div>
-                  <div style={{ fontFamily: SANS, fontSize: 12, color: '#8a8a82', lineHeight: 1.75 }}>{STANDARD_CARDS[lessonStep]?.warning}</div>
-                </motion.div>
-              </AnimatePresence>
-            </section>
-
-            <section style={{ background: '#0d0d0b', border: '1px solid #1c1c1a', borderRadius: 4, padding: 22 }}>
-              <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em', color: '#5a5a56', marginBottom: 16 }}>
-                03 · 交互场景判断练习
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
-                {OBSERVATION_SET.slice(0, 8).map(item => {
-                  const answer = practice[item.id]
-                  const right = answer && answer === item.type
-                  return (
-                    <div key={item.id} style={{ border: `1px solid ${answer ? (right ? '#2a4a2a' : '#4a2a1a') : '#1c1c1a'}`, borderRadius: 4, overflow: 'hidden', background: '#080807' }}>
-                      <div style={{ height: 96, position: 'relative', overflow: 'hidden' }}>
-                        <img src={item.img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.66 }} />
-                        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, #080807, transparent)' }} />
-                      </div>
-                      <div style={{ padding: 10 }}>
-                        <div style={{ fontFamily: SERIF, fontSize: 13, color: '#f0efe8', lineHeight: 1.4, marginBottom: 6 }}>{item.title}</div>
-                        <div style={{ fontFamily: SANS, fontSize: 10, color: '#5a5a56', lineHeight: 1.45, minHeight: 42 }}>{item.clue}</div>
-                        <div style={{ display: 'flex', gap: 4, marginTop: 8 }}>
-                          {['debris', 'meteor', 'satellite'].map(type => (
-                            <button
-                              key={type}
-                              onClick={() => setPractice(prev => ({ ...prev, [item.id]: type }))}
-                              style={{
-                                flex: 1,
-                                background: answer === type ? '#6b7fff' : 'transparent',
-                                color: answer === type ? 'transparent' : '#5a5a56',
-                                border: '1px solid #2a2a28',
-                                fontFamily: MONO,
-                                fontSize: 8,
-                                padding: '4px 0',
-                                cursor: 'pointer',
-                              }}
-                            >
-                              {type === 'debris' ? '垃圾' : type === 'meteor' ? '流星' : '卫星'}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-              <div style={{ fontFamily: MONO, fontSize: 10, color: practiceDone ? '#78c88c' : '#5a5a56', marginTop: 12 }}>
-                PRACTICE SCORE · {practiceScore}% · 已判断 {Object.keys(practice).length}/8
-              </div>
-            </section>
-          </div>
+        <div className="m8-standard-tabs" role="tablist" aria-label="观测对象分类">
+          {STANDARD_CARDS.map((card, index) => (
+            <button
+              key={card.id}
+              type="button"
+              role="tab"
+              aria-selected={lessonStep === index}
+              className={lessonStep === index ? 'is-active' : ''}
+              onClick={() => setLessonStep(index)}
+            >
+              <span>0{index + 1}</span>
+              <b>{card.title}</b>
+              <p>{card.signal}</p>
+            </button>
+          ))}
         </div>
 
-        <section style={{ marginBottom: 42 }}>
-          <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em', color: '#5a5a56', marginBottom: 16 }}>
-            04 · 事件与社区模块
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
-            <div style={{ background: '#0d0d0b', border: '1px solid #1c1c1a', borderRadius: 4, padding: 18 }}>
-              <div style={{ fontFamily: SERIF, fontSize: 18, color: '#f0efe8', marginBottom: 12 }}>选择图片</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-                {OBSERVATION_SET.map(item => (
-                  <button
-                    key={item.id}
-                    onClick={() => { setSelectedId(item.id); setActiveCommunityId(item.id) }}
-                    style={{
-                      height: 88,
-                      border: `1px solid ${selectedId === item.id ? 'rgba(107,127,255,0.55)' : '#1c1c1a'}`,
-                      background: '#080807',
-                      padding: 0,
-                      cursor: 'pointer',
-                      position: 'relative',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    <img src={item.img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: selectedId === item.id ? 0.76 : 0.48 }} />
-                    <div style={{ position: 'absolute', left: 6, bottom: 5, fontFamily: MONO, fontSize: 8, color: '#6b7fff' }}>{item.type.toUpperCase()}</div>
-                  </button>
-                ))}
-              </div>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={lessonStep}
+            className="m8-standard-note"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.22, ease: EASE }}
+          >
+            <span>判断提醒</span><p>{STANDARD_CARDS[lessonStep].warning}</p>
+          </motion.div>
+        </AnimatePresence>
+
+        <div className="m8-practice-head">
+          <div><span>SCENE TEST</span><h4>判断八组观测事件</h4></div>
+          <div><strong>{practiceScore}%</strong><span>{Object.keys(practice).length}/8 已判断</span></div>
+        </div>
+
+        <div className="m8-practice-grid">
+          {OBSERVATION_SET.map((item, index) => {
+            const answer = practice[item.id]
+            const correct = Boolean(answer && answer === item.type)
+            return (
+              <article key={item.id} className={answer ? (correct ? 'is-correct' : 'is-wrong') : ''}>
+                <img src={item.img} alt="" loading="lazy" />
+                <div className="m8-practice-copy">
+                  <span>{String(index + 1).padStart(2, '0')}</span>
+                  <h5>{item.title}</h5>
+                  <p>{item.clue}</p>
+                </div>
+                <div className="m8-practice-actions">
+                  {[
+                    ['debris', '再入碎片'],
+                    ['meteor', '流星'],
+                    ['satellite', '卫星'],
+                  ].map(([type, label]) => (
+                    <button
+                      key={type}
+                      type="button"
+                      className={answer === type ? 'is-selected' : ''}
+                      onClick={() => setPractice((current) => ({ ...current, [item.id]: type }))}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </article>
+            )
+          })}
+        </div>
+      </section>
+
+      <section id="m8-report" className="m8-band m8-report-workbench">
+        <div className="m8-section-heading">
+          <span>03 / REPORT WORKBENCH</span>
+          <div><h3>选择事件，完成结构化记录。</h3><p>质量达到 75% 后即可提交到社区。</p></div>
+        </div>
+
+        <div className="m8-workbench">
+          <div className="m8-observation-picker">
+            <div className="m8-selected-observation">
+              <img src={selected.img} alt="" />
+              <div><span>{selected.type.toUpperCase()}</span><h4>{selected.title}</h4><p>{selected.clue}</p></div>
             </div>
+            <div className="m8-observation-thumbs">
+              {OBSERVATION_SET.map((item, index) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={selectedId === item.id ? 'is-active' : ''}
+                  onClick={() => selectObservation(item)}
+                  aria-label={`选择事件 ${index + 1}：${item.title}`}
+                >
+                  <img src={item.img} alt="" loading="lazy" /><span>{String(index + 1).padStart(2, '0')}</span>
+                </button>
+              ))}
+            </div>
+            <p className="m8-observation-hint">{selected.reportHint}</p>
+          </div>
 
-            <div style={{ background: '#0d0d0b', border: '1px solid #1c1c1a', borderRadius: 4, padding: 18 }}>
-              <div style={{ fontFamily: SERIF, fontSize: 18, color: '#f0efe8', marginBottom: 8 }}>写观测报告</div>
-              <p style={{ fontFamily: SANS, fontSize: 11, color: '#6a6a64', lineHeight: 1.65, margin: '0 0 12px' }}>
-                当前图片：{selected.title}。提示：{selected.reportHint}
-              </p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                {REQUIRED_FIELDS.map(field => (
-                  <label key={field.id} style={{ display: 'block' }}>
-                    <div style={{ fontFamily: MONO, fontSize: 8, color: '#5a5a56', marginBottom: 4 }}>{field.label}</div>
-                    <input
-                      value={report[field.id]}
-                      onChange={e => setField(field.id, e.target.value)}
-                      placeholder={field.hint}
-                      style={{
-                        width: '100%',
-                        boxSizing: 'border-box',
-                        background: '#080807',
-                        border: '1px solid #242420',
-                        color: '#d8d3c8',
-                        fontFamily: SANS,
-                        fontSize: 11,
-                        padding: '8px 9px',
-                        outline: 'none',
-                      }}
-                    />
-                  </label>
-                ))}
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
-                <select value={report.classification} onChange={e => setField('classification', e.target.value)} style={{ background: '#080807', border: '1px solid #242420', color: '#d8d3c8', fontFamily: SANS, fontSize: 11, padding: 8 }}>
+          <form className="m8-report-form" onSubmit={submitReport}>
+            <div className="m8-form-grid">
+              {REQUIRED_FIELDS.map((field) => (
+                <label key={field.id}>
+                  <span>{field.label}</span>
+                  <input
+                    value={report[field.id]}
+                    onChange={(event) => setField(field.id, event.target.value)}
+                    placeholder={field.hint}
+                  />
+                </label>
+              ))}
+            </div>
+            <div className="m8-form-selects">
+              <label><span>事件分类</span>
+                <select value={report.classification} onChange={(event) => setField('classification', event.target.value)}>
                   <option value="debris">疑似太空垃圾再入</option>
                   <option value="meteor">更像流星</option>
                   <option value="satellite">更像正常卫星</option>
                   <option value="unknown">无法判断</option>
                 </select>
-                <select value={report.confidence} onChange={e => setField('confidence', e.target.value)} style={{ background: '#080807', border: '1px solid #242420', color: '#d8d3c8', fontFamily: SANS, fontSize: 11, padding: 8 }}>
+              </label>
+              <label><span>判断置信度</span>
+                <select value={report.confidence} onChange={(event) => setField('confidence', event.target.value)}>
                   <option value="low">低置信度</option>
                   <option value="medium">中置信度</option>
                   <option value="high">高置信度</option>
                 </select>
-              </div>
+              </label>
+            </div>
+            <label className="m8-note-field"><span>补充判断</span>
               <textarea
                 value={report.note}
-                onChange={e => setField('note', e.target.value)}
-                placeholder="补充说明：你为什么这样判断？有哪些不确定？"
-                style={{ width: '100%', minHeight: 82, resize: 'vertical', marginTop: 8, boxSizing: 'border-box', background: '#080807', border: '1px solid #242420', color: '#d8d3c8', fontFamily: SANS, fontSize: 11, lineHeight: 1.7, padding: 10, outline: 'none' }}
+                onChange={(event) => setField('note', event.target.value)}
+                placeholder="说明判断依据、仍然存在的不确定性，以及是否有其他目击者。"
               />
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
-                <span style={{ fontFamily: MONO, fontSize: 10, color: reportScore >= 75 ? '#78c88c' : '#5a5a56' }}>REPORT QUALITY · {reportScore}%</span>
-                <button onClick={submitReport} disabled={!canSubmit} style={{ background: canSubmit ? '#6b7fff' : 'transparent', color: canSubmit ? 'transparent' : '#4a4a46', border: `1px solid ${canSubmit ? '#6b7fff' : '#1c1c38'}`, fontFamily: MONO, fontSize: 10, padding: '8px 12px', cursor: canSubmit ? 'pointer' : 'not-allowed' }}>
-                  提交到社区
-                </button>
-              </div>
+            </label>
+            <div className="m8-form-footer">
+              <div><span>REPORT QUALITY</span><strong>{reportScore}%</strong><progress value={reportScore} max="100" /></div>
+              <button type="submit" disabled={!canSubmit}>提交到社区</button>
             </div>
-          </div>
-        </section>
+          </form>
+        </div>
+      </section>
 
-        <section style={{ background: '#0d0d0b', border: '1px solid #1c1c1a', borderRadius: 4, padding: 22, marginBottom: 36 }}>
-          <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em', color: '#5a5a56', marginBottom: 16 }}>
-            05 · 社区互动
+      <section id="m8-community" className="m8-band m8-community">
+        <div className="m8-section-heading">
+          <span>04 / COMMUNITY REVIEW</span>
+          <div><h3>让其他观测者补足盲点。</h3><p>社区反馈用于补充方位、天气、设备与原始文件等上下文。</p></div>
+        </div>
+        <div className="m8-community-layout">
+          <div className="m8-community-event">
+            <img src={activeCommunity.img} alt="" />
+            <span>{activeCommunity.type.toUpperCase()}</span>
+            <h4>{activeCommunity.title}</h4>
+            <p>{activeCommunity.clue}</p>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 16 }}>
-            <div>
-              <img src={activeCommunity.img} alt="" style={{ width: '100%', height: 150, objectFit: 'cover', opacity: 0.68, border: '1px solid #242420' }} />
-              <div style={{ fontFamily: SERIF, fontSize: 16, color: '#f0efe8', margin: '10px 0 4px' }}>{activeCommunity.title}</div>
-              <div style={{ fontFamily: SANS, fontSize: 11, color: '#6a6a64', lineHeight: 1.65 }}>{activeCommunity.clue}</div>
-            </div>
-            <div style={{ display: 'grid', gap: 10 }}>
-              {[...(SAMPLE_COMMENTS[activeCommunity.id] || []), ...reports.filter(r => r.imageId === activeCommunity.id).map(r => ({ name: r.author, text: `${r.report.time || '未填时间'} · ${r.report.location || '未填地点'} · ${r.report.note}` }))].map((comment, idx) => (
-                <motion.div key={`${comment.name}-${idx}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} style={{ border: '1px solid #20201e', borderRadius: 4, padding: '12px 14px', background: '#090908' }}>
-                  <div style={{ fontFamily: MONO, fontSize: 9, color: '#6b7fff', marginBottom: 6 }}>{comment.name}</div>
-                  <div style={{ fontFamily: SANS, fontSize: 12, color: '#8a8a82', lineHeight: 1.7 }}>{comment.text}</div>
-                </motion.div>
-              ))}
-              {!((SAMPLE_COMMENTS[activeCommunity.id] || []).length || reports.some(r => r.imageId === activeCommunity.id)) && (
-                <div style={{ fontFamily: SANS, fontSize: 12, color: '#5a5a56', border: '1px dashed #2a2a28', padding: 14 }}>这个图片社区还没有讨论。提交一份报告后，它会出现在这里。</div>
-              )}
-            </div>
+          <div className="m8-comment-list">
+            {communityComments.map((comment, index) => (
+              <motion.article key={`${comment.name}-${index}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
+                <span>{String(index + 1).padStart(2, '0')}</span>
+                <div><b>{comment.name}</b><p>{comment.text}</p></div>
+              </motion.article>
+            ))}
+            {!communityComments.length && <p className="m8-empty-comments">提交报告后，讨论会出现在这里。</p>}
           </div>
-        </section>
+        </div>
+      </section>
 
-        <motion.button
-          onClick={handleComplete}
-          disabled={!canComplete}
-          whileHover={canComplete ? { opacity: 0.85 } : {}}
-          whileTap={canComplete ? { scale: 0.985 } : {}}
-          style={{
-            width: '100%',
-            padding: '16px 0',
-            background: canComplete ? '#6b7fff' : 'transparent',
-            border: `1px solid ${canComplete ? '#6b7fff' : '#1c1c38'}`,
-            color: canComplete ? 'transparent' : '#5a5a56',
-            fontFamily: SERIF,
-            fontSize: 14,
-            letterSpacing: '0.1em',
-            cursor: canComplete ? 'pointer' : 'not-allowed',
-            opacity: canComplete ? 1 : 0.38,
-          }}
-        >
-          {!practiceDone ? '先完成判断练习' : reports.length === 0 ? '提交一份观测报告' : '完成观测教学'}
-        </motion.button>
-      </div>
-    </div>
+      <footer className="m8-complete">
+        <div>
+          <span>TRAINING STATUS</span>
+          <p>{!practiceDone ? '完成至少 6 组判断并达到 66% 正确率。' : reports.length === 0 ? '分类训练已完成，请提交一份报告。' : '观测训练与社区报告均已完成。'}</p>
+        </div>
+        <button type="button" onClick={handleComplete} disabled={!canComplete}>
+          {canComplete ? '完成观测教学' : practiceDone ? '等待报告提交' : '等待分类训练'}
+        </button>
+      </footer>
+    </section>
   )
 }
-
-

@@ -9,7 +9,6 @@ const M2 = lazy(() => import('./modules/M2'))
 const M3 = lazy(() => import('./modules/M3'))
 const M4 = lazy(() => import('./modules/M4/M4New'))
 const LegalTreaties = lazy(() => import('./modules/LegalTreaties'))
-const M5 = lazy(() => import('./modules/M5'))
 const M6 = lazy(() => import('./modules/M6'))
 const M7 = lazy(() => import('./modules/M7'))
 const M8 = lazy(() => import('./modules/M8'))
@@ -20,22 +19,8 @@ const MODULES = [
   { id: 'm2', Component: M2, connector: null, boundaryDivider: true },
   { id: 'm4', Component: M4, connector: null },
   { id: 'law', Component: LegalTreaties, connector: null },
-  {
-    id: 'm5',
-    Component: M5,
-    connector: '旅行结束了，那些留下来的，我们总是忘了还有机会处理。',
-    boundaryDivider: true,
-  },
-  {
-    id: 'm6',
-    Component: M6,
-    connector: '不要问还有没有人在乎，问你自己。',
-  },
-  {
-    id: 'm7',
-    Component: M7,
-    connector: '最后，把这些碎片重新放回真实世界的信息里。',
-  },
+  { id: 'm6', Component: M6, connector: null },
+  { id: 'm7', Component: M7 },
 ]
 
 function ModuleLoader() {
@@ -95,7 +80,7 @@ function OptionalModuleCard({ Component, isVisible }) {
 
   return (
     <div
-      style={{ margin: '0 auto', maxWidth: 1080, padding: '0 24px 80px' }}
+      style={{ margin: '0 auto', maxWidth: expanded ? 1320 : 1080, padding: '0 24px 80px' }}
     >
       <div style={{
         height: 1,

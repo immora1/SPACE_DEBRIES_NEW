@@ -48,7 +48,7 @@ export async function generateStoryOutline({ name, city, importantEvent, satelli
     `学习者：${name}，城市：${city}，个人事件：${importantEvent}。卫星：${satText(satellite)}。`,
     {
       premise: `${name || '学习者'}把一颗卫星的命运和自己的重要记忆连接起来。`,
-      checkpoints: ['entrance', 'm1', 'm2', 'm3', 'm4', 'm5'].map((id) => ({ id, label: id.toUpperCase(), beat: '理解轨道碎片风险。' })),
+      checkpoints: ['entrance', 'm1', 'm2', 'm3', 'm4'].map((id) => ({ id, label: id.toUpperCase(), beat: '理解轨道碎片风险。' })),
       successEnding: '卫星完成处置，记忆被保留下来。',
       failureEnding: '卫星失控，记忆出现偏移。',
     },
@@ -135,36 +135,6 @@ export async function generateGameReflection({ gameResult, decisions, satellite,
     },
     0.65,
     420,
-  )
-}
-
-export async function generateReentryEnding({ gameResult, material, satellite, user, storyOutline }) {
-  return jsonChat(
-    '写再入结尾，120 字以内。字段：ending。',
-    `${userText(user)}。${satText(satellite)}。结果：${gameResult}。材料：${material}。${outlineText(storyOutline)}`,
-    { ending: gameResult === 'success' ? '卫星进入可控再入流程，大部分结构在大气中烧蚀。' : '卫星继续漂移，未来仍可能制造新的碎片风险。' },
-    0.75,
-    260,
-  )
-}
-
-export async function generateCleanupFeedback({ debris, debrisDetail = '', debrisSource = '', debrisContext = '', technology, isCorrect }) {
-  return jsonChat(
-    '评价碎片清除技术选择，80 字以内。字段：feedback。',
-    `碎片：${debris}。细节：${debrisDetail}。来源：${debrisSource}。情境：${debrisContext}。技术：${technology}。是否正确：${isCorrect}。`,
-    { feedback: isCorrect ? '这个方案匹配碎片尺寸、轨道和处置目标。' : '这个方案与碎片特征不匹配，可能增加成本或风险。' },
-    0.6,
-    180,
-  )
-}
-
-export async function generateCleanupEpilogue({ accuracy, satellite: _satellite, user, storyOutline }) {
-  return jsonChat(
-    '写课程尾声，100 字以内。字段：epilogue。',
-    `${userText(user)}。清理正确率：${Math.round((accuracy || 0) * 100)}%。${outlineText(storyOutline)}`,
-    { epilogue: '清理不是任务之后的附加题，而是每一次发射之前就必须写进方案的责任。' },
-    0.7,
-    220,
   )
 }
 

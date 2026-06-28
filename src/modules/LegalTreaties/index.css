@@ -47,11 +47,11 @@
 .law-ghost-index {
   position: absolute;
   left: 2vw;
-  bottom: -48px;
+  bottom: 24px;
   color: rgba(126, 144, 255, 0.07);
-  font-family: "Noto Serif SC", serif;
+  font-family: "Space Mono", monospace;
   font-size: 250px;
-  font-weight: 400;
+  font-weight: 700;
   line-height: 1;
   letter-spacing: 0;
   pointer-events: none;

@@ -1,4 +1,4 @@
-﻿import { memo, useMemo } from 'react'
+import { memo, useMemo } from 'react'
 
 const STAGES = [
   { id: 'm1', label: '太空垃圾是什么？' },
@@ -6,11 +6,9 @@ const STAGES = [
   { id: 'm2', label: '轨道是什么？' },
   { id: 'm4', label: '卫星生存任务游戏' },
   { id: 'law', label: '法律与国际条约' },
-  { id: 'm5', label: '太空垃圾落地理' },
   { id: 'm6', label: '怎么清理太空垃圾' },
   { id: 'm7', label: '科普视频' },
 ]
-
 function StageNav({ completedModules, availableModules = [], onStageClick }) {
   const completedSet = useMemo(() => new Set(completedModules), [completedModules])
   const availableSet = useMemo(() => new Set(availableModules), [availableModules])
