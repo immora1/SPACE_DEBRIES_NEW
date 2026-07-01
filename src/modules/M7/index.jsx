@@ -1,5 +1,6 @@
-﻿import { useMemo, useState } from 'react'
+﻿import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import gsap from 'gsap'
 import useAppStore from '../../store/useAppStore'
 import { generateAnswerExplanation, generateVideoQuestion } from '../../services/ai'
 import './index.css'
@@ -8,64 +9,64 @@ const EASE = [0.16, 1, 0.3, 1]
 
 const VIDEOS = [
   {
-    id: 'scale',
-    title: '1.7亿块、7000吨太空垃圾，正在包围地球',
-    desc: '太空垃圾是怎样形成的？会产生哪些影响？',
-    url: 'https://www.bilibili.com/video/BV1btUzB7Eor',
-    img: '/covers/1.png',
-    tag: 'SCALE',
-    duration: '宏观概览',
-    focus: ['数量级不是抽象数字，而是碰撞概率的底噪。', '厘米级碎片难以追踪，却足以摧毁航天器。', '清理问题同时是工程、治理和成本问题。'],
+    id: 'pollution',
+    title: '轨道污染：我们如何把太空变成垃圾场',
+    desc: 'ESA Space Safety 从碎片来源、碰撞风险与零碎片目标解释轨道污染。',
+    url: 'https://www.youtube.com/watch?v=3Hq2zasVPuM',
+    img: '/m7/space-pollution.jpg',
+    tag: 'OVERVIEW',
+    duration: 'ESA / 2026',
+    focus: ['失效卫星、火箭级段与碰撞碎片共同构成轨道污染。', '高速碎片会威胁通信、导航和地球观测服务。', '零碎片设计需要覆盖任务的完整生命周期。'],
   },
   {
-    id: 'cosmic-junk',
-    title: "【It's Okay To Be Smart】双语·进击的太空垃圾",
-    desc: 'Attack Of The Cosmic Space Junk!',
-    url: 'https://www.bilibili.com/video/BV16E411h7n4',
-    img: '/covers/2.png',
-    tag: 'EXPLAINER',
-    duration: '基础科普',
-    focus: ['碎片速度让小物体具备巨大动能。', '轨道高度决定碎片停留时间。', '轨道环境需要像公共资源一样管理。'],
+    id: 'risk',
+    title: '太空垃圾为何比想象中更危险',
+    desc: '从速度、数量和连锁碰撞三个尺度理解日益拥挤的近地轨道。',
+    url: 'https://www.youtube.com/watch?v=TVGSGq5ZmyE',
+    img: '/m7/space-junk-risk.jpg',
+    tag: 'RISK',
+    duration: 'SPARK / 2025',
+    focus: ['厘米级碎片也能以极高相对速度造成灾难性破坏。', '无法追踪的小碎片使风险评估存在明显盲区。', '轨道越拥挤，规避机动与任务运营成本越高。'],
   },
   {
-    id: 'imax',
-    title: '【IMAX记录短片】空间垃圾 1080P',
-    desc: '高码率中英双语字幕 Space Junk (2012)',
-    url: 'https://www.bilibili.com/video/BV1MV411W7BF',
-    img: '/covers/3.png',
-    tag: 'DOCUMENTARY',
-    duration: '纪录短片',
-    focus: ['空间碎片问题并非未来风险，而是已发生的环境变化。', '可视化能帮助理解轨道拥堵。', '碎片治理需要长期观测数据支撑。'],
+    id: 'history',
+    title: '轨道碎片的增长轨迹',
+    desc: 'ESA 动画回看航天时代以来人造物体如何逐步包围地球。',
+    url: 'https://www.youtube.com/watch?v=9cd0-4qOvb0',
+    img: '/m7/debris-history.jpg',
+    tag: 'TIMELINE',
+    duration: 'ESA ARCHIVE',
+    focus: ['每次发射都会留下有效载荷、火箭体或任务相关物体。', '爆炸与碰撞会把少量大型物体转化为大量细小碎片。', '今天的轨道环境是数十年累积活动的结果。'],
   },
   {
-    id: 'impact',
-    title: '太空垃圾撞击的力量有多大？',
-    desc: '高速撞击实验展示惊人破坏力',
-    url: 'https://www.bilibili.com/video/BV1CE41127ih',
-    img: '/covers/4.png',
-    tag: 'IMPACT',
-    duration: '实验片段',
-    focus: ['相对速度是破坏力的核心变量。', '毫米级碎片也可能造成穿孔和裂纹。', '防护只能降低风险，不能替代规避和清理。'],
+    id: 'removal',
+    title: 'e.Deorbit：主动清除失效卫星',
+    desc: '机械臂捕获、稳定目标并引导再入的主动碎片清除任务概念。',
+    url: 'https://www.youtube.com/watch?v=R6yZLbUCU2c',
+    img: '/m7/active-removal.jpg',
+    tag: 'REMOVAL',
+    duration: 'ESA / MISSION',
+    focus: ['清除任务必须先完成自主交会、识别与姿态同步。', '非合作目标没有标准接口，捕获难度远高于正常对接。', '优先移除大型失效目标能够降低未来碎片增殖风险。'],
   },
   {
-    id: 'kessler',
-    title: '凯斯勒综合征：被锁死的未来',
-    desc: '太空垃圾将导致人类未来无法进入太空！',
-    url: 'https://www.bilibili.com/video/BV1vb411u7Dd',
-    img: '/covers/6.png',
-    tag: 'CASCADE',
-    duration: '风险模型',
-    focus: ['一次碰撞会制造更多碰撞条件。', '高密度轨道区域更接近连锁反应阈值。', '预防比事后清理更便宜也更有效。'],
+    id: 'safety',
+    title: '保护依赖卫星运行的世界',
+    desc: 'ESA 展示如何同时应对空间碎片与空间天气对基础设施的影响。',
+    url: 'https://www.youtube.com/watch?v=zNR0sdyaBLM',
+    img: '/m7/protect-orbit.jpg',
+    tag: 'SPACE SAFETY',
+    duration: 'ESA / 2023',
+    focus: ['轨道安全直接关系到通信、气象、导航与灾害响应。', '监测、预警和规避是当前最成熟的风险控制手段。', '空间可持续性需要运营方共享数据并遵守共同标准。'],
   },
   {
-    id: 'cleanup',
-    title: '清理太空：我们在行动',
-    desc: '介绍现有的多种清理方案与技术',
-    url: 'https://www.bilibili.com/video/BV1p34y1f7Ai',
-    img: '/covers/12.png',
-    tag: 'CLEANUP',
-    duration: '解决方案',
-    focus: ['不同碎片需要不同清理技术。', '清理大型目标通常优先级更高。', '法律授权和商业模式仍是现实瓶颈。'],
+    id: 'reentry',
+    title: 'Cluster 的最后一舞：一次受控再入',
+    desc: 'ESA 通过提前调整轨道，让退役卫星在远离人口区域安全结束任务。',
+    url: 'https://www.youtube.com/watch?v=KFNLzU3GItE',
+    img: '/m7/targeted-reentry.jpg',
+    tag: 'REENTRY',
+    duration: 'ESA / 2024',
+    focus: ['任务结束前的轨道设计决定卫星最终如何离开太空。', '定向再入能够缩小残骸可能落区并降低地面风险。', '可处置设计比任务结束后再寻找清理方案更高效。'],
   },
 ]
 
@@ -98,10 +99,10 @@ const RESOURCES = [
 
 function getRecommendation({ gameResult, materials }) {
   const result = typeof gameResult === 'string' ? gameResult : gameResult?.result
-  if (result === 'failure') return 'kessler'
-  if (materials?.propulsion === 'ti_tank' || materials?.frame === 'titanium') return 'impact'
-  if (materials?.solar === 'flexible' || materials?.insulation === 'mli') return 'scale'
-  return 'cleanup'
+  if (result === 'failure') return 'risk'
+  if (materials?.propulsion === 'ti_tank' || materials?.frame === 'titanium') return 'removal'
+  if (materials?.solar === 'flexible' || materials?.insulation === 'mli') return 'pollution'
+  return 'safety'
 }
 
 function LoadingDots() {
@@ -129,12 +130,158 @@ export default function M7({ onComplete }) {
   const [answer, setAnswer] = useState('')
   const [explanationState, setExplanationState] = useState('idle')
   const [explanation, setExplanation] = useState('')
+  const rootRef = useRef(null)
+  const mediaRef = useRef(null)
+  const trackRef = useRef(null)
 
-  const activeVideo = VIDEOS.find((video) => video.id === activeId) || VIDEOS[0]
+  const activeIndex = Math.max(0, VIDEOS.findIndex((video) => video.id === activeId))
+  const activeVideo = VIDEOS[activeIndex] || VIDEOS[0]
   const visitedCount = Object.keys(visited).length
 
+  useLayoutEffect(() => {
+    const mm = gsap.matchMedia()
+
+    mm.add(
+      {
+        motion: '(prefers-reduced-motion: no-preference)',
+        reduced: '(prefers-reduced-motion: reduce)',
+      },
+      (context) => {
+        if (context.conditions.reduced) {
+          gsap.set('.m7-media-curtain', { scaleY: 0 })
+          gsap.set('.m7-reveal', { autoAlpha: 1, y: 0 })
+          return
+        }
+
+        const timeline = gsap.timeline({ defaults: { ease: 'power3.out' } })
+        gsap.set('.m7-media-curtain', { scaleY: 1, transformOrigin: 'bottom center' })
+
+        timeline
+          .to('.m7-media-curtain', { scaleY: 0, duration: 0.72 })
+          .fromTo('.m7-stage-image', { scale: 1.075 }, { scale: 1, duration: 1.05 }, 0)
+          .fromTo(
+            '.m7-reveal',
+            { autoAlpha: 0, y: 18 },
+            { autoAlpha: 1, y: 0, duration: 0.58, stagger: 0.055 },
+            0.16,
+          )
+          .fromTo('.m7-active-line', { scaleX: 0 }, { scaleX: 1, duration: 0.62 }, 0.16)
+      },
+      rootRef.current,
+    )
+
+    return () => mm.revert()
+  }, [activeId])
+
+  useEffect(() => {
+    const media = mediaRef.current
+    const image = media?.querySelector('.m7-stage-image')
+    if (!media || !image) return undefined
+
+    const mm = gsap.matchMedia()
+    mm.add(
+      '(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)',
+      () => {
+        const xTo = gsap.quickTo(image, 'xPercent', { duration: 0.8, ease: 'power3.out' })
+        const yTo = gsap.quickTo(image, 'yPercent', { duration: 0.8, ease: 'power3.out' })
+
+        function move(event) {
+          const bounds = media.getBoundingClientRect()
+          xTo(((event.clientX - bounds.left) / bounds.width - 0.5) * 2.4)
+          yTo(((event.clientY - bounds.top) / bounds.height - 0.5) * 2.4)
+        }
+
+        function leave() {
+          xTo(0)
+          yTo(0)
+        }
+
+        media.addEventListener('pointermove', move)
+        media.addEventListener('pointerleave', leave)
+        return () => {
+          media.removeEventListener('pointermove', move)
+          media.removeEventListener('pointerleave', leave)
+          gsap.killTweensOf(image)
+        }
+      },
+      rootRef.current,
+    )
+
+    return () => mm.revert()
+  }, [])
+
+  useLayoutEffect(() => {
+    const track = trackRef.current
+    const viewport = track?.parentElement
+    if (!track || !viewport) return undefined
+
+    const mm = gsap.matchMedia()
+    mm.add(
+      '(prefers-reduced-motion: no-preference)',
+      () => {
+        const itemStep = 100 / (VIDEOS.length * 2)
+        const timeline = gsap.timeline({ repeat: -1 })
+        gsap.set(track, { xPercent: 0 })
+        timeline.to({}, { duration: 2.4 })
+
+        for (let step = 1; step <= VIDEOS.length; step += 1) {
+          timeline
+            .to(track, {
+              xPercent: -itemStep * step,
+              duration: 0.85,
+              ease: 'power2.inOut',
+            })
+            .call(() => setActiveId(VIDEOS[step % VIDEOS.length].id))
+            .to({}, { duration: 2.4 })
+        }
+
+        timeline.set(track, { xPercent: 0 })
+
+        function pause() {
+          timeline.pause()
+        }
+
+        function resume() {
+          timeline.resume()
+        }
+
+        function resumeAfterFocus(event) {
+          if (!viewport.contains(event.relatedTarget)) resume()
+        }
+
+        viewport.addEventListener('focusin', pause)
+        viewport.addEventListener('focusout', resumeAfterFocus)
+
+        return () => {
+          viewport.removeEventListener('focusin', pause)
+          viewport.removeEventListener('focusout', resumeAfterFocus)
+          timeline.kill()
+        }
+      },
+      rootRef.current,
+    )
+
+    return () => mm.revert()
+  }, [])
+
   function selectVideo(video) {
-    setActiveId(video.id)
+    if (video.id !== activeId) setActiveId(video.id)
+  }
+
+  function stepVideo(direction) {
+    const nextIndex = (activeIndex + direction + VIDEOS.length) % VIDEOS.length
+    setActiveId(VIDEOS[nextIndex].id)
+  }
+
+  function handleViewerKeyDown(event) {
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault()
+      stepVideo(-1)
+    }
+    if (event.key === 'ArrowRight') {
+      event.preventDefault()
+      stepVideo(1)
+    }
   }
 
   function openVideo(video) {
@@ -151,10 +298,10 @@ export default function M7({ onComplete }) {
         satellite: satellite || { name: 'UNKNOWN', altitudeKm: '未知' },
         user: user || { name: '用户', city: '' },
       })
-      setQuestion(res.question || `结合你的卫星 ${satellite?.name || ''}，哪种碎片风险最值得关注？`)
+      setQuestion(res.question || '结合你的卫星 ' + (satellite?.name || '') + '，哪种碎片风险最值得关注？')
       setQuestionState('done')
     } catch {
-      setQuestion(`结合你的卫星 ${satellite?.name || ''}，哪种碎片风险最值得关注？`)
+      setQuestion('结合你的卫星 ' + (satellite?.name || '') + '，哪种碎片风险最值得关注？')
       setQuestionState('error')
     }
   }
@@ -184,85 +331,97 @@ export default function M7({ onComplete }) {
   }
 
   return (
-    <section className="m7" data-module-scroll-target>
+    <section ref={rootRef} className="m7" data-module-scroll-target>
       <header className="m7-header">
         <span>MODULE 07 / FIELD ARCHIVE</span>
         <div>
           <h2>从真实资料，重新理解轨道环境。</h2>
-          <p>选择一个视角，查看关键判断，再前往原始视频或权威数据源。</p>
+          <p>沿着六个视角浏览，提取关键判断，再前往原始视频或权威数据源。</p>
         </div>
       </header>
 
-      <motion.div
+      <div
         className="m7-viewer"
-        initial={{ opacity: 0, y: 18 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, amount: 0.15 }}
-        transition={{ duration: 0.45, ease: EASE }}
+        tabIndex="0"
+        onKeyDown={handleViewerKeyDown}
+        aria-label="视频资料浏览器，使用左右方向键切换"
       >
-        <div className="m7-stage">
-          <AnimatePresence mode="wait">
-            <motion.article
-              key={activeVideo.id}
-              className="m7-stage-content"
-              initial={{ opacity: 0, x: -12 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 8 }}
-              transition={{ duration: 0.24, ease: EASE }}
-            >
-              <div className="m7-stage-media">
-                <img src={activeVideo.img} alt="" />
-                <button type="button" onClick={() => openVideo(activeVideo)} aria-label={`打开视频：${activeVideo.title}`}>
-                  <span>↗</span>
-                </button>
-              </div>
-              <div className="m7-stage-body">
-                <div className="m7-stage-meta">
-                  <span>{activeVideo.tag}</span>
-                  <span>{activeVideo.duration}</span>
-                  {activeVideo.id === recommendedId && <span>为你推荐</span>}
-                  {visited[activeVideo.id] && <span>已访问</span>}
-                </div>
-                <h3>{activeVideo.title}</h3>
-                <p>{activeVideo.desc}</p>
-                <ol>
-                  {activeVideo.focus.map((point, index) => (
-                    <li key={point}><span>0{index + 1}</span><p>{point}</p></li>
-                  ))}
-                </ol>
-                <button className="m7-open-video" type="button" onClick={() => openVideo(activeVideo)}>
-                  前往原始视频 <span>↗</span>
-                </button>
-              </div>
-            </motion.article>
-          </AnimatePresence>
-        </div>
-
-        <aside className="m7-playlist" aria-label="视频目录">
-          <div className="m7-playlist-head">
-            <span>VIDEO INDEX</span>
+        <div className="m7-viewer-bar">
+          <div>
+            <span>01 / VIDEO OBSERVATORY</span>
             <small>{visitedCount} / {VIDEOS.length} 已访问</small>
           </div>
-          <div className="m7-playlist-list">
-            {VIDEOS.map((video, index) => (
-              <button
-                key={video.id}
-                type="button"
-                className={video.id === activeVideo.id ? 'is-active' : ''}
-                onClick={() => selectVideo(video)}
-              >
-                <span className="m7-playlist-index">{String(index + 1).padStart(2, '0')}</span>
-                <span className="m7-playlist-thumb"><img src={video.img} alt="" loading="lazy" /></span>
-                <span className="m7-playlist-copy">
-                  <small>{video.tag} / {video.duration}</small>
-                  <b>{video.title}</b>
-                </span>
-                <span className="m7-playlist-arrow" aria-hidden="true">→</span>
-              </button>
-            ))}
+          <div className="m7-viewer-progress" aria-hidden="true">
+            {VIDEOS.map((video) => <i key={video.id} className={video.id === activeId ? 'is-active' : ''} />)}
           </div>
-        </aside>
-      </motion.div>
+        </div>
+
+        <article className="m7-feature">
+          <div ref={mediaRef} className="m7-feature-media">
+            <img className="m7-stage-image" src={activeVideo.img} alt="" />
+            <div className="m7-media-curtain" aria-hidden="true" />
+            <div className="m7-media-meta m7-reveal">
+              <span>{activeVideo.tag}</span>
+              <span>{activeVideo.duration}</span>
+              {activeVideo.id === recommendedId && <span>为你推荐</span>}
+              {visited[activeVideo.id] && <span>已访问</span>}
+            </div>
+            <button
+              className="m7-watch-button m7-reveal"
+              type="button"
+              onClick={() => openVideo(activeVideo)}
+              aria-label={'打开视频：' + activeVideo.title}
+            >
+              <span>观看原片</span><i aria-hidden="true">↗</i>
+            </button>
+          </div>
+
+          <div className="m7-feature-body">
+            <div className="m7-feature-index m7-reveal">
+              <strong>{String(activeIndex + 1).padStart(2, '0')}</strong>
+              <span>/ {String(VIDEOS.length).padStart(2, '0')}</span>
+            </div>
+            <div className="m7-feature-copy">
+              <span className="m7-feature-kicker m7-reveal">{activeVideo.tag} / {activeVideo.duration}</span>
+              <h3 className="m7-reveal">{activeVideo.title}</h3>
+              <p className="m7-reveal">{activeVideo.desc}</p>
+            </div>
+            <ol className="m7-feature-points">
+              {activeVideo.focus.map((point, index) => (
+                <li className="m7-reveal" key={point}>
+                  <span>0{index + 1}</span><p>{point}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </article>
+
+        <nav className="m7-video-track" aria-label="选择视频视角">
+          <div ref={trackRef} className="m7-video-track-inner">
+            {[...VIDEOS, ...VIDEOS].map((video, index) => {
+              const active = video.id === activeId
+              const duplicate = index >= VIDEOS.length
+              return (
+                <button
+                  key={video.id + '-' + index}
+                  type="button"
+                  className={active ? 'is-active' : ''}
+                  aria-current={!duplicate && active ? 'true' : undefined}
+                  aria-hidden={duplicate ? 'true' : undefined}
+                  tabIndex={duplicate ? -1 : 0}
+                  onClick={() => selectVideo(video)}
+                >
+                  <span className="m7-track-index">{String((index % VIDEOS.length) + 1).padStart(2, '0')}</span>
+                  <span className="m7-track-thumb"><img src={video.img} alt="" loading="lazy" /></span>
+                  <span className="m7-track-copy"><small>{video.duration}</small><b>{video.title}</b></span>
+                  <span className="m7-track-state" aria-hidden="true">{visited[video.id] ? '✓' : '→'}</span>
+                  {active && <span className="m7-active-line" aria-hidden="true" />}
+                </button>
+              )
+            })}
+          </div>
+        </nav>
+      </div>
 
       <section className="m7-resources" aria-labelledby="m7-resource-title">
         <div className="m7-section-title">
