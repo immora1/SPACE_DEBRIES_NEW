@@ -1,7 +1,8 @@
 import { useRef, useState, useEffect, Suspense } from 'react'
-import { Canvas, useFrame, useLoader } from '@react-three/fiber'
+import { Canvas, useFrame } from '@react-three/fiber'
 import { Line } from '@react-three/drei'
 import * as THREE from 'three'
+import M4EarthModel, { M4EarthLighting } from './M4EarthModel'
 
 // Camera arc: match DebrisEarth exactly at p=0, sweep to top-down at p=1
 // DebrisEarth camera = [0, 0.3, 8.5] looking at origin
@@ -103,7 +104,6 @@ function CountryDebris({ group, color, ci, hovIdxRef }) {
 function Scene({ hovIdxRef, progressRef }) {
   const earthRef = useRef()
   const ringRef  = useRef()
-  const earthTex = useLoader(THREE.TextureLoader, '/earth_borders.png')
 
   useFrame((state, delta) => {
     if (earthRef.current) earthRef.current.rotation.y += delta * 0.04
@@ -126,10 +126,9 @@ function Scene({ hovIdxRef, progressRef }) {
     // 左右
     <group position={[4.3, -0.1, 0]}>
       {/* Earth */}
-      <mesh ref={earthRef}>
-        <sphereGeometry args={[1, 64, 64]} />
-        <meshBasicMaterial map={earthTex} color="#b2c4ff" />
-      </mesh>
+      <group ref={earthRef}>
+        <M4EarthModel radius={1} />
+      </group>
       <mesh scale={1.055}>
         <sphereGeometry args={[1, 32, 32]} />
         <meshBasicMaterial color="#2233cc" side={THREE.BackSide} transparent opacity={0.22} />
@@ -190,6 +189,7 @@ export default function DebrisEarthCountries({ hovIdxRef, progressRef }) {
           gl={{ antialias: true, alpha: true }}
           style={{ background: 'transparent', width: '100%', height: '100%' }}
         >
+          <M4EarthLighting />
           <Suspense fallback={null}>
             <Scene hovIdxRef={hovIdxRef} progressRef={progressRef} />
           </Suspense>

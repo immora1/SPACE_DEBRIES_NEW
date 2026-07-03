@@ -3,6 +3,7 @@ import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-mo
 import gsap from 'gsap'
 import DebrisEarth from './DebrisEarth'
 import DebrisEarthCountries from './DebrisEarthCountries'
+import './index.css'
 
 const ZH   = "'PingFang SC', 'Microsoft YaHei', sans-serif"
 const MONO = "'Space Mono', monospace"
@@ -16,6 +17,19 @@ function charSpans(text) {
       {ch}
     </span>
   ))
+}
+
+function M1Backdrop() {
+  return (
+    <div className="m1-space-backdrop" aria-hidden="true">
+      <span className="m1-bg-orbit is-a" />
+      <span className="m1-bg-orbit is-b" />
+      <span className="m1-bg-orbit is-c" />
+      <span className="m1-bg-axis is-vertical" />
+      <span className="m1-bg-axis is-diagonal" />
+      <span className="m1-bg-axis is-diagonal-alt" />
+    </div>
+  )
 }
 
 const TREND = [
@@ -1732,7 +1746,8 @@ export default function M1({ onComplete }) {
   const s = { height: '100vh', position: 'relative', overflow: 'hidden', background: 'transparent' }
 
   return (
-    <div ref={containerRef} data-module-scroll-target style={{ position: 'relative', background: 'transparent', cursor: 'auto' }}>
+    <div ref={containerRef} className="m1-root" data-module-scroll-target style={{ position: 'relative', cursor: 'auto' }}>
+      <M1Backdrop />
 
       {/* Section 0–2: 400vh 容器，sticky Earth 在前三页共享 */}
       <div style={{ position: 'relative', height: '400vh', background: 'transparent' }}>

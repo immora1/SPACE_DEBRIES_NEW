@@ -80,11 +80,11 @@ function OptionalModuleCard({ Component, isVisible }) {
 
   return (
     <div
-      style={{ margin: '0 auto', maxWidth: expanded ? 1320 : 1080, padding: '0 24px 80px' }}
+      style={{ margin: '0 auto', maxWidth: expanded ? 'none' : 1080, padding: expanded ? '0 0 80px' : '0 24px 80px' }}
     >
       <div style={{
         height: 1,
-        background: 'linear-gradient(to right, transparent, rgba(107,127,255,0.25), transparent)',
+        background: 'linear-gradient(to right, transparent, rgba(232,232,248,0.18), transparent)',
         marginBottom: 40,
       }} />
 
@@ -96,52 +96,52 @@ function OptionalModuleCard({ Component, isVisible }) {
             justifyContent: 'space-between',
             gap: 24,
             padding: '24px 28px',
-            background: 'rgba(8,8,26,0.72)',
-            border: '1px solid #1a1a35',
-            borderRadius: 6,
-            backdropFilter: 'blur(14px)',
+            background: 'rgba(8, 10, 28, 0.78)',
+            border: '1px solid rgba(232,232,248,0.14)',
+            borderRadius: 0,
+            color: '#e8e8f8',
             cursor: 'pointer',
           }}
           onClick={() => setExpanded(true)}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <div style={{
-              width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
-              border: '1px solid rgba(107,127,255,0.30)',
+              width: 40, height: 40, borderRadius: 0, flexShrink: 0,
+              border: '1px solid rgba(232,232,248,0.22)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'rgba(107,127,255,0.08)',
+              background: 'rgba(232,232,248,0.04)',
             }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(107,127,255,0.8)" strokeWidth="1.5">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(232,232,248,0.82)" strokeWidth="1.5">
                 <circle cx="12" cy="12" r="3" />
                 <path d="M12 2a10 10 0 0 1 0 20A10 10 0 0 1 12 2" strokeDasharray="3 3" />
                 <path d="M12 7v2M12 15v2M7 12H5M19 12h-2" />
               </svg>
             </div>
             <div>
-              <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 8, color: '#484878', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 5 }}>
-                BONUS MODULE / 08 / OPTIONAL
+              <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 8, color: 'rgba(232,232,248,0.42)', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 5 }}>
+                MODULE 08 / FIELD OBSERVATION
               </div>
-              <div style={{ fontFamily: 'Noto Serif SC, serif', fontSize: 17, color: '#e8e8f8', fontWeight: 300, marginBottom: 3 }}>
+              <div style={{ fontFamily: 'Noto Serif SC, serif', fontSize: 20, color: '#e8e8f8', fontWeight: 300, marginBottom: 3 }}>
                 观测教学与社区
               </div>
-              <div style={{ fontFamily: 'Noto Sans SC, sans-serif', fontSize: 12, color: '#484878', lineHeight: 1.6 }}>
+              <div style={{ fontFamily: 'Noto Sans SC, sans-serif', fontSize: 12, color: 'rgba(232,232,248,0.48)', lineHeight: 1.6 }}>
                 学会区分太空垃圾再入、流星与卫星，并提交你的目击报告。
               </div>
             </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-            <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: '#484878', letterSpacing: '0.08em' }}>
+            <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,232,248,0.42)', letterSpacing: '0.08em' }}>
               选读
             </span>
             <div
               style={{
                 padding: '9px 20px',
-                border: '1px solid rgba(107,127,255,0.40)',
-                borderRadius: 4,
+                border: '1px solid rgba(232,232,248,0.22)',
+                borderRadius: 0,
                 fontFamily: 'Space Mono, monospace',
                 fontSize: 10,
-                color: '#6b7fff',
+                color: '#e8e8f8',
                 letterSpacing: '0.10em',
                 textTransform: 'uppercase',
                 whiteSpace: 'nowrap',
@@ -155,16 +155,19 @@ function OptionalModuleCard({ Component, isVisible }) {
         <div>
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '12px 0', marginBottom: 4,
+            padding: '14px clamp(18px, 3.2vw, 56px)', marginBottom: 0,
+            background: '#050713',
+            borderTop: '1px solid rgba(232,232,248,0.14)',
+            borderBottom: '1px solid rgba(232,232,248,0.14)',
           }}>
-            <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 9, color: '#484878', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-              MODULE 08 / OBSERVATION & COMMUNITY
+            <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 9, color: 'rgba(232,232,248,0.66)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+              MODULE 08 / FIELD OBSERVATION
             </div>
             <button
               onClick={() => setExpanded(false)}
               style={{
-                background: 'none', border: '1px solid #1a1a35', borderRadius: 3,
-                color: '#484878', fontFamily: 'Space Mono, monospace', fontSize: 9,
+                background: 'transparent', border: '1px solid rgba(232,232,248,0.22)', borderRadius: 0,
+                color: '#e8e8f8', fontFamily: 'Space Mono, monospace', fontSize: 9,
                 letterSpacing: '0.08em', padding: '6px 12px', cursor: 'pointer',
               }}
             >

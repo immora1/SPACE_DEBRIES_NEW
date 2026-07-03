@@ -1,7 +1,8 @@
 import { useRef, useState, useEffect, Suspense } from 'react'
-import { Canvas, useFrame, useLoader } from '@react-three/fiber'
+import { Canvas, useFrame } from '@react-three/fiber'
 import { Text, Html, Line, Billboard } from '@react-three/drei'
 import * as THREE from 'three'
+import M4EarthModel, { M4EarthLighting } from './M4EarthModel'
 
 const MONO_FONT = '/fonts/SpaceMono-Bold.woff2'
 const CJK_FONT  = '/fonts/NotoSansSC-subset.woff2'
@@ -118,7 +119,6 @@ const ANNOTS = [
 function EarthScene({ showAnnotations }) {
   const earthRef    = useRef()
   const debrisRef   = useRef()
-  const earthTex    = useLoader(THREE.TextureLoader, '/earth_borders.png')
 
   // Refs for 3D Text meshes (value) — fillOpacity set directly, no re-render
   const valueRefs   = useRef([null, null, null])
@@ -171,18 +171,11 @@ function EarthScene({ showAnnotations }) {
   return (
     <group position={[1.8, -0.1, 0]}>
       {/* Earth */}
-      <mesh ref={earthRef}>
-        <sphereGeometry args={[1, 64, 64]} />
-        <meshBasicMaterial map={earthTex} color="#b8c4ff" />
-      </mesh>
+      <group ref={earthRef}>
+        <M4EarthModel radius={1} />
+      </group>
 
-      {/* Inner atmosphere glow */}
-      <mesh scale={1.055}>
-        <sphereGeometry args={[1, 32, 32]} />
-        <meshBasicMaterial color="#3344cc" side={THREE.BackSide} transparent opacity={0.22} />
-      </mesh>
-
-      {/* Outer halo */}
+      {/* Outer atmosphere glow */}
       <mesh scale={1.22}>
         <sphereGeometry args={[1, 24, 24]} />
         <meshBasicMaterial color="#6b7fff" side={THREE.BackSide} transparent opacity={0.06} />
@@ -309,6 +302,7 @@ export default function DebrisEarth({ showAnnotations = false }) {
           gl={{ antialias: true, alpha: true }}
           style={{ background: 'transparent', width: '100%', height: '100%' }}
         >
+          <M4EarthLighting />
           <Suspense fallback={null}>
             <EarthScene showAnnotations={showAnnotations} />
           </Suspense>
