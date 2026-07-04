@@ -488,7 +488,7 @@ export default function M3({ onComplete }) {
   }, [])
 
   return (
-    <div style={{ color: '#e8e8f8' }}>
+    <div style={{ color: '#e8e8f8', background: '#050713' }}>
       <div ref={globeWrapRef} style={{ position: 'relative', width: '100%', height: '100vh', minHeight: 500, overflow: 'hidden', transform: 'scaleY(-1)' }}>
 
         {globeInView && (

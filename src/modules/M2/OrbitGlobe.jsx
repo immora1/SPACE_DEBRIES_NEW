@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
-import * as THREE from 'three'
+import M4EarthModel, { M4EarthLighting } from '../M1/M4EarthModel'
 
 // 鈹€鈹€ 鍙鍗婂緞锛堝帇缂╂槧灏勶紝闈炵湡瀹炴瘮渚嬶級鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 const VR_LEO = 1.46
@@ -20,20 +20,7 @@ function Earth() {
   useFrame((_, dt) => { ref.current.rotation.y += dt * 0.025 })
   return (
     <group ref={ref}>
-      <mesh>
-        <sphereGeometry args={[1, 28, 18]} />
-        <meshStandardMaterial color="#08101a" roughness={0.9} metalness={0.08} />
-      </mesh>
-      {/* 璧ら亾绾?*/}
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[1.002, 0.002, 2, 64]} />
-        <meshBasicMaterial color="#1e2d3d" />
-      </mesh>
-      {/* 澶ф皵鍏夋檿 */}
-      <mesh>
-        <sphereGeometry args={[1.08, 16, 10]} />
-        <meshBasicMaterial color="#1a4080" transparent opacity={0.09} side={THREE.BackSide} />
-      </mesh>
+      <M4EarthModel radius={1} />
     </group>
   )
 }
@@ -144,10 +131,7 @@ export default function OrbitGlobe({
           gl={{ antialias: true, alpha: true }}
           style={{ background: 'transparent', width: '100%', height: '100%' }}
         >
-        <ambientLight intensity={0.5} />
-        <directionalLight position={[4, 5, 4]} intensity={0.62} color="#d5d0cc" />
-        {/* 钃濈传琛ュ厜锛岃惀閫犳繁绌烘皼鍥?*/}
-        <directionalLight position={[-3, 2, -4]} intensity={0.18} color="#4a5ad0" />
+        <M4EarthLighting />
 
         <Earth />
 

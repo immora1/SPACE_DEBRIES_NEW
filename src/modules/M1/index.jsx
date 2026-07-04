@@ -1660,13 +1660,6 @@ function ChapterEndTransition({ onComplete }) {
 
   const cur = PHASES[phase]
 
-  const summarySteps = [
-    ['01', 'DEFINE', '认识碎片'],
-    ['02', 'MEASURE', '量化风险'],
-    ['03', 'TRACE', '追踪来源'],
-    ['04', 'NEXT', phase === 0 ? '本章总结' : '进入历史'],
-  ]
-
   const summaryFacts = [
     { no: '01', value: '28,000', unit: 'km/h', label: '平均碰撞速度', note: '约为子弹速度的 10 倍' },
     { no: '02', value: '~1.3亿', unit: '', label: '在轨碎片总量', note: '多数仍无法持续追踪' },
@@ -1677,25 +1670,6 @@ function ChapterEndTransition({ onComplete }) {
   return (
     <section ref={containerRef} className="m1-summary-section" data-m1-no-reveal>
       <div className="m1-summary-sticky">
-        <aside className="m1-summary-rail" aria-label="本章进度">
-          <div className="m1-summary-rail-title">CHAPTER 01</div>
-          <div className="m1-summary-steps">
-            {summarySteps.map(([no, en, zh], index) => {
-              const active = phase === 0 ? index <= 3 : index === 3
-              return (
-                <div className={`m1-summary-step${active ? ' is-active' : ''}`} key={no}>
-                  <i aria-hidden="true" />
-                  <div>
-                    <b>{no} · {en}</b>
-                    <span>{zh}</span>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-          <div className="m1-summary-rail-foot">SPACE DEBRIS / DATA FILE</div>
-        </aside>
-
         <div className="m1-summary-main">
           <div className="m1-summary-ghost" aria-hidden="true">{phase === 0 ? '01' : '02'}</div>
 
@@ -1713,17 +1687,6 @@ function ChapterEndTransition({ onComplete }) {
 
           <div className="m1-summary-headline">
             <div ref={line1Ref} className="m1-summary-title" data-m1-no-reveal />
-            <AnimatePresence mode="wait">
-              <motion.p
-                key={`subtitle-${phase}`}
-                initial={{ opacity: 0, y: 18, filter: 'blur(6px)' }}
-                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                exit={{ opacity: 0, y: -12, filter: 'blur(4px)' }}
-                transition={{ duration: 0.55, ease: EASE }}
-              >
-                {phase === 0 ? '不是背景噪声，而是一组可以被测量、追踪和验证的事实。' : '从数字转向事件：看每一次发射，如何把今天留在轨道上。'}
-              </motion.p>
-            </AnimatePresence>
           </div>
 
           <AnimatePresence mode="wait">

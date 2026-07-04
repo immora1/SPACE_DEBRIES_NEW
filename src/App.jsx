@@ -16,7 +16,7 @@ const M8 = lazy(() => import('./modules/M8'))
 const MODULES = [
   { id: 'm1', Component: M1, connector: null, archDivider: '#04040f' },
   { id: 'm3', Component: M3, connector: null },
-  { id: 'm2', Component: M2, connector: null, boundaryDivider: true },
+  { id: 'm2', Component: M2, connector: null },
   { id: 'm4', Component: M4, connector: null },
   { id: 'law', Component: LegalTreaties, connector: null },
   { id: 'm6', Component: M6, connector: null },

@@ -299,10 +299,10 @@ export default function M2({ onComplete }) {
   })
 
   return (
-    <div style={{ background: 'transparent', color: '#e8e8f8', position: 'relative' }}>
+    <div style={{ background: '#050713', color: '#e8e8f8', position: 'relative' }}>
 
       {/* ── 顶部标题区 ─────────────────────────────────────── */}
-      <div style={{ padding: '44px 32px 40px', borderBottom: '1px solid #1a1a35', maxWidth: 640 }}>
+      <div style={{ padding: '44px 32px 40px', maxWidth: 640 }}>
         <ScrollReveal>
           <div style={{
             fontFamily: '"Space Mono", monospace', fontSize: 8,
