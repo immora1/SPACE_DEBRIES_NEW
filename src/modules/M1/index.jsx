@@ -1,19 +1,158 @@
 import React, { useState, useCallback, useEffect, useLayoutEffect, useRef, useMemo, Suspense } from 'react'
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion'
 import gsap from 'gsap'
+import { SplitText } from 'gsap/SplitText'
 import DebrisEarth from './DebrisEarth'
 import DebrisEarthCountries from './DebrisEarthCountries'
 import './index.css'
 
 const ZH   = "'PingFang SC', 'Microsoft YaHei', sans-serif"
-const MONO = "'Space Mono', monospace"
-const LEX  = "'Lexend', sans-serif"
+const MONO = "'Space Mono', 'PingFang SC', 'Microsoft YaHei', monospace"
+const LEX  = "'Lexend', 'PingFang SC', 'Microsoft YaHei', sans-serif"
 const EASE = [0.16, 1, 0.3, 1]
+
+gsap.registerPlugin(SplitText)
+
+const M1_REVEAL_EXCLUSIONS = [
+  '[data-m1-no-reveal]',
+  '[aria-hidden="true"]',
+  'script', 'style', 'svg', 'canvas', 'input', 'textarea', 'select', 'option',
+].join(',')
+
+function useM1WordReveal(rootRef) {
+  useLayoutEffect(() => {
+    const root = rootRef.current
+    if (!root || typeof IntersectionObserver === 'undefined') return undefined
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const records = new Map()
+    let scanFrame = 0
+
+    const reset = (record) => {
+      gsap.killTweensOf(record.units)
+      if (reduceMotion) {
+        gsap.set(record.units, { autoAlpha: 1, y: 0, filter: 'blur(0px)' })
+        return
+      }
+      gsap.set(record.units, {
+        autoAlpha: 0,
+        y: 18,
+        filter: 'blur(7px)',
+      })
+    }
+
+    const reveal = (record) => {
+      if (reduceMotion) {
+        gsap.set(record.units, { autoAlpha: 1, y: 0, filter: 'blur(0px)' })
+        return
+      }
+
+      gsap.to(record.units, {
+        autoAlpha: 1,
+        y: 0,
+        filter: 'blur(0px)',
+        duration: 0.72,
+        delay: record.delay,
+        ease: 'power3.out',
+        stagger: { each: 0.035, from: 'start' },
+        overwrite: 'auto',
+        onStart: () => gsap.set(record.units, { willChange: 'transform, opacity, filter' }),
+        onComplete: () => gsap.set(record.units, { clearProps: 'willChange' }),
+      })
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        const record = records.get(entry.target)
+        if (!record) return
+        if (entry.isIntersecting) reveal(record)
+        else reset(record)
+      })
+    }, { threshold: 0.12, rootMargin: '0px 0px -5% 0px' })
+
+    const getDelay = (element) => {
+      const explicit = element.closest('[data-m1-reveal-delay]')?.dataset.m1RevealDelay
+      if (explicit !== undefined) return Math.max(0, Number(explicit) || 0)
+      const viewportPosition = Math.max(0, element.getBoundingClientRect().top) % window.innerHeight
+      return Math.min(0.24, (viewportPosition / window.innerHeight) * 0.24)
+    }
+
+    const register = (element) => {
+      if (records.has(element) || element.matches(M1_REVEAL_EXCLUSIONS) || element.closest(M1_REVEAL_EXCLUSIONS)) return
+
+      let split = null
+      let units = []
+
+      if (element.matches('.sh-line1, .sh-line2, .sh-sub')) {
+        units = [...element.querySelectorAll(':scope > .sh-char')]
+      } else {
+        const directText = [...element.childNodes].some(
+          node => node.nodeType === Node.TEXT_NODE && node.textContent.trim(),
+        )
+        const onlyLineBreakChildren = [...element.children].every(child => child.tagName === 'BR')
+        if (!directText || (element.children.length > 0 && !onlyLineBreakChildren) || element.matches('.sh-char, .cet-c')) return
+
+        element.dataset.m1WordReveal = 'true'
+        split = SplitText.create(element, {
+          type: 'words,chars',
+          wordsClass: 'm1-reveal-word',
+          charsClass: 'm1-reveal-char',
+          aria: 'auto',
+        })
+        const text = element.textContent.trim()
+        const useWords = !/[\u3400-\u9fff]/.test(text) && /\s/.test(text)
+        units = useWords && split.words.length > 1 ? split.words : split.chars
+      }
+
+      if (!units.length) {
+        split?.revert()
+        return
+      }
+
+      element.dataset.m1WordReveal = 'true'
+      const record = { split, units, delay: getDelay(element) }
+      records.set(element, record)
+      reset(record)
+      observer.observe(element)
+    }
+
+    const scan = () => {
+      scanFrame = 0
+      records.forEach((record, element) => {
+        if (element.isConnected) return
+        observer.unobserve(element)
+        gsap.killTweensOf(record.units)
+        records.delete(element)
+      })
+
+      root.querySelectorAll('.sh-line1, .sh-line2, .sh-sub, *').forEach(register)
+    }
+
+    const scheduleScan = () => {
+      if (!scanFrame) scanFrame = window.requestAnimationFrame(scan)
+    }
+
+    scan()
+    const mutationObserver = new MutationObserver(scheduleScan)
+    mutationObserver.observe(root, { childList: true, subtree: true })
+
+    return () => {
+      if (scanFrame) window.cancelAnimationFrame(scanFrame)
+      mutationObserver.disconnect()
+      observer.disconnect()
+      records.forEach(({ split, units }) => {
+        gsap.killTweensOf(units)
+        split?.revert()
+      })
+      records.clear()
+    }
+  }, [rootRef])
+}
 
 // 字符 span 工厂 — GSAP 通过 .sh-char 选择器批量动画
 function charSpans(text) {
   return text.split('').map((ch, i) => (
-    <span key={i} className="sh-char" style={{ display: 'inline-block', willChange: 'transform, opacity, filter' }}>
+    <span key={i} className="sh-char" style={{ display: 'inline-block' }}>
       {ch}
     </span>
   ))
@@ -141,20 +280,6 @@ function SceneHero({ normX, normY }) {
     // 顶部标签：从上方 16px 滑入
     tl.from(q('.sh-tag'), { opacity: 0, y: -16, duration: 0.65 }, 0.05)
 
-    // H1 第一行：逐字 3D 翻转入场（X 轴旋转 + 上移 + 模糊）
-    tl.from(q('.sh-line1 .sh-char'), {
-      opacity: 0, y: 44, rotationX: -75, filter: 'blur(6px)',
-      stagger: { each: 0.055, ease: 'power2.inOut' },
-      duration: 0.82,
-    }, 0.10)
-
-    // H1 第二行：稍晚 0.22s
-    tl.from(q('.sh-line2 .sh-char'), {
-      opacity: 0, y: 44, rotationX: -75, filter: 'blur(6px)',
-      stagger: { each: 0.055, ease: 'power2.inOut' },
-      duration: 0.82,
-    }, 0.32)
-
     // 正文段落：渐入 + 微量上移
     tl.from(q('.sh-body'), { opacity: 0, y: 14, duration: 0.72 }, 0.46)
 
@@ -163,13 +288,6 @@ function SceneHero({ normX, normY }) {
       scaleX: 0, opacity: 0, duration: 0.85,
       transformOrigin: 'left center',
     }, 0.64)
-
-    // H2 副标题：逐字翻转，节奏更紧凑
-    tl.from(q('.sh-sub .sh-char'), {
-      opacity: 0, y: 36, rotationX: -65, filter: 'blur(5px)',
-      stagger: { each: 0.042, ease: 'power2.inOut' },
-      duration: 0.78,
-    }, 0.78)
 
     // ghost 数字 count-up：0 → 28,000（大气装饰）
     const proxy = { val: 0 }
@@ -207,7 +325,7 @@ function SceneHero({ normX, normY }) {
           color: 'rgba(232,232,248,0.018)', letterSpacing: '-0.04em', lineHeight: 1,
           whiteSpace: 'nowrap', x: ghostX, y: ghostY,
         }}>
-          <span ref={ghostNumRef}>0</span>
+          <span ref={ghostNumRef} data-m1-no-reveal>0</span>
         </motion.div>
       </div>
 
@@ -412,7 +530,7 @@ function SceneScale() {
       <div style={{
         position: 'absolute', left: '4%', top: '16%', width: '30%', zIndex: 10,
       }}>
-        <div style={{
+        <div data-m1-reveal-delay="0.06" style={{
           fontFamily: ZH, fontSize: 'clamp(24px,2.8vw,38px)', fontWeight: 700,
           color: '#e8e8f8', lineHeight: 1.22, marginBottom: 20,
         }}>
@@ -422,7 +540,7 @@ function SceneScale() {
           height: 1, background: 'linear-gradient(to right, rgba(107,127,255,0.35), transparent)',
           marginBottom: 18,
         }} />
-        <div style={{
+        <div data-m1-reveal-delay="0.20" style={{
           fontFamily: ZH, fontSize: 13, color: 'rgba(232,232,248,0.42)',
           lineHeight: 2.0, marginBottom: 16,
         }}>
@@ -430,7 +548,7 @@ function SceneScale() {
           数量让规避几乎不可能，<br />
           不可见性让预警成为奢望。
         </div>
-        <div style={{ fontFamily: ZH, fontSize: 11, color: '#484878', lineHeight: 1.75 }}>
+        <div data-m1-reveal-delay="0.34" style={{ fontFamily: ZH, fontSize: 11, color: '#484878', lineHeight: 1.75 }}>
           自 1957 年持续累积，目前尚无有效的批量清除方案。
         </div>
       </div>
@@ -544,7 +662,7 @@ function SceneSources() {
     })
     overlayRefs.current.forEach((el, j) => {
       if (!el) return
-      el.style.opacity = idx < 0 ? '0.42' : j === idx ? '0' : '0.62'
+      el.style.opacity = idx < 0 ? '0.02' : j === idx ? '0' : '0.20'
     })
     descRefs.current.forEach((el, j) => {
       if (!el) return
@@ -608,7 +726,7 @@ function SceneSources() {
   }, [])
 
   return (
-    <div ref={sourcesContainerRef} style={{ position: 'absolute', inset: 0, display: 'flex', overflow: 'hidden' }}>
+    <div ref={sourcesContainerRef} style={{ position: 'absolute', inset: 0, display: 'flex', overflow: 'hidden', background: '#050713' }}>
 
       {/* Chapter headline */}
       <div
@@ -642,6 +760,7 @@ function SceneSources() {
 
       {SOURCES.map((src, i) => (
         <div
+          className="m1-source-panel"
           key={i}
           ref={el => { panelRefs.current[i] = el }}
           onMouseEnter={() => applyHover(i)}
@@ -656,6 +775,7 @@ function SceneSources() {
           {/* Background — video if available, otherwise static image */}
           {src.video ? (
             <video
+              className="m1-source-media"
               ref={el => { videoRefs.current[i] = el }}
               src={src.video}
               muted
@@ -665,22 +785,22 @@ function SceneSources() {
                 position: 'absolute', inset: 0,
                 width: '100%', height: '100%',
                 objectFit: 'cover',
-                filter: 'grayscale(0.88) brightness(0.5)',
+                filter: 'grayscale(0.88)',
               }}
             />
           ) : (
-            <div style={{
+            <div className="m1-source-media" style={{
               position: 'absolute', inset: 0,
               backgroundImage: `url(${src.img})`,
               backgroundSize: 'cover', backgroundPosition: 'center',
-              filter: 'grayscale(0.92) brightness(0.55)',
+              filter: 'grayscale(0.92)',
             }} />
           )}
 
           {/* Blue tint overlay — static, GPU layer cached */}
           <div style={{
             position: 'absolute', inset: 0,
-            background: 'rgba(20, 35, 160, 0.28)',
+            background: 'linear-gradient(to top, rgba(5,7,19,0.88), rgba(5,7,19,0.14))',
           }} />
 
           {/* Brightness overlay — only this animates (opacity = compositor only) */}
@@ -688,8 +808,8 @@ function SceneSources() {
             ref={el => { overlayRefs.current[i] = el }}
             style={{
               position: 'absolute', inset: 0,
-              background: '#04040f',
-              opacity: 0.42,
+              background: '#050713',
+              opacity: 0.02,
               transition: 'opacity 0.45s ease',
             }}
           />
@@ -724,7 +844,7 @@ function SceneSources() {
           {/* Bottom gradient */}
           <div style={{
             position: 'absolute', inset: 0,
-            background: 'linear-gradient(to top, rgba(4,4,15,0.96) 0%, rgba(4,4,15,0.18) 52%, transparent 100%)',
+            background: 'linear-gradient(to top, rgba(5,7,19,0.93) 0%, rgba(5,7,19,0.14) 52%, transparent 100%)',
             pointerEvents: 'none',
           }} />
 
@@ -876,20 +996,20 @@ function SceneCountries({ hovIdxRef }) {
         display: 'flex', flexDirection: 'column', justifyContent: 'center',
         padding: '0 4% 0 5%',
       }}>
-        <div style={{
+        <div data-m1-reveal-delay="0.16" style={{
           fontFamily: LEX, fontSize: 8, fontWeight: 700,
           color: 'rgba(107,127,255,0.5)', letterSpacing: '0.18em',
           textTransform: 'uppercase', marginBottom: 14, pointerEvents: 'none',
         }}>
           02 · CONTRIBUTORS / 各国贡献
         </div>
-        <div style={{
+        <div data-m1-reveal-delay="0.28" style={{
           fontFamily: ZH, fontSize: 'clamp(22px,2.4vw,34px)', fontWeight: 700,
           color: '#e8e8f8', lineHeight: 1.22, marginBottom: 8, pointerEvents: 'none',
         }}>
           三国贡献了全球 96% 的碎片。
         </div>
-        <div style={{
+        <div data-m1-reveal-delay="0.42" style={{
           fontFamily: ZH, fontSize: 13, color: '#b9b9d3',
           lineHeight: 1.75, maxWidth: 320, marginBottom: 36, pointerEvents: 'none',
         }}>
@@ -911,6 +1031,7 @@ function SceneCountries({ hovIdxRef }) {
 
           {RING_SEGS.map((seg, i) => (
             <div key={seg.name}
+              data-m1-reveal-delay={0.52 + i * 0.1}
               ref={el => { rowRefs.current[i] = el }}
               style={{
                 paddingTop: 12, paddingBottom: 12, cursor: 'pointer',
@@ -983,16 +1104,16 @@ function SceneCountries({ hovIdxRef }) {
           transform: 'translate(-50%, -50%)',
           textAlign: 'center', zIndex: 10,
         }}>
-          <div ref={cCountRef} style={{
+          <div ref={cCountRef} data-m1-no-reveal style={{
             fontFamily: MONO, fontSize: 36, fontWeight: 700,
             color: '#e8e8f8', letterSpacing: '-0.03em',
           }}>{TOTAL_DEBRIS.toLocaleString()}</div>
-          <div ref={cNameRef} style={{
+          <div ref={cNameRef} data-m1-no-reveal style={{
             fontFamily: LEX, fontSize: 16, fontWeight: 700,
             color: 'rgba(255, 255, 255, 0.8)', letterSpacing: '0.16em',
             textTransform: 'uppercase', marginBottom: 6,
           }}>TOTAL TRACKED</div>
-          <div ref={cPctRef} style={{
+          <div ref={cPctRef} data-m1-no-reveal style={{
             fontFamily: LEX, fontSize: 12,
             color: 'rgba(255, 255, 255, 0.8)', letterSpacing: '0.1em',
             marginTop: 4,
@@ -1453,7 +1574,7 @@ function ChapterEndTransition({ onComplete }) {
 
   const PHASES = useMemo(() => ([
     { tag: '01 · SPACE DEBRIS · 本章总结', tagColor: '#484878',              title1: '太空垃圾' },
-    { tag: '02 · ORBIT · 进入下一章',      tagColor: 'rgba(107,127,255,0.7)', title1: '轨道'    },
+    { tag: '02 · HISTORY · 下一章节',       tagColor: 'rgba(129,146,255,0.78)', title1: '历史事件' },
   ]), [])
 
   // 填充 GSAP 控制的大字 DOM
@@ -1463,7 +1584,6 @@ function ChapterEndTransition({ onComplete }) {
       const span = document.createElement('span')
       span.className = 'cet-c'
       span.style.display = 'inline-block'
-      span.style.willChange = 'transform, opacity, filter'
       if (startHidden) {
         span.style.opacity = '0'
         span.style.transform = 'translateY(80%)'
@@ -1511,6 +1631,7 @@ function ChapterEndTransition({ onComplete }) {
 
     const oldChars = [...el.querySelectorAll('.cet-c')]
     const newTitle = PHASES[phase].title1
+    oldChars.forEach(char => { char.style.willChange = 'transform, opacity, filter' })
 
     // 旧字：从右向左依次向上消失
     const exitAnim = gsap.to(oldChars, {
@@ -1525,7 +1646,10 @@ function ChapterEndTransition({ onComplete }) {
           y: '0%', opacity: 1, filter: 'blur(0px)',
           stagger: { each: 0.065, from: 'start' },
           duration: 0.72, ease: 'power3.out',
-          onComplete() { animatingRef.current = false },
+          onComplete() {
+            el.querySelectorAll('.cet-c').forEach(char => { char.style.willChange = 'auto' })
+            animatingRef.current = false
+          },
         })
       },
     })
@@ -1536,139 +1660,126 @@ function ChapterEndTransition({ onComplete }) {
 
   const cur = PHASES[phase]
 
+  const summarySteps = [
+    ['01', 'DEFINE', '认识碎片'],
+    ['02', 'MEASURE', '量化风险'],
+    ['03', 'TRACE', '追踪来源'],
+    ['04', 'NEXT', phase === 0 ? '本章总结' : '进入历史'],
+  ]
+
+  const summaryFacts = [
+    { no: '01', value: '28,000', unit: 'km/h', label: '平均碰撞速度', note: '约为子弹速度的 10 倍' },
+    { no: '02', value: '~1.3亿', unit: '', label: '在轨碎片总量', note: '多数仍无法持续追踪' },
+    { no: '03', value: '36,500+', unit: '', label: '可追踪目标', note: '雷达持续编目与预警' },
+    { no: '04', value: '1957', unit: '', label: '污染起点', note: '人造卫星时代同步开始' },
+  ]
+
   return (
-    <div ref={containerRef} style={{ height: '200vh', position: 'relative' }}>
-      <div style={{
-        position: 'sticky', top: 0, height: '100vh', overflow: 'hidden',
-        background: 'transparent',
-        display: 'flex', flexDirection: 'column', justifyContent: 'center',
-        padding: '0 7vw', borderTop: '1px solid #1a1a35',
-      }}>
+    <section ref={containerRef} className="m1-summary-section" data-m1-no-reveal>
+      <div className="m1-summary-sticky">
+        <aside className="m1-summary-rail" aria-label="本章进度">
+          <div className="m1-summary-rail-title">CHAPTER 01</div>
+          <div className="m1-summary-steps">
+            {summarySteps.map(([no, en, zh], index) => {
+              const active = phase === 0 ? index <= 3 : index === 3
+              return (
+                <div className={`m1-summary-step${active ? ' is-active' : ''}`} key={no}>
+                  <i aria-hidden="true" />
+                  <div>
+                    <b>{no} · {en}</b>
+                    <span>{zh}</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <div className="m1-summary-rail-foot">SPACE DEBRIS / DATA FILE</div>
+        </aside>
 
-        {/* 幽灵背景大数字 — CSS color transition，无 React 动画 */}
-        <div style={{
-          position: 'absolute', right: '5vw', top: '50%',
-          transform: 'translateY(-50%)',
-          fontFamily: MONO, fontWeight: 700,
-          fontSize: 'clamp(180px, 26vw, 360px)',
-          color: `rgba(107,127,255,${phase === 0 ? '0.04' : '0.06'})`,
-          lineHeight: 1, letterSpacing: '-0.07em',
-          userSelect: 'none', pointerEvents: 'none', whiteSpace: 'nowrap',
-          transition: 'color 0.8s ease',
-        }}>
-          {phase === 0 ? '01' : '02'}
-        </div>
+        <div className="m1-summary-main">
+          <div className="m1-summary-ghost" aria-hidden="true">{phase === 0 ? '01' : '02'}</div>
 
-        {/* 标签行 — 绝对定位在顶部，不参与 flex 居中，不影响两条线位置 */}
-        <motion.div
-          key={`tag-${phase}`}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.4, ease: EASE }}
-          style={{
-            position: 'absolute', top: 36, left: '7vw',
-            display: 'flex', alignItems: 'center', gap: 12,
-            zIndex: 3,
-          }}
-        >
-          <div style={{ width: 20, height: 1, background: cur.tagColor }} />
-          <span style={{
-            fontFamily: MONO, fontSize: 8, color: cur.tagColor,
-            letterSpacing: '0.22em', textTransform: 'uppercase',
-          }}>
-            {cur.tag}
-          </span>
-        </motion.div>
+          <motion.div
+            key={`tag-${phase}`}
+            className="m1-summary-tag"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, ease: EASE }}
+            style={{ '--summary-tag-color': cur.tagColor }}
+          >
+            <i />
+            <span>{cur.tag}</span>
+          </motion.div>
 
-        {/* 主内容 — 只有「线 + 间距 + 标题 + 间距 + 线」，上下完全对称，两线与数字等距 */}
-        <div style={{ position: 'relative', zIndex: 2 }}>
-
-          {/* 上分割线 */}
-          <div style={{ height: 1, background: '#1a1a35', marginBottom: 48 }} />
-
-          {/* 标题区 */}
-          <div>
-            {/* Line 1 — GSAP 独占 DOM，React 不渲染子节点 */}
-            <div
-              ref={line1Ref}
-              style={{
-                fontFamily: '"Noto Serif SC", serif',
-                fontSize: 'clamp(40px, 6vw, 88px)',
-                color: '#e8e8f8',
-                fontWeight: 400, lineHeight: 1.15, letterSpacing: '0.01em',
-                marginBottom: 4,
-              }}
-            />
-
-            {/* Line 2 — 完全静止，永远显示 "数据知识" */}
-            <div style={{
-              fontFamily: '"Noto Serif SC", serif',
-              fontSize: 'clamp(32px, 4.8vw, 70px)',
-              color: 'rgba(232,232,248,0.55)',
-              fontWeight: 400, lineHeight: 1.15, letterSpacing: '0.01em',
-            }}>
-              数据知识
-            </div>
+          <div className="m1-summary-headline">
+            <div ref={line1Ref} className="m1-summary-title" data-m1-no-reveal />
+            <AnimatePresence mode="wait">
+              <motion.p
+                key={`subtitle-${phase}`}
+                initial={{ opacity: 0, y: 18, filter: 'blur(6px)' }}
+                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                exit={{ opacity: 0, y: -12, filter: 'blur(4px)' }}
+                transition={{ duration: 0.55, ease: EASE }}
+              >
+                {phase === 0 ? '不是背景噪声，而是一组可以被测量、追踪和验证的事实。' : '从数字转向事件：看每一次发射，如何把今天留在轨道上。'}
+              </motion.p>
+            </AnimatePresence>
           </div>
 
-          {/* 下分割线 — 完全静止 */}
-          <div style={{ height: 1, background: '#1a1a35', marginTop: 48 }} />
-        </div>
-
-        {/* Phase 1 专属导航 — 绝对定位，不影响上方内容流，分割线永远不动 */}
-        <AnimatePresence>
-          {phase === 1 && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.5, ease: EASE, delay: 0.35 }}
-              style={{ position: 'absolute', bottom: 80, left: '7vw' }}
-            >
-              <div
-                onClick={() => onComplete({ autoScroll: false })}
-                style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 14, userSelect: 'none' }}
-                onMouseEnter={e => { e.currentTarget.querySelector('span').style.color = '#e8e8f8' }}
-                onMouseLeave={e => { e.currentTarget.querySelector('span').style.color = '#6b7fff' }}
+          <AnimatePresence mode="wait">
+            {phase === 0 ? (
+              <motion.div
+                key="summary-facts"
+                className="m1-summary-facts"
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -18 }}
+                transition={{ duration: 0.6, ease: EASE, delay: 0.08 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                  {[0,1,2].map(k => (
-                    <div key={k} style={{ height: 1, width: 5, background: `rgba(107,127,255,${0.3 + k * 0.2})` }} />
-                  ))}
+                {summaryFacts.map(fact => (
+                  <article className="m1-summary-fact" key={fact.no}>
+                    <small>{fact.no}</small>
+                    <div className="m1-summary-value">{fact.value}<em>{fact.unit}</em></div>
+                    <h3>{fact.label}</h3>
+                    <p>{fact.note}</p>
+                  </article>
+                ))}
+              </motion.div>
+            ) : (
+              <motion.div
+                key="summary-next"
+                className="m1-summary-next"
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -18 }}
+                transition={{ duration: 0.6, ease: EASE, delay: 0.12 }}
+              >
+                <div className="m1-summary-next-copy">
+                  <small>UP NEXT / M3</small>
+                  <h3>重大历史事件</h3>
+                  <p>沿时间轴回看关键发射、碰撞与失效事件，理解轨道碎片如何一步步累积成今天的风险。</p>
                 </div>
-                <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#6b7fff', transition: 'color 0.3s' }}>
-                  进入下一章 · M2 轨道
-                </span>
-                <div style={{ width: 12, height: 1, background: '#6b7fff' }} />
-                <div style={{ width: 5, height: 5, borderTop: '1.5px solid #6b7fff', borderRight: '1.5px solid #6b7fff', transform: 'rotate(45deg)' }} />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                <div className="m1-summary-next-meta" aria-label="下一章信息">
+                  <span><b>01</b> 时间脉络</span>
+                  <span><b>02</b> 关键事件</span>
+                  <span><b>03</b> 风险转折</span>
+                </div>
+                <button type="button" className="m1-summary-enter" onClick={() => onComplete({ autoScroll: false })}>
+                  <span>进入下一章</span>
+                  <b>HISTORY / M3</b>
+                  <i aria-hidden="true" />
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-        {/* 底部进度指示 — CSS transition 驱动，无 React 动画 */}
-        <div style={{
-          position: 'absolute', bottom: 36, left: '7vw',
-          display: 'flex', alignItems: 'center', gap: 10,
-        }}>
-          {[0, 1].map(i => (
-            <div key={i} style={{
-              height: 1,
-              width: phase === i ? 28 : 10,
-              background: phase === i ? '#6b7fff' : 'rgba(107,127,255,0.2)',
-              transition: 'width 0.4s ease, background 0.4s ease',
-            }} />
-          ))}
-          <span style={{
-            fontFamily: MONO, fontSize: 7, color: '#484878',
-            letterSpacing: '0.14em', textTransform: 'uppercase', marginLeft: 4,
-          }}>
-            {phase === 0 ? 'SCROLL TO CONTINUE' : 'ENTERING ORBIT'}
-          </span>
+          <div className="m1-summary-progress" aria-hidden="true">
+            {[0, 1].map(i => <i className={phase === i ? 'is-active' : ''} key={i} />)}
+            <span>{phase === 0 ? 'SCROLL TO CONTINUE' : 'ENTER HISTORY'}</span>
+          </div>
         </div>
-
       </div>
-    </div>
+    </section>
   )
 }
 
@@ -1682,6 +1793,8 @@ export default function M1({ onComplete }) {
   const hovIdxRef            = useRef(-1)
   const [scaleVisible, setScaleVisible] = useState(false)
   const scaleRef = useRef()
+
+  useM1WordReveal(containerRef)
 
   const rawX    = useMotionValue(0)
   const rawY    = useMotionValue(0)

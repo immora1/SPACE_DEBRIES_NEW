@@ -1,10 +1,11 @@
 import { useState, useRef, useMemo, useCallback, Suspense, useEffect } from 'react'
-import { Canvas, useFrame, useThree, useLoader } from '@react-three/fiber'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Html, Line } from '@react-three/drei'
 import { motion, AnimatePresence } from 'framer-motion'
 import * as THREE from 'three'
 import useAppStore from '../../store/useAppStore'
 import { generateEventNarrative } from '../../services/ai'
+import M4EarthModel, { M4EarthLighting } from '../M1/M4EarthModel'
 
 const EASE = [0.16, 1, 0.3, 1]
 
@@ -120,23 +121,11 @@ function CameraSetup() {
 
 function EarthMesh() {
   const spinRef = useRef()
-  const texture = useLoader(THREE.TextureLoader, '/earth-m3.png?v=3')
   useFrame((_, dt) => { if (spinRef.current) spinRef.current.rotation.y -= dt * 0.02 })
   return (
     <group rotation={[-Math.PI / 2, 0, Math.PI]}>
       <group ref={spinRef}>
-        <mesh>
-          <sphereGeometry args={[6.5, 40, 28]} />
-          <meshStandardMaterial map={texture} transparent roughness={0.65} metalness={0.05} emissive="#1a3a7a" emissiveIntensity={0.15} />
-        </mesh>
-        <mesh>
-          <sphereGeometry args={[6.82, 40, 40]} />
-          <meshStandardMaterial color="#3366cc" emissive="#4488ff" emissiveIntensity={0.5} transparent opacity={0.06} side={2} />
-        </mesh>
-        <mesh>
-          <sphereGeometry args={[7.28, 28, 28]} />
-          <meshStandardMaterial color="#1a4080" emissive="#2255cc" emissiveIntensity={0.2} transparent opacity={0.03} side={2} />
-        </mesh>
+        <M4EarthModel radius={6.5} />
       </group>
     </group>
   )
@@ -413,10 +402,7 @@ function Scene({ launchYear, hoveredId, clickedIds, onHover, onLeave, onClick })
   return (
     <>
       <CameraSetup />
-      <ambientLight intensity={0.4} />
-      <directionalLight position={[5, 10, 8]} intensity={1.4} color="#c8d8ff" />
-      <pointLight position={[-10, 6, 6]} intensity={0.5} color="#4466cc" />
-      <pointLight position={[8, -4, 4]} intensity={0.2} color="#3355aa" />
+      <M4EarthLighting />
 
       <group position={[0, -7, 0]}>
         <EarthMesh />

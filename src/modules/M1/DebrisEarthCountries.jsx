@@ -129,11 +129,6 @@ function Scene({ hovIdxRef, progressRef }) {
       <group ref={earthRef}>
         <M4EarthModel radius={1} />
       </group>
-      <mesh scale={1.055}>
-        <sphereGeometry args={[1, 32, 32]} />
-        <meshBasicMaterial color="#2233cc" side={THREE.BackSide} transparent opacity={0.22} />
-      </mesh>
-
       {/* Faint static orbit traces */}
       <Line points={makeCircle(1.72)} color="#6b7fff" lineWidth={1} transparent opacity={0.10} />
       <Line points={makeCircle(2.87)} color="#6b7fff" lineWidth={1} transparent opacity={0.06} />

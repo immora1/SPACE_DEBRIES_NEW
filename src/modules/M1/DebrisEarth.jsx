@@ -1,281 +1,347 @@
-import { useRef, useState, useEffect, Suspense } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
-import { Text, Html, Line, Billboard } from '@react-three/drei'
+import { Html, Line } from '@react-three/drei'
 import * as THREE from 'three'
 import M4EarthModel, { M4EarthLighting } from './M4EarthModel'
 
-const MONO_FONT = '/fonts/SpaceMono-Bold.woff2'
-const CJK_FONT  = '/fonts/NotoSansSC-subset.woff2'
+const DEBRIS_COUNT = 2000
 
-// 3D corner-tick targeting frame — 8 corners each with 3-axis ticks
-function TargetBox({ size, color, opacity = 0.88 }) {
-  const [w, h, d] = size
-  const hw = w / 2, hh = h / 2, hd = d / 2
-  const t = Math.min(hw, hh, hd) * 0.52
-
-  const corners = [
-    [-hw,  hh,  hd,  1, -1, -1],
-    [ hw,  hh,  hd, -1, -1, -1],
-    [-hw, -hh,  hd,  1,  1, -1],
-    [ hw, -hh,  hd, -1,  1, -1],
-    [-hw,  hh, -hd,  1, -1,  1],
-    [ hw,  hh, -hd, -1, -1,  1],
-    [-hw, -hh, -hd,  1,  1,  1],
-    [ hw, -hh, -hd, -1,  1,  1],
-  ]
-
-  return (
-    <>
-      {corners.map(([cx, cy, cz, sx, sy, sz], i) => (
-        <group key={i}>
-          <Line
-            points={[
-              [cx + sx * t, cy, cz],
-              [cx,          cy, cz],
-              [cx, cy + sy * t, cz],
-            ]}
-            color={color}
-            lineWidth={1.6}
-            transparent
-            opacity={opacity}
-          />
-          <Line
-            points={[
-              [cx, cy, cz],
-              [cx, cy, cz + sz * t],
-            ]}
-            color={color}
-            lineWidth={1.6}
-            transparent
-            opacity={opacity * 0.7}
-          />
-        </group>
-      ))}
-    </>
-  )
-}
-
-// Pre-generated at module level — stable across renders
-const N = 2000
-const DEBRIS = Array.from({ length: N }, () => {
+// Generated once so the debris field remains stable across React renders.
+const DEBRIS = Array.from({ length: DEBRIS_COUNT }, () => {
   const layer = Math.random()
-  let radius, phi
+  let radius
+  let phi
 
   if (layer < 0.65) {
-    radius = 1.58 + Math.random() * 0.30
-    phi    = (Math.random() - 0.5) * Math.PI
+    radius = 1.58 + Math.random() * 0.3
+    phi = (Math.random() - 0.5) * Math.PI
   } else if (layer < 0.85) {
     radius = 2.55 + Math.random() * 0.65
-    phi    = (Math.random() - 0.5) * Math.PI
+    phi = (Math.random() - 0.5) * Math.PI
   } else {
     radius = 4.45 + Math.random() * 0.12
-    phi    = (Math.random() - 0.5) * 0.14
+    phi = (Math.random() - 0.5) * 0.14
   }
 
   const theta = Math.random() * Math.PI * 2
+
   return {
     pos: [
       radius * Math.cos(theta) * Math.cos(phi),
       radius * Math.sin(phi),
       radius * Math.sin(theta) * Math.cos(phi),
     ],
-    rot:   [Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI],
+    rot: [Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI],
     scale: 0.004 + Math.random() * 0.008,
     color: layer < 0.65 ? '#c8d0f8' : layer < 0.85 ? '#8b9fff' : '#6b7fff',
   }
 })
 
-const ANNOTS = [
+// targetPos is deliberately outside the Earth (radius 1) and inside a debris belt.
+const ANNOTATIONS = [
   {
-    value: '28,000', unit: ' km/h', valueFont: MONO_FONT,
-    label: '平均碰撞速度', sub: '子弹速度的 10 倍',
-    color: '#c8d0f8',
-    boxPos:   [-1.0,  1.15,  0.95],
-    labelPos: [-2.0,  1.65,  0.95],
-    boxSize:  [0.30,  0.20,  0.20],
-    dir: -1,   // shoulder extends in -x direction, text anchors right
+    value: '28,000 km/h',
+    eyebrow: 'COLLISION VELOCITY',
+    label: '平均碰撞速度',
+    sub: '子弹速度的 10 倍',
+    color: '#cbd3ff',
+    targetPos: [-1.25, 1.05, 1.05],
+    labelPos: [-2.0, 1.72, 1.15],
+    direction: 1,
+    flowSpeed: 0.42,
   },
   {
-    value: '~1.3亿', unit: '', valueFont: CJK_FONT,
-    label: '在轨碎片总量', sub: '大多无法追踪',
+    value: '~1.3亿',
+    eyebrow: 'UNTRACKED OBJECTS',
+    label: '在轨碎片总量',
+    sub: '大多无法追踪',
     color: '#8b9fff',
-    boxPos:   [ 2.1,  0.25,  1.75],
-    labelPos: [ 3.05, 0.45,  1.75],
-    boxSize:  [0.32,  0.22,  0.22],
-    dir: 1,    // shoulder extends in +x direction, text anchors left
+    targetPos: [1.48, 0.52, 1.02],
+    labelPos: [2.58, 1.02, 1.22],
+    direction: 1,
+    flowSpeed: 0.34,
   },
   {
-    value: '36,500+', unit: '', valueFont: MONO_FONT,
-    label: '可追踪目标', sub: '雷达编目在册',
+    value: '36,500+',
+    eyebrow: 'CATALOGUED TARGETS',
+    label: '雷达可追踪目标',
+    sub: '编目在册',
     color: '#f87171',
-    boxPos:   [-0.55, -1.42,  0.92],
-    labelPos: [-1.3,  -2.0,   0.92],
-    boxSize:  [0.28,  0.20,  0.20],
-    dir: -1,   // shoulder extends in -x direction, text anchors right
+    targetPos: [-0.72, -1.52, 0.92],
+    labelPos: [-1.92, -2.12, 1.08],
+    direction: -1,
+    flowSpeed: 0.38,
   },
 ]
 
+function useReducedMotionPreference() {
+  const [reducedMotion, setReducedMotion] = useState(false)
 
-function EarthScene({ showAnnotations }) {
-  const earthRef    = useRef()
-  const debrisRef   = useRef()
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const update = () => setReducedMotion(media.matches)
 
-  // Refs for 3D Text meshes (value) — fillOpacity set directly, no re-render
-  const valueRefs   = useRef([null, null, null])
-  // Refs for HTML label divs — style.opacity set directly
-  const labelDivRefs = useRef([null, null, null])
+    update()
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
+  }, [])
 
-  // Reusable vectors — avoid GC per frame
-  const _ec = useRef(new THREE.Vector3())
-  const _lp = useRef(new THREE.Vector3())
-  const _tl = useRef(new THREE.Vector3())
-  const _te = useRef(new THREE.Vector3())
-  const _cp = useRef(new THREE.Vector3())
+  return reducedMotion
+}
+
+function DebrisSelectionVolume({ position, color, index }) {
+  const rotation = [0.18 + index * 0.1, -0.34 + index * 0.14, 0.12 - index * 0.06]
+  const cloudGeometry = useMemo(() => {
+    const geometry = new THREE.SphereGeometry(1, 26, 18)
+    const positions = geometry.attributes.position
+    const phase = index * 1.73
+    const vertex = new THREE.Vector3()
+
+    for (let vertexIndex = 0; vertexIndex < positions.count; vertexIndex += 1) {
+      vertex.fromBufferAttribute(positions, vertexIndex)
+      const normal = vertex.clone().normalize()
+      const broadFold = Math.sin(normal.x * 3.4 + phase) * Math.cos(normal.y * 2.8 - phase * 0.4)
+      const fineFold = Math.sin(normal.z * 5.2 - phase) * Math.sin(normal.y * 4.1 + normal.x)
+      const sideBulge = Math.cos((normal.x - normal.z) * 2.6 + phase * 0.7)
+      const radius = 1 + broadFold * 0.16 + fineFold * 0.075 + sideBulge * 0.055
+
+      positions.setXYZ(
+        vertexIndex,
+        vertex.x * radius * (1 + normal.x * 0.08),
+        vertex.y * radius,
+        vertex.z * radius * (1 - normal.x * 0.04),
+      )
+    }
+
+    positions.needsUpdate = true
+    geometry.computeVertexNormals()
+    return geometry
+  }, [index])
+
+  return (
+    <group position={position} rotation={rotation}>
+      <mesh geometry={cloudGeometry} scale={[0.36, 0.255, 0.235]}>
+        <meshStandardMaterial
+          color={color}
+          transparent
+          opacity={0.17}
+          roughness={0.92}
+          metalness={0}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+    </group>
+  )
+}
+
+function MinimalAnnotation({ annotation, index, reducedMotion, labelDivRefs, labelDotRefs }) {
+  const dashRef = useRef(null)
+  const { color, direction, eyebrow, flowSpeed, label, labelPos, sub, targetPos, value } = annotation
+  const connectorVector = new THREE.Vector3(...labelPos).sub(new THREE.Vector3(...targetPos)).normalize()
+  const connectorTarget = new THREE.Vector3(...targetPos)
+    .addScaledVector(connectorVector, 0.38)
+    .toArray()
+
+  useFrame((_, delta) => {
+    if (reducedMotion || !dashRef.current?.material) return
+    dashRef.current.material.dashOffset -= delta * flowSpeed
+  })
+
+  return (
+    <group>
+      {/* A single straight connector: data label -> debris-region anchor. */}
+      <Line
+        points={[labelPos, connectorTarget]}
+        color={color}
+        lineWidth={0.65}
+        transparent
+        opacity={0.2}
+      />
+      <Line
+        ref={dashRef}
+        points={[labelPos, connectorTarget]}
+        color={color}
+        lineWidth={1}
+        transparent
+        opacity={0.52}
+        dashed
+        dashSize={0.08}
+        gapSize={0.2}
+      />
+
+      {/* A translucent cloud volume plus eight spatial corners selects a debris cluster. */}
+      <DebrisSelectionVolume position={targetPos} color={color} index={index} />
+
+      <mesh position={labelPos} ref={(element) => { labelDotRefs.current[index] = element }}>
+        <circleGeometry args={[0.043, 16]} />
+        <meshBasicMaterial color={color} transparent opacity={0.9} side={THREE.DoubleSide} />
+      </mesh>
+
+      <Html
+        position={labelPos}
+        distanceFactor={10}
+        style={{ pointerEvents: 'none', userSelect: 'none' }}
+      >
+        <div
+          ref={(element) => { labelDivRefs.current[index] = element }}
+          style={{
+            width: 210,
+            whiteSpace: 'nowrap',
+            textAlign: direction > 0 ? 'left' : 'right',
+            transform: direction > 0
+              ? 'translate(14px, -50%)'
+              : 'translate(calc(-100% - 14px), -50%)',
+          }}
+        >
+          <div style={{
+            color,
+            fontFamily: "'Space Mono', monospace",
+            fontSize: 7,
+            fontWeight: 700,
+            letterSpacing: '0.16em',
+            opacity: 0.58,
+          }}>
+            {eyebrow}
+          </div>
+          <div style={{
+            color,
+            fontFamily: "'Space Mono', monospace",
+            fontSize: 28,
+            fontWeight: 700,
+            letterSpacing: '-0.04em',
+            lineHeight: 1.08,
+            marginTop: 3,
+          }}>
+            {value}
+          </div>
+          <div style={{
+            width: 72,
+            height: 1,
+            marginTop: 6,
+            marginBottom: 7,
+            marginLeft: direction > 0 ? 0 : 'auto',
+            background: color,
+            opacity: 0.38,
+          }} />
+          <div style={{
+            color: 'rgba(232,232,248,0.86)',
+            fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif",
+            fontSize: 12,
+            fontWeight: 600,
+          }}>
+            {label}
+          </div>
+          <div style={{
+            color: 'rgba(143,150,189,0.72)',
+            fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif",
+            fontSize: 8,
+            marginTop: 3,
+          }}>
+            {sub}
+          </div>
+        </div>
+      </Html>
+    </group>
+  )
+}
+
+function EarthScene({ showAnnotations, reducedMotion }) {
+  const earthRef = useRef(null)
+  const debrisRef = useRef(null)
+  const labelDivRefs = useRef([])
+  const labelDotRefs = useRef([])
+
+  const earthCenter = useRef(new THREE.Vector3())
+  const labelWorldPos = useRef(new THREE.Vector3())
+  const cameraToLabel = useRef(new THREE.Vector3())
+  const cameraToEarth = useRef(new THREE.Vector3())
+  const closestPoint = useRef(new THREE.Vector3())
 
   useFrame((state, delta) => {
-    if (earthRef.current)  earthRef.current.rotation.y  += delta * 0.055
-    if (debrisRef.current) debrisRef.current.rotation.y += delta * 0.018
+    if (!reducedMotion) {
+      if (earthRef.current) earthRef.current.rotation.y += delta * 0.055
+      if (debrisRef.current) debrisRef.current.rotation.y += delta * 0.018
+    }
 
     if (!showAnnotations || !debrisRef.current || !earthRef.current) return
-    earthRef.current.getWorldPosition(_ec.current)
-    const R     = 1.0
-    const camera = state.camera
 
-    ANNOTS.forEach((a, i) => {
-      _lp.current.set(...a.labelPos).applyMatrix4(debrisRef.current.matrixWorld)
-      _tl.current.copy(_lp.current).sub(camera.position)
-      const distToLabel = _tl.current.length()
-      _tl.current.normalize()
+    earthRef.current.getWorldPosition(earthCenter.current)
 
-      _te.current.copy(_ec.current).sub(camera.position)
-      const tEarth = _te.current.dot(_tl.current)
-      _cp.current.copy(camera.position).addScaledVector(_tl.current, tEarth)
-      const perpDist = _cp.current.distanceTo(_ec.current)
+    ANNOTATIONS.forEach((annotation, index) => {
+      labelWorldPos.current.set(...annotation.labelPos).applyMatrix4(debrisRef.current.matrixWorld)
+      cameraToLabel.current.copy(labelWorldPos.current).sub(state.camera.position)
 
-      let occ = 1
-      if (tEarth > 0 && tEarth < distToLabel) {
-        const inner = R * 0.76
-        const outer = R * 1.06
-        if (perpDist <= inner)      occ = 0
-        else if (perpDist < outer)  occ = (perpDist - inner) / (outer - inner)
+      const labelDistance = cameraToLabel.current.length()
+      cameraToLabel.current.normalize()
+
+      cameraToEarth.current.copy(earthCenter.current).sub(state.camera.position)
+      const earthDistanceAlongRay = cameraToEarth.current.dot(cameraToLabel.current)
+      closestPoint.current
+        .copy(state.camera.position)
+        .addScaledVector(cameraToLabel.current, earthDistanceAlongRay)
+
+      const distanceFromEarth = closestPoint.current.distanceTo(earthCenter.current)
+      let visibility = 1
+
+      if (earthDistanceAlongRay > 0 && earthDistanceAlongRay < labelDistance) {
+        const hiddenRadius = 0.76
+        const fadeRadius = 1.08
+        if (distanceFromEarth <= hiddenRadius) visibility = 0
+        else if (distanceFromEarth < fadeRadius) {
+          visibility = (distanceFromEarth - hiddenRadius) / (fadeRadius - hiddenRadius)
+        }
       }
 
-      // 3D Text — direct property mutation, no React re-render
-      if (valueRefs.current[i]) valueRefs.current[i].fillOpacity = occ
+      if (labelDivRefs.current[index]) labelDivRefs.current[index].style.opacity = visibility
 
-      // HTML labels — direct DOM mutation
-      if (labelDivRefs.current[i]) labelDivRefs.current[i].style.opacity = occ
+      const dotMaterial = labelDotRefs.current[index]?.material
+      if (dotMaterial) dotMaterial.opacity = visibility * 0.9
     })
   })
 
   return (
     <group position={[1.8, -0.1, 0]}>
-      {/* Earth */}
       <group ref={earthRef}>
         <M4EarthModel radius={1} />
       </group>
 
-      {/* Outer atmosphere glow */}
-      <mesh scale={1.22}>
+      {/* A plain atmosphere shell; no glow filters or animated halo. */}
+      <mesh scale={1.18}>
         <sphereGeometry args={[1, 24, 24]} />
-        <meshBasicMaterial color="#6b7fff" side={THREE.BackSide} transparent opacity={0.06} />
+        <meshBasicMaterial color="#6b7fff" side={THREE.BackSide} transparent opacity={0.035} />
       </mesh>
 
-      {/* Orbital rings — LEO / MEO / GEO */}
       <mesh rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[1.72, 0.003, 8, 128]} />
-        <meshBasicMaterial color="#c8d0f8" transparent opacity={0.14} />
+        <torusGeometry args={[1.72, 0.002, 6, 128]} />
+        <meshBasicMaterial color="#c8d0f8" transparent opacity={0.1} />
       </mesh>
       <mesh rotation={[Math.PI / 2.3, 0.18, 0]}>
-        <torusGeometry args={[2.87, 0.003, 8, 128]} />
-        <meshBasicMaterial color="#8b9fff" transparent opacity={0.09} />
+        <torusGeometry args={[2.87, 0.002, 6, 128]} />
+        <meshBasicMaterial color="#8b9fff" transparent opacity={0.065} />
       </mesh>
       <mesh rotation={[Math.PI / 2.1, -0.08, 0]}>
-        <torusGeometry args={[4.51, 0.003, 8, 128]} />
-        <meshBasicMaterial color="#6b7fff" transparent opacity={0.07} />
+        <torusGeometry args={[4.51, 0.002, 6, 128]} />
+        <meshBasicMaterial color="#6b7fff" transparent opacity={0.045} />
       </mesh>
 
-      {/* Debris + annotations — all rotate together */}
       <group ref={debrisRef}>
-        {DEBRIS.map((d, i) => (
-          <mesh key={i} position={d.pos} rotation={d.rot} scale={d.scale}>
+        {DEBRIS.map((debris, index) => (
+          <mesh key={index} position={debris.pos} rotation={debris.rot} scale={debris.scale}>
             <dodecahedronGeometry args={[1, 0]} />
-            <meshBasicMaterial color={d.color} />
+            <meshBasicMaterial color={debris.color} />
           </mesh>
         ))}
 
-        {showAnnotations && ANNOTS.map((a, i) => (
-          <group key={`annot-${i}`}>
-            {/* 3D corner-tick targeting frame */}
-            <group position={a.boxPos}>
-              <TargetBox size={a.boxSize} color={a.color} />
-            </group>
-
-            {/* Connector line: debris region → terminus dot */}
-            <Line
-              points={[a.boxPos, a.labelPos]}
-              color={a.color}
-              lineWidth={1.6}
-              transparent
-              opacity={0.42}
-            />
-
-            {/* Terminus dot — visible anchor where line ends and number begins */}
-            <mesh position={a.labelPos}>
-              <sphereGeometry args={[0.038, 8, 8]} />
-              <meshBasicMaterial color={a.color} transparent opacity={0.88} />
-            </mesh>
-
-            {/* Value — Billboard at labelPos, vertically centered on terminus dot */}
-            <Billboard position={a.labelPos}>
-              <Text
-                ref={el => { valueRefs.current[i] = el }}
-                anchorX={a.dir > 0 ? 'left' : 'right'}
-                anchorY="middle"
-                fontSize={0.44}
-                color={a.color}
-                outlineWidth="3.5%"
-                outlineColor={a.color}
-                fillOpacity={1}
-              >
-                {a.value}{a.unit}
-              </Text>
-            </Billboard>
-
-            {/* Label + sub — Html at SAME XZ as labelPos so it tracks with the number */}
-            <Html
-              position={[a.labelPos[0], a.labelPos[1] - 0.38, a.labelPos[2]]}
-              distanceFactor={10}
-              style={{ pointerEvents: 'none', userSelect: 'none' }}
-            >
-              <div
-                ref={el => { labelDivRefs.current[i] = el }}
-                style={{
-                  whiteSpace: 'nowrap', transition: 'opacity 0.1s linear',
-                  textAlign: a.dir > 0 ? 'left' : 'right',
-                }}
-              >
-                <div style={{
-                  fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif",
-                  fontSize: 15, fontWeight: 500,
-                  color: 'rgba(232,232,248,0.85)',
-                  textShadow: '0 1px 8px rgba(4,4,15,0.95)',
-                  lineHeight: 1.4,
-                }}>
-                  {a.label}
-                </div>
-                <div style={{
-                  fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif",
-                  fontSize: 12,
-                  color: 'rgba(180,190,255,0.68)',
-                  textShadow: '0 1px 6px rgba(4,4,15,0.95)',
-                  marginTop: 3,
-                }}>
-                  {a.sub}
-                </div>
-              </div>
-            </Html>
-          </group>
+        {showAnnotations && ANNOTATIONS.map((annotation, index) => (
+          <MinimalAnnotation
+            key={annotation.eyebrow}
+            annotation={annotation}
+            index={index}
+            reducedMotion={reducedMotion}
+            labelDivRefs={labelDivRefs}
+            labelDotRefs={labelDotRefs}
+          />
         ))}
       </group>
     </group>
@@ -284,27 +350,31 @@ function EarthScene({ showAnnotations }) {
 
 export default function DebrisEarth({ showAnnotations = false }) {
   const [inView, setInView] = useState(false)
-  const wrapRef = useRef()
+  const wrapRef = useRef(null)
+  const reducedMotion = useReducedMotionPreference()
 
   useEffect(() => {
-    const io = new IntersectionObserver(([e]) => setInView(e.isIntersecting), { rootMargin: '120px' })
-    if (wrapRef.current) io.observe(wrapRef.current)
-    return () => io.disconnect()
+    const observer = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting), {
+      rootMargin: '120px',
+    })
+
+    if (wrapRef.current) observer.observe(wrapRef.current)
+    return () => observer.disconnect()
   }, [])
 
   return (
-    <div ref={wrapRef} style={{ width: '100%', height: '100%' }}>
+    <div ref={wrapRef} className="m1-earth-stage">
       {inView && (
         <Canvas
           frameloop="always"
           camera={{ position: [0, 0.3, 8.5], fov: 52 }}
           dpr={[1, 1.5]}
           gl={{ antialias: true, alpha: true }}
-          style={{ background: 'transparent', width: '100%', height: '100%' }}
+          className="m1-earth-canvas"
         >
           <M4EarthLighting />
           <Suspense fallback={null}>
-            <EarthScene showAnnotations={showAnnotations} />
+            <EarthScene showAnnotations={showAnnotations} reducedMotion={reducedMotion} />
           </Suspense>
         </Canvas>
       )}
