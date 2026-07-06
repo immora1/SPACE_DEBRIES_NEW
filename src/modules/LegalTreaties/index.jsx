@@ -1,226 +1,408 @@
-import { useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { useEffect, useRef, useState } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import useAppStore from '../../store/useAppStore'
 import './index.css'
 
-const MotionArticle = motion.article
-const MotionSection = motion.section
-const EASE = [0.16, 1, 0.3, 1]
+const EASE = [0.22, 1, 0.36, 1]
+const MOVE_EASE = [0.25, 1, 0.5, 1]
 
-const TREATIES = [
+const LEGAL_FILES = [
   {
-    id: 'outer-space',
-    year: '1967',
-    title: '外层空间条约',
-    label: '管辖与所有权',
-    body: '登记国对其空间物体保留管辖和控制。卫星失效、漂移或重返地球，并不会自动变成任何人都可以处置的无主物。',
-    takeaway: '清理他国碎片之前，首先需要取得所有权国或登记国的授权。',
-    source: 'UNOOSA / Outer Space Treaty',
-    href: 'https://www.unoosa.org/oosa/en/ourwork/spacelaw/treaties/outerspacetreaty.html',
+    id: 'framework',
+    index: '01',
+    code: 'FRAMEWORK / 3 LAYERS',
+    marker: '总体结构',
+    title: '规则已经出现，治理仍然松散。',
+    summary: '现有体系由国际条约、软法与技术标准、国内许可三层构成，但尚未形成统一且可强制执行的全球制度。',
+    position: { left: '13%', top: '24%', rotate: -5, drift: 11, duration: 7.4 },
+    sections: [
+      {
+        title: '核心结论',
+        body: '太空垃圾治理并非法律空白。国际条约负责国家责任、赔偿和登记；联合国、IADC、ISO 提供减缓准则和技术标准；各国再通过许可制度落实。真正缺失的是专门、统一、强制执行的全球清理机制。',
+      },
+      {
+        title: '三层规则',
+        items: [
+          '国际硬法：建立国家责任、损害赔偿、登记识别等底层关系。',
+          '国际软法与标准：把避免碰撞、减少解体、任务后处置转化为工程原则。',
+          '国内监管：通过发射、频谱、运营许可和任务审查形成实际约束。',
+        ],
+      },
+      {
+        title: '结构性问题',
+        body: '三层规则之间没有形成统一执法链条：硬法原则宽泛，软法依赖自愿转化，各国标准与管辖力度又不一致。',
+      },
+    ],
+    sources: [
+      ['UNOOSA · Space Law Treaties and Principles', 'https://www.unoosa.org/oosa/en/ourwork/spacelaw/treaties.html'],
+    ],
   },
   {
-    id: 'liability',
-    year: '1972',
-    title: '空间物体责任公约',
-    label: '损害与赔偿',
-    body: '空间物体在地面或飞行中的航空器上造成损害时，发射国承担绝对责任；发生在外层空间的损害，则通常需要讨论过错。',
-    takeaway: '主动清理任务如果产生碰撞或坠落风险，责任安排必须在任务开始前写清楚。',
-    source: 'UNOOSA / Liability Convention',
-    href: 'https://www.unoosa.org/oosa/en/ourwork/spacelaw/treaties/liability-convention.html',
+    id: 'hard-law',
+    index: '02',
+    code: 'INTERNATIONAL / HARD LAW',
+    marker: '国际硬法',
+    title: '责任被确认，清理义务仍然模糊。',
+    summary: '联合国外空条约体系能回答谁负责、如何登记、何时赔偿，却没有规定每类碎片必须由谁清除。',
+    position: { left: '39%', top: '16%', rotate: 4, drift: 9, duration: 8.2 },
+    sections: [
+      {
+        title: '1967 · 外层空间条约',
+        body: '国家对本国政府和非政府实体的外空活动承担国际责任，私人企业活动也需要国家授权与持续监督。它提供原则，却没有具体碎片减缓、离轨期限或清理义务。',
+      },
+      {
+        title: '1972 · 空间物体责任公约',
+        body: '发射国对地面损害通常承担绝对责任；外空损害则涉及过错判断。现实中，碎片来源、碰撞链条和过错证明都十分困难。',
+      },
+      {
+        title: '1975 · 空间物体登记公约',
+        body: '登记帮助确认卫星、火箭末级与相关碎片来源，但登记并不等于治理，也难覆盖小碎片、历史遗留物和复杂的多国发射关系。',
+      },
+    ],
+    sources: [
+      ['UNOOSA · 五大外空条约', 'https://www.unoosa.org/oosa/en/ourwork/spacelaw/treaties.html'],
+    ],
   },
   {
-    id: 'registration',
-    year: '1975',
-    title: '登记公约',
-    label: '识别与追踪',
-    body: '发射国应维护国家登记册，并向联合国提供空间物体的基本识别信息、发射资料、轨道参数和一般功能。',
-    takeaway: '如果一块碎片无法被识别，就很难确认由谁授权、由谁承担风险。',
-    source: 'UNOOSA / Registration Convention',
-    href: 'https://www.unoosa.org/oosa/en/ourwork/spacelaw/treaties/registration-convention.html',
+    id: 'soft-law',
+    index: '03',
+    code: 'GUIDELINES / STANDARDS',
+    marker: '软法与标准',
+    title: '工程规则更具体，法律效力更有限。',
+    summary: '直接针对碎片减缓的规则大多是指南与标准，只有被国家立法、许可、合同或机构政策吸收后，才会产生更强约束。',
+    position: { left: '67%', top: '25%', rotate: -3, drift: 13, duration: 7.8 },
+    sections: [
+      {
+        title: 'COPUOS 准则',
+        body: '要求限制正常运行释放碎片、减少爆炸和碰撞风险，并在任务结束后处置低轨与地球同步轨道相关残留物；其本身属于自愿性准则。',
+      },
+      {
+        title: 'LTS 与 IADC',
+        body: '长期可持续性准则覆盖政策监管、运行安全、国际合作和能力建设；IADC 指南更贴近航天器与火箭末级的规划、设计、运行和处置。',
+      },
+      {
+        title: 'ISO 24113:2023 与 ESA',
+        body: 'ISO 将减缓目标转化为无人空间系统、火箭末级和任务释放物体的技术要求。ESA 以“2030 零碎片”为方向推动机构任务先行，但仍不能替代全球法律。',
+      },
+    ],
+    sources: [
+      ['COPUOS · Space Debris Mitigation Guidelines', 'https://www.unoosa.org/pdf/publications/st_space_49E.pdf'],
+      ['ISO 24113:2023', 'https://www.iso.org/standard/83494.html'],
+    ],
   },
   {
-    id: 'national-rules',
-    year: '2019+',
-    title: '国家减缓规则',
-    label: '许可与退轨',
-    body: '国际指南通常通过各国的发射许可、频率许可和任务审查落地，要求控制任务中产生的碎片、钝化剩余能量并规划任务后处置。',
-    takeaway: '国际规则确定共同底线，国家监管把底线变成可以执行的许可条件。',
-    source: 'UNOOSA / National Space Law',
-    href: 'https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/index.html',
+    id: 'national',
+    index: '04',
+    code: 'NATIONAL / LICENSING',
+    marker: '国家监管',
+    title: '许可制度正在成为最现实的入口。',
+    summary: '各国把碎片减缓写入发射、频谱、运营和任务后处置审查，但期限、范围与执行力度尚未统一。',
+    position: { left: '20%', top: '57%', rotate: 3, drift: 10, duration: 8.6 },
+    sections: [
+      {
+        title: '美国与欧洲',
+        items: [
+          '美国 FCC 将部分低轨卫星任务结束后的离轨期限压缩到 5 年，但其管辖不能覆盖全部空间活动。',
+          '欧盟提出 EU Space Act，试图围绕安全、韧性和可持续性建立统一框架；截至文档整理时仍处于立法程序。',
+          '法国 FSOA 与 ESA 政策在授权、碰撞风险、再入和任务后处置方面形成较完整要求。',
+        ],
+      },
+      {
+        title: '英国、中国与日本',
+        items: [
+          '英国 CAA 通过空间活动许可监管发射、返回和轨道运营，并采用 IADC 与 LTS 原则。',
+          '中国对 2000 km 以下微小卫星提出任务后驻留时间要求，并强调避免脱落、丢弃、抛洒和爆炸。',
+          '日本在空间活动法许可框架下要求防止部件散逸、实施避碰控制，并规划低轨任务后离轨。',
+        ],
+      },
+    ],
+    sources: [
+      ['FCC · 5-Year Deorbit Rule', 'https://www.fcc.gov/document/fcc-adopts-new-5-year-rule-deorbiting-satellites-0'],
+      ['European Commission · EU Space Act', 'https://defence-industry-space.ec.europa.eu/eu-space-act_en'],
+    ],
+  },
+  {
+    id: 'gaps',
+    index: '05',
+    code: 'GOVERNANCE / 7 GAPS',
+    marker: '治理缺口',
+    title: '有责任框架，缺清理机制。',
+    summary: '现有制度更擅长约束未来任务，却难以处理历史垃圾、主动清除、跨国追责和空间交通协同。',
+    position: { left: '48%', top: '62%', rotate: -4, drift: 14, duration: 7.1 },
+    sections: [
+      {
+        title: '七个未闭合的问题',
+        items: [
+          '缺少专门、统一、强制的全球太空垃圾公约。',
+          '软法准则较多，但执行依赖各国自愿转化。',
+          '5 年、25 年及宽泛表述并存，各国标准不一致。',
+          '碎片高速、微小且来源复杂，归属与过错证明困难。',
+          '几十年前形成的历史遗留碎片缺少清理机制。',
+          '主动清除涉及原发射国或所有者的授权与同意。',
+          '全球空间交通管理、数据共享与避碰协同仍然分散。',
+        ],
+      },
+      {
+        title: '真正的矛盾',
+        body: '技术已经能够接近、捕获甚至改变部分目标的轨道，但法律还没有稳定回答：谁有权行动、谁为行动中的二次风险负责、清理成本应由谁承担。',
+      },
+    ],
+    sources: [
+      ['UNOOSA · Long-term Sustainability', 'https://www.unoosa.org/oosa/en/ourwork/topics/long-term-sustainability-of-outer-space-activities.html'],
+    ],
+  },
+  {
+    id: 'language',
+    index: '06',
+    code: 'EXHIBITION / LANGUAGE',
+    marker: '项目表达',
+    title: '法律能确认责任，却不一定能清理风险。',
+    summary: '将复杂制度转译为展板、模型和交互中的清晰表达，让观众理解“不是无法可依，而是执行链条没有闭合”。',
+    position: { left: '75%', top: '55%', rotate: 5, drift: 8, duration: 9 },
+    sections: [
+      {
+        title: '展板主文案',
+        body: '太空垃圾治理并非完全没有法律，而是现有法律停留在责任原则和自愿减缓层面，缺少统一、强制、可执行的全球清理机制。',
+      },
+      {
+        title: '短句与问题',
+        items: [
+          '有规则，但没有真正能清理轨道的全球法律。',
+          'Responsibility without Removal / 有责任框架，缺清理机制。',
+          '当卫星退役、火箭残骸漂浮、碎片互相碰撞时，法律能确认责任，却不一定能及时清理风险。',
+        ],
+      },
+      {
+        title: '模型说明',
+        body: '倾斜的法槌象征失衡的外空治理：法律已经落下阴影，却尚未形成足以约束所有轨道行为的力量。',
+      },
+    ],
+    sources: [],
   },
 ]
 
-const NATIONAL_RULES = [
-  ['授权', '清理器接触不属于自己的空间物体前，需要解决所有权、登记与操作授权。'],
-  ['钝化', '任务结束后安全处置燃料、电池和高压气体，降低在轨爆炸与二次碎裂风险。'],
-  ['退轨', '监管机构可把任务后处置期限、成功概率和再入风险写入许可证条件。'],
-]
+function FileCard({ file, active, visible, reduceMotion, onOpen, buttonRef }) {
+  const drift = file.position.drift
+  const floating = visible && !active && !reduceMotion
 
-function RecordRow({ label, value }) {
   return (
-    <div className="law-record-row">
-      <dt>{label}</dt>
-      <dd>{value}</dd>
-    </div>
+    <motion.button
+      ref={buttonRef}
+      type="button"
+      layoutId={`legal-file-${file.id}`}
+      className="law-file-card"
+      style={{
+        '--file-left': file.position.left,
+        '--file-top': file.position.top,
+        '--file-rotate': `${file.position.rotate}deg`,
+      }}
+      initial={reduceMotion ? false : { opacity: 0, y: 20, rotate: file.position.rotate }}
+      animate={active
+        ? { opacity: 0.14, y: 150, rotate: 0, scale: 0.86 }
+        : floating
+          ? { opacity: 1, y: [-drift, drift, -drift], rotate: [file.position.rotate - 1, file.position.rotate + 1, file.position.rotate - 1], scale: 1 }
+          : { opacity: 1, y: 0, rotate: file.position.rotate, scale: 1 }}
+      transition={floating
+        ? { y: { duration: file.position.duration, repeat: Infinity, ease: 'easeInOut' }, rotate: { duration: file.position.duration * 1.12, repeat: Infinity, ease: 'easeInOut' }, opacity: { duration: 0.45, ease: EASE } }
+        : { duration: 0.34, ease: MOVE_EASE }}
+      whileHover={!active && !reduceMotion ? { scale: 1.018, y: -6 } : undefined}
+      whileTap={!active ? { scale: 0.98 } : undefined}
+      onClick={() => onOpen(file)}
+      aria-label={`打开档案：${file.marker}，${file.title}`}
+    >
+      <span className="law-file-card-index">{file.index}</span>
+      <span className="law-file-card-code">{file.code}</span>
+      <strong>{file.marker}</strong>
+      <p>{file.title}</p>
+      <span className="law-file-card-action">OPEN FILE <b aria-hidden="true">↗</b></span>
+    </motion.button>
+  )
+}
+
+function DetailFile({ file, reduceMotion, onClose, onComplete, closeRef }) {
+  return (
+    <motion.article
+      layoutId={`legal-file-${file.id}`}
+      className="law-detail-file"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={`legal-title-${file.id}`}
+      transition={{ layout: { duration: reduceMotion ? 0.01 : 0.46, ease: MOVE_EASE } }}
+    >
+      <header className="law-detail-header">
+        <div>
+          <span>ARCHIVE {file.index} / {file.code}</span>
+          <strong>{file.marker}</strong>
+        </div>
+        <button ref={closeRef} type="button" onClick={onClose} aria-label="关闭详情">关闭 <i aria-hidden="true">×</i></button>
+      </header>
+
+      <div className="law-detail-layout">
+        <div className="law-detail-lead">
+          <span className="law-detail-number" aria-hidden="true">{file.index}</span>
+          <p>{file.marker}</p>
+          <h2 id={`legal-title-${file.id}`}>{file.title}</h2>
+          <blockquote>{file.summary}</blockquote>
+        </div>
+
+        <div className="law-detail-content">
+          {file.sections.map((section, index) => (
+            <section key={section.title} className="law-detail-section">
+              <span>{String(index + 1).padStart(2, '0')}</span>
+              <div>
+                <h3>{section.title}</h3>
+                {section.body && <p>{section.body}</p>}
+                {section.items && (
+                  <ul>
+                    {section.items.map((item) => <li key={item}>{item}</li>)}
+                  </ul>
+                )}
+              </div>
+            </section>
+          ))}
+
+          {file.sources.length > 0 && (
+            <div className="law-detail-sources">
+              <span>OFFICIAL SOURCES</span>
+              {file.sources.map(([label, href]) => (
+                <a key={href} href={href} target="_blank" rel="noopener noreferrer">{label} ↗</a>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <footer className="law-detail-footer">
+        <p>材料整理日期：2026.07.05 · 本页用于设计研究与展示，不构成正式法律意见。</p>
+        <button type="button" onClick={onComplete}>完成法律审阅 <span aria-hidden="true">→</span></button>
+      </footer>
+    </motion.article>
   )
 }
 
 export default function LegalTreaties({ onComplete = () => {} }) {
-  const {
-    user,
-    satellite,
-    gameResult,
-    storyChapters,
-    setStoryChapter,
-  } = useAppStore()
-  const [activeId, setActiveId] = useState(TREATIES[0].id)
+  const rootRef = useRef(null)
+  const closeRef = useRef(null)
+  const cardRefs = useRef(new Map())
+  const reduceMotion = useReducedMotion()
+  const { satellite, setStoryChapter } = useAppStore()
+  const [activeFile, setActiveFile] = useState(null)
+  const [visible, setVisible] = useState(false)
+  const [viewed, setViewed] = useState(() => new Set())
 
-  const activeTreaty = TREATIES.find((item) => item.id === activeId) || TREATIES[0]
-  const result = typeof gameResult === 'string' ? gameResult : gameResult?.result
-  const resultLabel = result === 'success'
-    ? '受控处置完成'
-    : result === 'failure'
-      ? '残骸风险未解除'
-      : '任务记录已封存'
-  const satelliteName = satellite?.name || '你的卫星'
-  const personalEvent = user?.importantEvent || '返回地球的最后痕迹'
-  const storyEnding = storyChapters?.m4
-    || `${satelliteName}结束了任务。它留下的不只是残骸，还有关于归属、责任和处置权限的问题。`
+  useEffect(() => {
+    const root = rootRef.current
+    if (!root || !('IntersectionObserver' in window)) {
+      setVisible(true)
+      return undefined
+    }
+    const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), { threshold: 0.08 })
+    observer.observe(root)
+    return () => observer.disconnect()
+  }, [])
 
-  function handleContinue() {
-    setStoryChapter(
-      'law',
-      `${satelliteName}的个人任务记录在此结束。接下来，碎片的归属、登记、授权和责任将由国家法律与国际条约继续回答。`,
-    )
+  useEffect(() => {
+    if (!activeFile) return undefined
+    closeRef.current?.focus()
+    const activeId = activeFile.id
+    const handleKeyDown = (event) => {
+      if (event.key !== 'Escape') return
+      setActiveFile(null)
+      window.setTimeout(() => cardRefs.current.get(activeId)?.focus(), reduceMotion ? 0 : 300)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [activeFile, reduceMotion])
+
+  function openFile(file) {
+    setViewed((current) => new Set(current).add(file.id))
+    setActiveFile(file)
+  }
+
+  function closeFile() {
+    const previousId = activeFile?.id
+    setActiveFile(null)
+    window.setTimeout(() => cardRefs.current.get(previousId)?.focus(), reduceMotion ? 0 : 300)
+  }
+
+  function handleComplete() {
+    const satelliteName = satellite?.name || '这颗卫星'
+    setStoryChapter('law', `${satelliteName}的任务已经结束，但它留下的归属、责任与清理权限仍在轨道上。`)
     onComplete()
   }
 
   return (
-    <section className="law-section" data-module-scroll-target>
-      <div className="law-route-line" aria-hidden="true" />
-      <div className="law-ghost-index" aria-hidden="true">05</div>
-
-      <header className="law-masthead">
-        <div className="law-masthead-label">
-          <span>POST-MISSION RECORD</span>
-          <span>NATIONAL LAW / INTERNATIONAL TREATIES</span>
-        </div>
-        <div className="law-masthead-number">05</div>
-      </header>
-
-      <div className="law-layout">
-        <MotionArticle
-          className="law-story"
-          initial={{ opacity: 0, y: 36 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-80px' }}
-          transition={{ duration: 0.78, ease: EASE }}
-        >
-          <div className="law-eyebrow">个人故事 / 最终记录</div>
-          <h2>故事结束，<br />责任没有。</h2>
-          <p className="law-story-lead">
-            你已经看完卫星从关机、钝化到再入解体的完整过程。技术可以改变碎片的轨迹，
-            但谁有权移动它、事故由谁负责，必须交给规则回答。
-          </p>
-
-          <blockquote>{storyEnding}</blockquote>
-
-          <dl className="law-record">
-            <RecordRow label="OBJECT" value={satelliteName} />
-            <RecordRow label="OUTCOME" value={resultLabel} />
-            <RecordRow label="LAST TRACE" value={personalEvent} />
-          </dl>
-
-          <div className="law-story-footnote">
-            个人叙事到此封存。右侧内容从一颗卫星，转向所有国家共同面对的轨道责任。
+    <section ref={rootRef} className="law-section" data-module-scroll-target>
+      <div className="law-archive-canvas" inert={activeFile ? true : undefined} aria-hidden={activeFile ? 'true' : undefined}>
+        <header className="law-archive-header">
+          <div>
+            <span>05 · ORBITAL LAW ARCHIVE</span>
+            <strong>太空垃圾法律档案</strong>
           </div>
-        </MotionArticle>
+          <div className="law-archive-counter">
+            <span>已阅</span>
+            <strong>{String(viewed.size).padStart(2, '0')} / {String(LEGAL_FILES.length).padStart(2, '0')}</strong>
+          </div>
+        </header>
 
-        <div className="law-axis" aria-hidden="true">
+        <div className="law-archive-intro">
+          <p>RESPONSIBILITY WITHOUT REMOVAL</p>
+          <h1>有规则，<em>但没有闭合的清理机制。</em></h1>
+          <span>点击漂浮档案，查看条约、准则、国家监管与尚未解决的治理缺口。</span>
+        </div>
+
+        <div className="law-file-field" aria-label="六份太空垃圾法律档案">
+          {LEGAL_FILES.map((file) => (
+            activeFile?.id === file.id ? null : (
+              <FileCard
+                key={file.id}
+                file={file}
+                active={Boolean(activeFile)}
+                visible={visible}
+                reduceMotion={reduceMotion}
+                onOpen={openFile}
+                buttonRef={(node) => {
+                  if (node) cardRefs.current.set(file.id, node)
+                  else cardRefs.current.delete(file.id)
+                }}
+              />
+            )
+          ))}
+        </div>
+
+        <div className="law-archive-guide" aria-hidden="true">
           <span />
+          SELECT A FILE · 点击任意档案展开
         </div>
 
-        <MotionSection
-          className="law-knowledge"
-          initial={{ opacity: 0, y: 44 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-80px' }}
-          transition={{ duration: 0.82, delay: 0.08, ease: EASE }}
-        >
-          <div className="law-knowledge-intro">
-            <div>
-              <div className="law-eyebrow">规则框架 / 四份档案</div>
-              <h3>谁拥有碎片，<br />谁承担责任。</h3>
-            </div>
-            <p>
-              国际条约规定所有权、登记和赔偿的基本关系；国家监管再把这些原则写入许可、
-              退轨期限和任务后处置要求。
-            </p>
-          </div>
-
-          <div className="law-treaty-tabs" role="tablist" aria-label="法律与国际条约">
-            {TREATIES.map((item, index) => {
-              const isActive = item.id === activeId
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={isActive}
-                  className={isActive ? 'is-active' : ''}
-                  onClick={() => setActiveId(item.id)}
-                >
-                  <span>{String(index + 1).padStart(2, '0')} / {item.year}</span>
-                  <strong>{item.title}</strong>
-                </button>
-              )
-            })}
-          </div>
-
-          <AnimatePresence mode="wait">
-            <MotionArticle
-              key={activeTreaty.id}
-              className="law-document"
-              initial={{ opacity: 0, y: 18 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.38, ease: EASE }}
-            >
-              <div className="law-document-meta">
-                <span>{activeTreaty.year}</span>
-                <span>{activeTreaty.label}</span>
-              </div>
-              <h4>{activeTreaty.title}</h4>
-              <p>{activeTreaty.body}</p>
-              <div className="law-document-takeaway">{activeTreaty.takeaway}</div>
-              <a href={activeTreaty.href} target="_blank" rel="noopener noreferrer">
-                {activeTreaty.source} ↗
-              </a>
-            </MotionArticle>
-          </AnimatePresence>
-
-          <div className="law-principles" aria-label="国家规则如何落地">
-            <div className="law-principles-heading">
-              <span>国家规则如何落地</span>
-              <strong>03</strong>
-            </div>
-            {NATIONAL_RULES.map(([label, description], index) => (
-              <div className="law-principle" key={label}>
-                <span>{String(index + 1).padStart(2, '0')} / {label}</span>
-                <p>{description}</p>
-              </div>
-            ))}
-          </div>
-
-          <footer className="law-footer">
-            <div>
-              <span>ARCHIVE COMPLETE</span>
-              <p>法律不能替代清理技术，但它决定清理行动能否被授权、识别和追责。</p>
-            </div>
-            <button type="button" onClick={handleContinue}>继续：返回地球 →</button>
-          </footer>
-        </MotionSection>
+        <button className="law-archive-complete" type="button" onClick={handleComplete}>
+          <span>完成本章</span>
+          返回地球 <i aria-hidden="true">→</i>
+        </button>
       </div>
+
+      <AnimatePresence>
+        {activeFile && (
+          <motion.div
+            className="law-detail-layer"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: reduceMotion ? 0.01 : 0.2, ease: EASE }}
+            onPointerDown={(event) => {
+              if (event.target === event.currentTarget) closeFile()
+            }}
+          >
+            <DetailFile
+              file={activeFile}
+              reduceMotion={reduceMotion}
+              onClose={closeFile}
+              onComplete={handleComplete}
+              closeRef={closeRef}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   )
 }

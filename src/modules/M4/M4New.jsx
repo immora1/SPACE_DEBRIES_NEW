@@ -4249,7 +4249,13 @@ export default function M4New({ onComplete = () => {} }) {
   return (
     <div
       onWheel={handleModuleWheel}
-      style={{ position: 'relative', width: '100%', height: '100vh', overflow: 'hidden' }}
+      style={{
+        position: 'relative',
+        width: '100%',
+        height: '100vh',
+        overflow: 'hidden',
+        background: '#050713',
+      }}
     >
       {orbitVisible && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
