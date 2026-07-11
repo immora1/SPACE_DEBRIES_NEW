@@ -1,10 +1,10 @@
 ﻿import React from 'react'
 
 export const PART_ACCENT = {
-  frame: '#6b7fff',
-  solar: '#38bdf8',
-  insulation: '#fbbf24',
-  propulsion: '#34d399',
+  frame: '#7da7e8',
+  solar: '#b8d6ff',
+  insulation: '#9fc4ff',
+  propulsion: '#cfe3ff',
 }
 
 export const PARTS = [

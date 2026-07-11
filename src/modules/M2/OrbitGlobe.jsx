@@ -80,18 +80,18 @@ function SatOrbit({ altKm, incDeg, currentStep }) {
       {/* 杞ㄩ亾鐜細step 1 鏃跺姞绮楀姞浜?*/}
       <mesh rotation={[rx, 0, 0]}>
         <torusGeometry args={[r, highlight ? 0.013 : 0.007, 4, 64]} />
-        <meshBasicMaterial color="#6b7fff" transparent opacity={highlight ? 1.0 : 0.88} />
+        <meshBasicMaterial color="#7da7e8" transparent opacity={highlight ? 1.0 : 0.88} />
       </mesh>
       {/* 鍗槦鐐?*/}
       <mesh ref={dotRef}>
         <sphereGeometry args={[highlight ? 0.044 : 0.022, 14, 14]} />
-        <meshBasicMaterial color="#6b7fff" />
+        <meshBasicMaterial color="#7da7e8" />
       </mesh>
       {/* 鍙戝厜鍏夋檿锛堜粎 step 1 鏄剧ず锛?*/}
       {highlight && (
         <mesh ref={glowRef}>
           <sphereGeometry args={[0.1, 14, 14]} />
-          <meshBasicMaterial color="#6b7fff" transparent opacity={0.2} />
+          <meshBasicMaterial color="#7da7e8" transparent opacity={0.08} />
         </mesh>
       )}
     </group>
@@ -135,18 +135,18 @@ export default function OrbitGlobe({
 
         <Earth />
 
-        {/* 涓夎建閬撶幆锛氶鑹插垎鍒负钃濄€佺传銆侀潚 */}
+        {/* Orbit rings share the blue-white palette. */}
         <ZoneRing
           r={VR_LEO} baseOpacity={0.65} active={leoActive}
-          tube={0.011} hexColor="#6b7fff" currentStep={currentStep}
+          tube={0.011} hexColor="#7da7e8" currentStep={currentStep}
         />
         <ZoneRing
           r={VR_MEO} baseOpacity={0.48} active={meoActive}
-          tube={0.010} hexColor="#8b6cf8" currentStep={currentStep}
+          tube={0.010} hexColor="#9fc4ff" currentStep={currentStep}
         />
         <ZoneRing
           r={VR_GEO} baseOpacity={0.34} active={geoActive}
-          tube={0.009} hexColor="#8b6cf8" currentStep={currentStep}
+          tube={0.009} hexColor="#9fc4ff" currentStep={currentStep}
         />
 
         <SatOrbit altKm={alt} incDeg={inc} currentStep={currentStep} />

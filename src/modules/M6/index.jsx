@@ -1,22 +1,99 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import useAppStore from '../../store/useAppStore'
 import './index.css'
 
-const CONSTRAINTS = [
-  { id: 'velocity', index: '01', label: '相对速度', value: '14 km/s', summary: '捕获窗口极短' },
-  { id: 'quantity', index: '02', label: '常规跟踪物体', value: '45,780', summary: '小碎片远多于可见目标' },
-  { id: 'ownership', index: '03', label: '所有权', value: '授权优先', summary: '技术行动必须先获授权' },
-  { id: 'economics', index: '04', label: '任务经济性', value: '一对一', summary: '大型目标需要单独交会' },
-]
-
 const METHODS = [
-  { id: 'laser', image: '/cleanup/1.png', title: '激光烧蚀', titleEn: 'LASER ABLATION', status: '研究阶段', statusTone: 'research', mode: '非接触', target: '1–10 cm 小碎片', action: '微量改轨', principle: '用短脉冲加热目标表面，烧蚀喷流产生微小反冲，使碎片轨道逐步改变。', limit: '需要极高的跟踪与指向精度，并持续确认光束不会影响正常航天器。' },
-  { id: 'arm', image: '/cleanup/2.png', title: '机械臂抓取', titleEn: 'ROBOTIC CAPTURE', status: '任务开发', statusTone: 'development', mode: '刚性接触', target: '完整卫星 / 火箭体', action: '固定并离轨', principle: '服务航天器近距离绕飞目标，估计翻滚状态后用多臂结构包络、固定并拖离拥挤轨道。', limit: '面对无对接口、失去控制且持续翻滚的目标，接近和接触阶段风险最高。' },
-  { id: 'net', image: '/cleanup/3.png', title: '柔性捕捉网', titleEn: 'FLEXIBLE NET', status: '在轨演示', statusTone: 'tested', mode: '柔性接触', target: '不规则中型目标', action: '包络捕获', principle: '发射展开的高强度网，从多个方向包裹没有标准接口的目标，再通过缆绳控制组合体。', limit: '网体展开、闭合和后续拖曳都要避免缠绕失控；一次发射通常只有一次捕获机会。' },
-  { id: 'harpoon', image: '/cleanup/4.png', title: '飞行鱼叉', titleEn: 'HARPOON CAPTURE', status: '在轨演示', statusTone: 'tested', mode: '穿透接触', target: '坚硬大型结构', action: '锚定拖曳', principle: '高速锚体穿入目标外壳，倒钩锁定后通过缆绳施加控制和离轨力。', limit: '穿透会向老化结构施加冲击；若材料状态判断错误，可能制造二次碎片。' },
-  { id: 'tether', image: '/cleanup/5.png', title: '电动力缆索', titleEn: 'ELECTRODYNAMIC TETHER', status: '持续验证', statusTone: 'development', mode: '无推进剂', target: '寿命末期航天器', action: '持续减速', principle: '导电缆索切割地磁场并与电离层交换电流，洛伦兹力持续降低轨道能量。', limit: '长缆部署和空间环境耦合复杂，更适合在航天器仍可控时主动启用。' },
-  { id: 'sail', image: '/cleanup/6.png', title: '阻力帆', titleEn: 'DRAG SAIL', status: '成熟部署', statusTone: 'ready', mode: '被动装置', target: '低轨小卫星', action: '增加阻力', principle: '任务结束时展开轻质大面积薄膜，提高面积质量比，让高层稀薄大气更快消耗轨道能量。', limit: '它是预防性离轨装置，不能隔空处理已经脱离航天器的自由碎片。' },
+  {
+    id: 'laser',
+    image: '/cleanup/1.png',
+    title: '激光烧蚀',
+    titleEn: 'LASER ABLATION',
+    status: '研究阶段',
+    statusTone: 'research',
+    mode: '非接触',
+    target: '1–10 cm 小碎片',
+    action: '微量改轨',
+    object: '适合数量多、尺寸小、无法逐个捕获的碎片群，例如太阳能板碎片、隔热层剥落物和碰撞后形成的小颗粒。',
+    reason: '这类目标太小、速度太快，派航天器靠近反而风险更高。激光可以在远距离施加微小反冲，让碎片轨道逐步降低或避开关键轨道。',
+    principle: '用短脉冲加热目标表面，烧蚀喷流产生微小反冲，使碎片轨道逐步改变。',
+    limit: '需要极高的跟踪与指向精度，并持续确认光束不会影响正常航天器。',
+  },
+  {
+    id: 'arm',
+    image: '/cleanup/2.png',
+    title: '机械臂抓取',
+    titleEn: 'ROBOTIC CAPTURE',
+    status: '任务开发',
+    statusTone: 'development',
+    mode: '刚性接触',
+    target: '完整卫星 / 火箭体',
+    action: '固定并离轨',
+    object: '主要针对还保持完整结构的大型废弃卫星、火箭末级和失控平台。',
+    reason: '大型目标质量集中，一旦碰撞会制造大量碎片。机械臂能先建立刚性连接，再把目标稳定拖离拥挤轨道。',
+    principle: '服务航天器近距离绕飞目标，估计翻滚状态后用多臂结构包络、固定并拖离拥挤轨道。',
+    limit: '面对无对接口、失去控制且持续翻滚的目标，接近和接触阶段风险最高。',
+  },
+  {
+    id: 'net',
+    image: '/cleanup/3.png',
+    title: '柔性捕捉网',
+    titleEn: 'FLEXIBLE NET',
+    status: '在轨演示',
+    statusTone: 'tested',
+    mode: '柔性接触',
+    target: '不规则中型目标',
+    action: '包络捕获',
+    object: '适合外形不规则、没有标准对接口、但尺寸仍足以被包覆的中型残骸。',
+    reason: '目标表面可能破损、凸起或翻滚，刚性对接不容易成功。柔性网可以降低对接口要求，用包覆方式先获得控制。',
+    principle: '发射展开的高强度网，从多个方向包裹没有标准接口的目标，再通过缆绳控制组合体。',
+    limit: '网体展开、闭合和后续拖曳都要避免缠绕失控；一次发射通常只有一次捕获机会。',
+  },
+  {
+    id: 'harpoon',
+    image: '/cleanup/4.png',
+    title: '飞行鱼叉',
+    titleEn: 'HARPOON CAPTURE',
+    status: '在轨演示',
+    statusTone: 'tested',
+    mode: '穿透接触',
+    target: '坚硬大型结构',
+    action: '锚定拖曳',
+    object: '更适合外壳坚硬、可承受锚定冲击的大型残骸，如火箭贮箱、适配器或较厚结构件。',
+    reason: '当目标没有可抓取接口、又需要快速建立牵引点时，鱼叉能直接锚定外壳，减少复杂对接步骤。',
+    principle: '高速锚体穿入目标外壳，倒钩锁定后通过缆绳施加控制和离轨力。',
+    limit: '穿透会向老化结构施加冲击；若材料状态判断错误，可能制造二次碎片。',
+  },
+  {
+    id: 'tether',
+    image: '/cleanup/5.png',
+    title: '电动力缆索',
+    titleEn: 'ELECTRODYNAMIC TETHER',
+    status: '持续验证',
+    statusTone: 'development',
+    mode: '无推进剂',
+    target: '寿命末期航天器',
+    action: '持续减速',
+    object: '主要面向仍能部署装置的低轨航天器、任务末期平台或未来设计时预装的离轨组件。',
+    reason: '它不依赖推进剂，适合在航天器寿命末期用持续、温和的方式降低轨道能量。',
+    principle: '导电缆索切割地磁场并与电离层交换电流，洛伦兹力持续降低轨道能量。',
+    limit: '长缆部署和空间环境耦合复杂，更适合在航天器仍可控时主动启用。',
+  },
+  {
+    id: 'sail',
+    image: '/cleanup/6.png',
+    title: '阻力帆',
+    titleEn: 'DRAG SAIL',
+    status: '成熟部署',
+    statusTone: 'ready',
+    mode: '被动装置',
+    target: '低轨小卫星',
+    action: '增加阻力',
+    object: '适合低轨小卫星、立方星和任务结束前仍能触发部署的航天器。',
+    reason: '低轨仍有稀薄大气。展开阻力帆后，航天器受到的阻力变大，可以更快自然衰减并再入。',
+    principle: '任务结束时展开轻质大面积薄膜，提高面积质量比，让高层稀薄大气更快消耗轨道能量。',
+    limit: '它是预防性离轨装置，不能隔空处理已经脱离航天器的自由碎片。',
+  },
 ]
 
 const METHOD_MAP = Object.fromEntries(METHODS.map((method) => [method.id, method]))
@@ -54,85 +131,148 @@ function buildAssessment(target, method, correct) {
   return `${method.title}不适合当前目标：${method.limit} 这里更需要“${ideal.action}”，优先考虑${ideal.title}。`
 }
 
-function MethodCard({ method, index }) {
-  const [flipped, setFlipped] = useState(false)
+const METHOD_CARD_SPRING = {
+  type: 'spring',
+  stiffness: 126,
+  damping: 20,
+  mass: 0.86,
+}
+
+const METHOD_CARD_LAYOUTS = [
+  { y: -22, rotate: -10, zIndex: 2 },
+  { y: 26, rotate: 7, zIndex: 3 },
+  { y: -54, rotate: -4, zIndex: 4 },
+  { y: 18, rotate: 8, zIndex: 5 },
+  { y: -34, rotate: -7, zIndex: 6 },
+  { y: 24, rotate: 5, zIndex: 7 },
+]
+
+function MethodCard({ method, index, activeMethodId, cardSpacing, middle, onActivate }) {
+  const isActive = activeMethodId === method.id
+  const hasActive = Boolean(activeMethodId)
+  const offsetX = (index - middle) * cardSpacing
+  const layout = METHOD_CARD_LAYOUTS[index % METHOD_CARD_LAYOUTS.length]
 
   function handleKeyDown(event) {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      onActivate(null)
+      return
+    }
     if (event.key !== 'Enter' && event.key !== ' ') return
     event.preventDefault()
-    setFlipped((current) => !current)
+    onActivate(method.id)
   }
 
   return (
-    <article
-      className={`m6-flip-card m6-flip-card-${index + 1} ${flipped ? 'is-flipped' : ''}`}
+    <motion.article
       role="button"
       tabIndex={0}
-      aria-pressed={flipped}
-      aria-label={`${method.title}，翻转查看技术说明`}
-      onClick={() => setFlipped((current) => !current)}
+      className={`m6-method-card ${isActive ? 'is-active' : ''} ${hasActive ? 'has-active' : ''}`}
+      aria-pressed={isActive}
+      aria-label={`${method.title}，查看清理方式说明`}
+      onClick={(event) => {
+        event.stopPropagation()
+        onActivate(method.id)
+      }}
       onKeyDown={handleKeyDown}
-      onBlur={() => setFlipped(false)}
+      initial={{ opacity: 0, x: 0, y: 18, scale: 0.82 }}
+      whileInView={{ opacity: 1 }}
+      viewport={{ once: true }}
+      animate={{
+        x: isActive ? 0 : hasActive ? offsetX * 0.38 : offsetX,
+        y: isActive ? -8 : hasActive ? 248 : layout.y,
+        rotate: isActive ? 0 : hasActive ? layout.rotate * 0.18 : layout.rotate,
+        scale: isActive ? 1.08 : hasActive ? 0.68 : 1,
+      }}
+      whileHover={{
+        scale: isActive ? 1.08 : hasActive ? 0.68 : 1.04,
+      }}
+      transition={METHOD_CARD_SPRING}
+      style={{ zIndex: isActive ? 50 : layout.zIndex }}
     >
-      <div className="m6-flip-card-inner">
-        <div className="m6-flip-face m6-flip-front">
-          <img src={method.image} alt="" loading="lazy" decoding="async" />
-          <div className="m6-flip-image-shade" aria-hidden="true" />
-          <div className="m6-flip-front-top">
-            <span>{String(index + 1).padStart(2, '0')}</span>
-            <small className={`is-${method.statusTone}`}>{method.status}</small>
-          </div>
-          <div className="m6-flip-front-copy">
-            <span>{method.titleEn}</span>
-            <h4>{method.title}</h4>
-            <p>{method.target}</p>
-          </div>
-          <span className="m6-flip-hint">悬停查看原理</span>
-        </div>
-
-        <div className="m6-flip-face m6-flip-back">
-          <div className="m6-flip-back-head">
-            <span>{method.titleEn}</span>
-            <small>{method.mode}</small>
-          </div>
-          <h4>{method.title}</h4>
-          <dl>
-            <div><dt>目标</dt><dd>{method.target}</dd></div>
-            <div><dt>动作</dt><dd>{method.action}</dd></div>
-          </dl>
-          <div className="m6-flip-back-copy">
-            <span>工作机制</span>
-            <p>{method.principle}</p>
-          </div>
-          <div className="m6-flip-back-limit">
-            <span>使用边界</span>
-            <p>{method.limit}</p>
-          </div>
-        </div>
+      <div className="m6-method-card-media">
+        <img src={method.image} alt="" loading="lazy" decoding="async" draggable="false" />
       </div>
-    </article>
+      <div className="m6-method-card-copy">
+        <div className="m6-method-card-meta">
+          <span>{String(index + 1).padStart(2, '0')}</span>
+          <small className={`is-${method.statusTone}`}>{method.status}</small>
+        </div>
+        <span className="m6-method-card-en">{method.titleEn}</span>
+        <h4>{method.title}</h4>
+        <p>{method.target}</p>
+
+        <AnimatePresence mode="popLayout">
+          {isActive && (
+            <motion.div
+              className="m6-method-card-detail"
+              initial={{ opacity: 0, y: 18, height: 0 }}
+              animate={{ opacity: 1, y: 0, height: 'auto' }}
+              exit={{ opacity: 0, y: 18, height: 0 }}
+              transition={METHOD_CARD_SPRING}
+            >
+              <dl>
+                <div><dt>模式</dt><dd>{method.mode}</dd></div>
+                <div><dt>动作</dt><dd>{method.action}</dd></div>
+              </dl>
+              <div className="m6-method-card-detail-block">
+                <b>主要对象</b>
+                <p>{method.object}</p>
+              </div>
+              <div className="m6-method-card-detail-block">
+                <b>为什么使用</b>
+                <p>{method.reason}</p>
+              </div>
+              <div className="m6-method-card-detail-block">
+                <b>清理逻辑</b>
+                <p>{method.principle}</p>
+              </div>
+              <small>{method.limit}</small>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.article>
   )
 }
 
 function MethodObservatory() {
+  const [activeMethodId, setActiveMethodId] = useState(null)
+  const [cardSpacing, setCardSpacing] = useState(156)
+  const middle = (METHODS.length - 1) / 2
+
+  useEffect(() => {
+    function updateCardSpacing() {
+      if (window.matchMedia('(max-width: 720px)').matches) {
+        setCardSpacing(76)
+        return
+      }
+      if (window.matchMedia('(max-width: 1000px)').matches) {
+        setCardSpacing(112)
+        return
+      }
+      setCardSpacing(156)
+    }
+
+    updateCardSpacing()
+    window.addEventListener('resize', updateCardSpacing)
+    return () => window.removeEventListener('resize', updateCardSpacing)
+  }, [])
+
   return (
-    <section className="m6-observatory" aria-labelledby="m6-methods-title">
-      <div className="m6-section-heading m6-section-heading-light">
-        <span>01–02 / CONSTRAINTS × METHODS</span>
-        <h3 id="m6-methods-title">先看限制，再选择清理方式。</h3>
-      </div>
-      <div className="m6-method-context" aria-label="清理任务关键限制">
-        {CONSTRAINTS.map((item) => (
-          <div key={item.id}>
-            <span>{item.index} / {item.label}</span>
-            <strong>{item.value}</strong>
-            <p>{item.summary}</p>
-          </div>
-        ))}
-      </div>
-      <div className="m6-method-grid">
+    <section className="m6-observatory" aria-label="清理方式卡片">
+      <div className={`m6-method-stack ${activeMethodId ? 'has-active-card' : ''}`} onClick={() => setActiveMethodId(null)}>
         {METHODS.map((method, index) => (
-          <MethodCard key={method.id} method={method} index={index} />
+          <MethodCard
+            key={method.id}
+            method={method}
+            index={index}
+            activeMethodId={activeMethodId}
+            cardSpacing={cardSpacing}
+            middle={middle}
+            onActivate={setActiveMethodId}
+          />
         ))}
       </div>
     </section>
@@ -342,8 +482,15 @@ export default function M6({ onComplete }) {
   return (
     <div className="m6" data-module-scroll-target>
       <header className="m6-hero">
-        <div className="m6-hero-copy"><span>MODULE 06 / ORBITAL CLEANUP</span><h2>清理，不是把垃圾捡起来。</h2><p>每一种目标，都需要不同的接近方式、接触条件和离轨路径。先读懂目标，再决定如何行动。</p></div>
-        <div className="m6-hero-figure" aria-hidden="true"><span>06</span><div className="m6-hero-orbit"><i /><i /><i /></div><b>CLEANUP VECTOR</b></div>
+        <div className="m6-hero-copy">
+          <span>MODULE 06 / ORBITAL CLEANUP</span>
+          <h2>
+            <span>清理不是</span>
+            <span>捡起垃圾</span>
+          </h2>
+          <div className="m6-hero-rule" aria-hidden="true" />
+          <p>每一种目标，都需要不同的接近方式、接触条件和离轨路径。先读懂目标，再决定如何行动。</p>
+        </div>
       </header>
       <MethodObservatory />
       <DragMatchLab targets={targets} onComplete={finishModule} />

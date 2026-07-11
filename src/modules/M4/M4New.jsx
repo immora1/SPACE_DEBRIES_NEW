@@ -4254,7 +4254,8 @@ export default function M4New({ onComplete = () => {} }) {
         width: '100%',
         height: '100vh',
         overflow: 'hidden',
-        background: '#050713',
+        background: 'linear-gradient(rgba(232, 232, 248, 0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(232, 232, 248, 0.025) 1px, transparent 1px), #050713',
+        backgroundSize: '100% 168px, 168px 100%, auto',
       }}
     >
       {orbitVisible && (

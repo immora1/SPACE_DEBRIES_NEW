@@ -192,6 +192,7 @@ export default function App() {
 
   const unlockedSet = useMemo(() => new Set(unlockedModules), [unlockedModules])
   const completedSet = useMemo(() => new Set(completedModules), [completedModules])
+  const allModuleIds = useMemo(() => MODULES.map((module) => module.id), [])
 
   useEffect(() => { window.scrollTo(0, 0) }, [])
 
@@ -226,8 +227,8 @@ export default function App() {
   }, [markModuleComplete, unlockModule])
 
   const isModuleNavigable = useCallback((id) => (
-    unlockedSet.has(id) || completedSet.has(id)
-  ), [completedSet, unlockedSet])
+    allModuleIds.includes(id)
+  ), [allModuleIds])
 
   const scrollToModule = useCallback((id) => {
     if (scrollLocked || !isModuleNavigable(id)) return
@@ -243,10 +244,8 @@ export default function App() {
   const availableModules = useMemo(() => (
     scrollLocked
       ? []
-      : MODULES
-        .filter((module) => unlockedSet.has(module.id) || completedSet.has(module.id))
-        .map((module) => module.id)
-  ), [completedSet, scrollLocked, unlockedSet])
+      : allModuleIds
+  ), [allModuleIds, scrollLocked])
 
   const showM8 = completedSet.has('m7')
 
@@ -260,9 +259,6 @@ export default function App() {
       />
 
       {MODULES.map(({ id, Component, connector, archDivider, boundaryDivider }) => {
-        const isAvailable = unlockedSet.has(id) || completedSet.has(id)
-        if (!isAvailable) return null
-
         return (
           <ModuleWrapper
             key={id}

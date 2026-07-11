@@ -8,7 +8,7 @@ import { PARTS, PART_ACCENT, CanvasErrorBoundary } from './SceneMaterial'
 import { GLBSatelliteModel } from '../M1/SatelliteModel'
 
 const EASE = [0.16, 1, 0.3, 1]
-const RISK_COLORS = { low: '#34d399', medium: '#fbbf24', high: '#f87171' }
+const RISK_COLORS = { low: '#cfe3ff', medium: '#9fc4ff', high: '#dcecff' }
 
 // ── 太空碎片 icon（不规则角形碎块 + 裂缝 + 溅射小片）──────────────────────────
 function DebrisIcon({ color, size = 22 }) {
@@ -42,30 +42,137 @@ function DebrisIcon({ color, size = 22 }) {
   )
 }
 
+function MinimalField({ field, value, onChange }) {
+  const [focused, setFocused] = useState(false)
+  const isTextarea = field.key === 'importantEvent'
+  const lineColor = focused ? 'rgba(207,227,255,0.84)' : 'rgba(159,196,255,0.24)'
+
+  const sharedProps = {
+    value,
+    onChange: (event) => onChange(event.target.value),
+    onFocus: () => setFocused(true),
+    onBlur: () => setFocused(false),
+    placeholder: field.placeholder,
+    style: {
+      width: '100%',
+      boxSizing: 'border-box',
+      border: 0,
+      borderBottom: `1px solid ${lineColor}`,
+      borderRadius: 0,
+      outline: 'none',
+      background: 'transparent',
+      color: '#eef6ff',
+      fontFamily: '"Noto Sans SC", sans-serif',
+      fontSize: 15,
+      lineHeight: isTextarea ? 1.8 : 1.4,
+      padding: isTextarea ? '8px 0 14px' : '10px 0 12px',
+      resize: 'none',
+      transition: 'border-color 220ms ease, color 220ms ease',
+    },
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 18, marginBottom: 6 }}>
+        <span style={{
+          fontFamily: '"Space Mono", monospace',
+          fontSize: 8,
+          color: focused ? '#cfe3ff' : 'rgba(159,196,255,0.74)',
+          letterSpacing: '0.12em',
+          textTransform: 'uppercase',
+          transition: 'color 220ms ease',
+        }}>
+          {field.label}
+        </span>
+        <span style={{
+          fontFamily: '"Space Mono", monospace',
+          fontSize: 8,
+          color: focused ? 'rgba(207,227,255,0.52)' : 'rgba(159,196,255,0.34)',
+          textAlign: 'right',
+          transition: 'color 220ms ease',
+        }}>
+          {field.hint}
+        </span>
+      </div>
+
+      {isTextarea ? (
+        <textarea {...sharedProps} rows={4} />
+      ) : (
+        <input {...sharedProps} />
+      )}
+    </div>
+  )
+}
+
+function MinimalSubmitButton({ disabled, onClick }) {
+  const [hovered, setHovered] = useState(false)
+  const active = hovered && !disabled
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      disabled={disabled}
+      style={{
+        position: 'relative',
+        width: 'fit-content',
+        minHeight: 36,
+        marginTop: 2,
+        padding: '0 0 7px',
+        border: 0,
+        borderBottom: `1px solid ${disabled ? 'rgba(159,196,255,0.18)' : active ? 'rgba(207,227,255,0.86)' : 'rgba(125,167,232,0.56)'}`,
+        color: disabled ? 'rgba(159,196,255,0.3)' : active ? '#cfe3ff' : '#7da7e8',
+        background: 'transparent',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        fontFamily: '"Space Mono", monospace',
+        fontSize: 10,
+        letterSpacing: '0.16em',
+        textTransform: 'uppercase',
+        opacity: disabled ? 0.54 : 1,
+        transition: 'opacity 220ms ease, color 220ms ease, border-color 220ms ease',
+      }}
+    >
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
+        匹配我的卫星
+        <span style={{
+          width: active ? 8 : 6,
+          height: active ? 8 : 6,
+          borderTop: '1.5px solid currentColor',
+          borderRight: '1.5px solid currentColor',
+          transform: 'rotate(45deg)',
+          transition: 'width 220ms ease, height 220ms ease',
+        }} />
+      </span>
+    </button>
+  )
+}
+
 const ORBITS = [
   {
     id: 'leo', name: 'LEO', full: '低地球轨道',
     alt: '200 – 2,000 km', period: '90 – 127 min',
     use: '地球观测、空间站、星座互联网',
-    debris: 28000, debrisLabel: '28,000+', risk: '极高', riskColor: '#6b7fff',
+    debris: 28000, debrisLabel: '28,000+', risk: '极高', riskColor: '#7da7e8',
     note: '最拥挤的轨道区域，铱星与 Cosmos-2251 碰撞发生于此。',
-    color: '#6b7fff',
+    color: '#7da7e8',
   },
   {
     id: 'meo', name: 'MEO', full: '中地球轨道',
     alt: '2,000 – 35,786 km', period: '2 – 24 h',
     use: 'GPS / GNSS 导航、部分气象',
-    debris: 2000, debrisLabel: '~2,000', risk: '中等', riskColor: '#8b6cf8',
+    debris: 2000, debrisLabel: '~2,000', risk: '中等', riskColor: '#9fc4ff',
     note: '导航星座密集，碎片少但单颗卫星价值极高。',
-    color: '#8b6cf8',
+    color: '#9fc4ff',
   },
   {
     id: 'geo', name: 'GEO', full: '地球同步轨道',
     alt: '35,786 km', period: '24 h（静止）',
     use: '广播电视、通信、气象（静止）',
-    debris: 900, debrisLabel: '~900', risk: '低·持久', riskColor: 'rgba(139,108,248,0.55)',
+    debris: 900, debrisLabel: '~900', risk: '低·持久', riskColor: 'rgba(159,196,255,0.55)',
     note: '无大气阻力，碎片永久停留；坟墓轨道用于退役卫星。',
-    color: '#8b6cf8',
+    color: '#9fc4ff',
   },
 ]
 
@@ -299,14 +406,25 @@ export default function M2({ onComplete }) {
   })
 
   return (
-    <div style={{ background: '#050713', color: '#e8e8f8', position: 'relative' }}>
+    <div
+      style={{
+        background: `
+          linear-gradient(rgba(232, 232, 248, 0.035) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(232, 232, 248, 0.025) 1px, transparent 1px),
+          #050713
+        `,
+        backgroundSize: '100% 168px, 168px 100%, auto',
+        color: '#eef6ff',
+        position: 'relative',
+      }}
+    >
 
       {/* ── 顶部标题区 ─────────────────────────────────────── */}
       <div style={{ padding: '44px 32px 40px', maxWidth: 640 }}>
         <ScrollReveal>
           <div style={{
             fontFamily: '"Space Mono", monospace', fontSize: 8,
-            color: '#484878', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 16,
+            color: '#5d78a8', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 16,
           }}>
             02 · ORBIT · 轨道是什么
           </div>
@@ -314,7 +432,7 @@ export default function M2({ onComplete }) {
         <h2 style={{
           fontFamily: '"Noto Serif SC", serif',
           fontSize: 'clamp(22px, 2.6vw, 32px)',
-          fontWeight: 400, color: '#e8e8f8', lineHeight: 1.55, marginBottom: 14, letterSpacing: '0.01em',
+          fontWeight: 400, color: '#eef6ff', lineHeight: 1.55, marginBottom: 14, letterSpacing: '0.01em',
         }}>
           <AnimateChars text="轨道不是一条路，" as="span" style={{ display: 'block' }} delay={0.05} />
           <AnimateChars text="是一个必须持续维护的状态。" as="span" style={{ display: 'block' }} delay={0.22} />
@@ -322,7 +440,7 @@ export default function M2({ onComplete }) {
         <ScrollReveal delay={0.4}>
           <p style={{
             fontFamily: '"Noto Sans SC", sans-serif',
-            fontSize: 13, color: 'rgba(232,232,248,0.5)', lineHeight: 1.9, maxWidth: 560, margin: 0,
+            fontSize: 13, color: 'rgba(238,246,255,0.5)', lineHeight: 1.9, maxWidth: 560, margin: 0,
           }}>
             卫星以 7–8 km/s 的速度持续下坠，恰好与地球曲率匹配，形成轨道。
             停下来就意味着坠落。三层轨道区域，碎片风险各不相同。
@@ -357,23 +475,23 @@ export default function M2({ onComplete }) {
               <div style={{
                 position: 'absolute', left: 6, top: 0,
                 width: 1, height: BAR_H,
-                background: 'rgba(232,232,248,0.07)',
+                background: 'rgba(238,246,255,0.07)',
               }} />
 
               {/* 填充线（ref 控制高度，亮色） */}
               <div ref={fillRef} style={{
                 position: 'absolute', left: 6, top: 0,
                 width: 1, height: 0,
-                background: '#6b7fff',
-                boxShadow: '0 0 5px rgba(107,127,255,0.55)',
+                background: '#7da7e8',
+                boxShadow: 'none',
               }} />
 
               {/* 末端小点（ref 控制 transform） */}
               <div ref={indicatorRef} style={{
                 position: 'absolute', left: 3, top: -3,
                 width: 7, height: 7, borderRadius: '50%',
-                background: '#6b7fff',
-                boxShadow: '0 0 8px rgba(107,127,255,0.8)',
+                background: '#7da7e8',
+                boxShadow: 'none',
                 transform: 'translateY(0px)',
               }} />
 
@@ -385,7 +503,7 @@ export default function M2({ onComplete }) {
               }}>
                 <span style={{
                   fontFamily: '"Space Mono", monospace',
-                  fontSize: 9, color: 'rgba(107,127,255,0.65)',
+                  fontSize: 9, color: 'rgba(125,167,232,0.65)',
                   letterSpacing: '0.12em',
                 }}>
                   {String(currentStep + 1).padStart(2, '0')}
@@ -410,7 +528,7 @@ export default function M2({ onComplete }) {
             >
               <div style={{
                 fontFamily: '"Space Mono", monospace', fontSize: 8,
-                color: '#6b7fff', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 20,
+                color: '#7da7e8', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 20,
               }}>
                 01 · ORBIT CLASSIFICATION
               </div>
@@ -424,7 +542,7 @@ export default function M2({ onComplete }) {
                   fontFamily: '"Space Mono", monospace',
                   fontSize: 'clamp(72px, 10vw, 110px)',
                   letterSpacing: '-0.04em', lineHeight: 1,
-                  color: '#6b7fff', opacity: 0.04,
+                  color: '#7da7e8', opacity: 0.04,
                   pointerEvents: 'none', userSelect: 'none',
                   whiteSpace: 'nowrap',
                 }}>
@@ -433,7 +551,7 @@ export default function M2({ onComplete }) {
                 <h3 style={{
                   fontFamily: '"Noto Serif SC", serif',
                   fontSize: 'clamp(22px, 2.4vw, 30px)',
-                  fontWeight: 400, color: '#e8e8f8', lineHeight: 1.5,
+                  fontWeight: 400, color: '#eef6ff', lineHeight: 1.5,
                   position: 'relative', zIndex: 1,
                   margin: 0,
                 }}>
@@ -442,7 +560,7 @@ export default function M2({ onComplete }) {
               </div>
               <p style={{
                 fontFamily: '"Noto Sans SC", sans-serif',
-                fontSize: 13, color: 'rgba(232,232,248,0.48)', lineHeight: 1.9,
+                fontSize: 13, color: 'rgba(238,246,255,0.48)', lineHeight: 1.9,
                 marginBottom: 36, maxWidth: 400,
               }}>
                 地球轨道按高度划分为三个主要区域，各有不同的用途与碎片风险等级。
@@ -466,8 +584,8 @@ export default function M2({ onComplete }) {
                         position: 'relative',
                         overflow: 'hidden',
                         padding: '22px 22px 18px',
-                        background: isHov ? 'rgba(10,10,24,0.90)' : 'rgba(8,8,26,0.65)',
-                        border: `1px solid ${isHov ? orb.color + '40' : '#1a1a35'}`,
+                        background: isHov ? 'rgba(5,20,48,0.90)' : 'rgba(5,20,48,0.65)',
+                        border: `1px solid ${isHov ? orb.color + '40' : '#15315a'}`,
                         borderTop: i === 0 ? undefined : 'none',
                         transition: 'background 0.3s ease, border-color 0.3s ease',
                         cursor: 'default',
@@ -496,7 +614,7 @@ export default function M2({ onComplete }) {
                           <div style={{ display: 'flex', alignItems: 'baseline', gap: 14 }}>
                             <span style={{
                               fontFamily: '"Space Mono", monospace', fontSize: 26,
-                              color: isHov ? orb.color : '#e8e8f8',
+                              color: isHov ? orb.color : '#eef6ff',
                               letterSpacing: '-0.03em', lineHeight: 1,
                               transition: 'color 0.35s ease',
                             }}>
@@ -504,7 +622,7 @@ export default function M2({ onComplete }) {
                             </span>
                             <span style={{
                               fontFamily: '"Noto Sans SC", sans-serif', fontSize: 12,
-                              color: 'rgba(232,232,248,0.3)',
+                              color: 'rgba(238,246,255,0.3)',
                             }}>
                               {orb.full}
                             </span>
@@ -518,50 +636,50 @@ export default function M2({ onComplete }) {
                             <div style={{
                               fontFamily: '"Space Mono", monospace',
                               fontSize: 40, lineHeight: 1, letterSpacing: '-0.03em',
-                              color: isHov ? orb.color : 'rgba(232,232,248,0.9)',
+                              color: isHov ? orb.color : 'rgba(238,246,255,0.9)',
                               transition: 'color 0.35s ease',
                             }}>
                               {orb.debrisLabel}
                             </div>
                             <div style={{
                               fontFamily: '"Space Mono", monospace', fontSize: 7,
-                              color: '#484878', letterSpacing: '0.15em',
+                              color: '#5d78a8', letterSpacing: '0.15em',
                               textTransform: 'uppercase', marginTop: 6,
                             }}>
                               已编目碎片
                             </div>
                           </div>
 
-                          <div style={{ width: 1, height: 44, background: '#1a1a35', flexShrink: 0, marginBottom: 18 }} />
+                          <div style={{ width: 1, height: 44, background: '#15315a', flexShrink: 0, marginBottom: 18 }} />
 
                           <div>
                             <div style={{
                               fontFamily: '"Space Mono", monospace', fontSize: 13,
-                              color: 'rgba(232,232,248,0.62)', lineHeight: 1.4,
+                              color: 'rgba(238,246,255,0.62)', lineHeight: 1.4,
                             }}>
                               {orb.alt}
                             </div>
                             <div style={{
                               fontFamily: '"Space Mono", monospace', fontSize: 7,
-                              color: '#484878', letterSpacing: '0.15em',
+                              color: '#5d78a8', letterSpacing: '0.15em',
                               textTransform: 'uppercase', marginTop: 6,
                             }}>
                               轨道高度
                             </div>
                           </div>
 
-                          <div style={{ width: 1, height: 44, background: '#1a1a35', flexShrink: 0, marginBottom: 18 }} />
+                          <div style={{ width: 1, height: 44, background: '#15315a', flexShrink: 0, marginBottom: 18 }} />
 
                           <div>
                             <div style={{
                               fontFamily: '"Space Mono", monospace', fontSize: 13,
-                              color: 'rgba(232,232,248,0.62)', lineHeight: 1.4,
+                              color: 'rgba(238,246,255,0.62)', lineHeight: 1.4,
                             }}>
                               {orb.period}
                             </div>
                             <div style={{
                               fontFamily: '"Space Mono", monospace', fontSize: 7,
-                              color: '#484878', letterSpacing: '0.15em',
+                              color: '#5d78a8', letterSpacing: '0.15em',
                               textTransform: 'uppercase', marginTop: 6,
                             }}>
                               轨道周期
@@ -571,7 +689,7 @@ export default function M2({ onComplete }) {
 
                         {/* 碎片密度条 */}
                         <div style={{
-                          height: 2, background: '#1a1a35',
+                          height: 2, background: '#15315a',
                           marginBottom: 18, overflow: 'hidden',
                         }}>
                           <motion.div
@@ -592,7 +710,7 @@ export default function M2({ onComplete }) {
                         <div style={{
                           fontFamily: '"Noto Sans SC", sans-serif',
                           fontSize: 12,
-                          color: isHov ? 'rgba(232,232,248,0.52)' : 'rgba(232,232,248,0.3)',
+                          color: isHov ? 'rgba(238,246,255,0.52)' : 'rgba(238,246,255,0.3)',
                           lineHeight: 1.85,
                           transition: 'color 0.35s ease',
                         }}>
@@ -618,21 +736,21 @@ export default function M2({ onComplete }) {
             >
               <div style={{
                 fontFamily: '"Space Mono", monospace', fontSize: 8,
-                color: '#6b7fff', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 20,
+                color: '#7da7e8', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 20,
               }}>
                 02 · USER IDENTITY
               </div>
               <h3 style={{
                 fontFamily: '"Noto Serif SC", serif',
                 fontSize: 'clamp(22px, 2.4vw, 30px)',
-                fontWeight: 400, color: '#e8e8f8', lineHeight: 1.5,
+                fontWeight: 400, color: '#eef6ff', lineHeight: 1.5,
                 margin: '0 0 10px',
               }}>
                 告诉系统你是谁
               </h3>
               <p style={{
                 fontFamily: '"Noto Sans SC", sans-serif',
-                fontSize: 13, color: 'rgba(232,232,248,0.48)', lineHeight: 1.9,
+                fontSize: 13, color: 'rgba(238,246,255,0.48)', lineHeight: 1.9,
                 marginBottom: 32, maxWidth: 400,
               }}>
                 系统将为你匹配一颗真实卫星，并以此开始一段平行叙事。
@@ -644,79 +762,28 @@ export default function M2({ onComplete }) {
                     initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }} transition={{ duration: 0.45, ease: EASE }}
                   >
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 400 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 520 }}>
                       {[
                         { key: 'name',           label: '你的名字或代号',     hint: '卫星将以此命名档案',       placeholder: '例：林远 / YUAN' },
                         { key: 'city',           label: '所在城市',          hint: '用于匹配飞过你头顶的卫星',   placeholder: '例：北京、上海、成都' },
                         { key: 'importantEvent', label: '对你最重要的一件事', hint: '可以是时刻、人、经历',       placeholder: '写下它……' },
                       ].map((f) => (
-                        <div key={f.key}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                            <span style={{ fontFamily: '"Space Mono", monospace', fontSize: 8, color: '#6b7fff', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-                              {f.label}
-                            </span>
-                            <span style={{ fontFamily: '"Space Mono", monospace', fontSize: 8, color: '#484878' }}>{f.hint}</span>
-                          </div>
-                          {f.key === 'importantEvent' ? (
-                            <textarea
-                              value={form[f.key]}
-                              onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))}
-                              placeholder={f.placeholder}
-                              rows={3}
-                              style={{
-                                width: '100%', background: 'rgba(8,8,26,0.72)',
-                                border: '1px solid #1a1a35', padding: '10px 12px',
-                                color: '#e8e8f8', fontSize: 13, outline: 'none',
-                                resize: 'none', fontFamily: '"Noto Sans SC", sans-serif',
-                                boxSizing: 'border-box',
-                              }}
-                            />
-                          ) : (
-                            <input
-                              value={form[f.key]}
-                              onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))}
-                              placeholder={f.placeholder}
-                              style={{
-                                width: '100%', background: 'transparent', border: 'none',
-                                borderBottom: '1px solid #1a1a35', padding: '8px 0',
-                                color: '#e8e8f8', fontSize: 13, outline: 'none',
-                                fontFamily: '"Noto Sans SC", sans-serif', boxSizing: 'border-box',
-                              }}
-                            />
-                          )}
-                        </div>
+                        <MinimalField
+                          key={f.key}
+                          field={f}
+                          value={form[f.key]}
+                          onChange={(value) => setForm((p) => ({ ...p, [f.key]: value }))}
+                        />
                       ))}
 
                       {formError && (
-                        <p style={{ fontFamily: '"Space Mono", monospace', fontSize: 10, color: '#f87171', margin: 0 }}>{formError}</p>
+                        <p style={{ fontFamily: '"Space Mono", monospace', fontSize: 10, color: '#dcecff', margin: 0 }}>{formError}</p>
                       )}
 
-                      <div
+                      <MinimalSubmitButton
+                        disabled={!(form.name.trim() && form.city.trim() && form.importantEvent.trim())}
                         onClick={handleFormSubmit}
-                        style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 12,
-                          cursor: (form.name.trim() && form.city.trim() && form.importantEvent.trim()) ? 'pointer' : 'not-allowed',
-                          opacity: (form.name.trim() && form.city.trim() && form.importantEvent.trim()) ? 1 : 0.3,
-                          transition: 'opacity 0.2s', userSelect: 'none',
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                          {[0, 1, 2].map((k) => (
-                            <div key={k} style={{
-                              height: 1, width: 5,
-                              background: `rgba(107,127,255,${0.3 + k * 0.2})`,
-                            }} />
-                          ))}
-                        </div>
-                        <span style={{
-                          fontFamily: '"Space Mono", monospace', fontSize: 10,
-                          letterSpacing: '0.16em', textTransform: 'uppercase', color: '#6b7fff',
-                        }}>
-                          匹配我的卫星
-                        </span>
-                        <div style={{ width: 12, height: 1, background: '#6b7fff' }} />
-                        <div style={{ width: 5, height: 5, borderTop: '1.5px solid #6b7fff', borderRight: '1.5px solid #6b7fff', transform: 'rotate(45deg)' }} />
-                      </div>
+                      />
                     </div>
                   </motion.div>
                 )}
@@ -728,14 +795,14 @@ export default function M2({ onComplete }) {
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
                       <div style={{
-                        width: 5, height: 5, borderRadius: '50%', background: '#6b7fff',
+                        width: 5, height: 5, borderRadius: '50%', background: '#7da7e8',
                         animation: 'blink 1.2s ease infinite', flexShrink: 0,
                       }} />
-                      <span style={{ fontFamily: '"Space Mono", monospace', fontSize: 8, color: '#484878', letterSpacing: '0.14em' }}>
+                      <span style={{ fontFamily: '"Space Mono", monospace', fontSize: 8, color: '#5d78a8', letterSpacing: '0.14em' }}>
                         {formStep === 'matching' ? 'SCANNING ORBIT...' : 'WRITING STORY...'}
                       </span>
                     </div>
-                    <p style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 14, color: 'rgba(232,232,248,0.6)', lineHeight: 1.8, maxWidth: 400 }}>
+                    <p style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 14, color: 'rgba(238,246,255,0.6)', lineHeight: 1.8, maxWidth: 400 }}>
                       {formStep === 'matching' ? '正在从真实轨道数据中匹配卫星……' : '正在生成你的故事开头……'}
                     </p>
                   </motion.div>
@@ -747,16 +814,16 @@ export default function M2({ onComplete }) {
                     transition={{ duration: 0.55, ease: EASE }}
                   >
                     <div style={{
-                      borderLeft: '2px solid rgba(107,127,255,0.35)',
+                      borderLeft: '2px solid rgba(125,167,232,0.35)',
                       paddingLeft: 20, marginBottom: 24, maxWidth: 400,
                     }}>
                       <div style={{
                         fontFamily: '"Space Mono", monospace', fontSize: 7,
-                        color: '#484878', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 10,
+                        color: '#5d78a8', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 10,
                       }}>
                         已匹配卫星 · MATCHED
                       </div>
-                      <div style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 18, color: '#e8e8f8', marginBottom: 16, fontWeight: 300 }}>
+                      <div style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 18, color: '#eef6ff', marginBottom: 16, fontWeight: 300 }}>
                         {satellite.name}
                       </div>
                       <div style={{ display: 'flex', gap: 28 }}>
@@ -766,18 +833,18 @@ export default function M2({ onComplete }) {
                           { label: '发射年份', value: satellite.launchYear },
                         ].map(({ label, value }) => (
                           <div key={label}>
-                            <div style={{ fontFamily: '"Space Mono", monospace', fontSize: 7, color: '#484878', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>{label}</div>
-                            <div style={{ fontFamily: '"Space Mono", monospace', fontSize: 12, color: '#e8e8f8' }}>{value}</div>
+                            <div style={{ fontFamily: '"Space Mono", monospace', fontSize: 7, color: '#5d78a8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>{label}</div>
+                            <div style={{ fontFamily: '"Space Mono", monospace', fontSize: 12, color: '#eef6ff' }}>{value}</div>
                           </div>
                         ))}
                       </div>
                     </div>
 
                     {openingStory && (
-                      <div style={{ borderTop: '1px solid #1a1a35', paddingTop: 20, maxWidth: 400 }}>
+                      <div style={{ borderTop: '1px solid #15315a', paddingTop: 20, maxWidth: 400 }}>
                         <div style={{
                           fontFamily: '"Space Mono", monospace', fontSize: 8,
-                          color: '#6b7fff', letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 14,
+                          color: '#7da7e8', letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 14,
                         }}>
                           第一段 · 开场
                         </div>
@@ -789,8 +856,8 @@ export default function M2({ onComplete }) {
                       <button
                         onClick={() => setFormStep('form')}
                         style={{
-                          background: 'none', border: '1px solid #1a1a35', borderRadius: 3,
-                          color: '#484878', fontFamily: '"Space Mono", monospace', fontSize: 8,
+                          background: 'none', border: '1px solid #15315a', borderRadius: 3,
+                          color: '#5d78a8', fontFamily: '"Space Mono", monospace', fontSize: 8,
                           letterSpacing: '0.08em', padding: '6px 12px', cursor: 'pointer',
                         }}
                       >
@@ -815,23 +882,23 @@ export default function M2({ onComplete }) {
             >
               <div style={{
                 fontFamily: '"Space Mono", monospace', fontSize: 8,
-                color: '#8b6cf8', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 22,
+                color: '#9fc4ff', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 22,
               }}>
                 02 · YOUR SATELLITE
               </div>
               <h3 style={{
                 fontFamily: '"Noto Serif SC", serif', fontSize: 24,
-                fontWeight: 400, color: '#e8e8f8', marginBottom: 10, lineHeight: 1.5,
+                fontWeight: 400, color: '#eef6ff', marginBottom: 10, lineHeight: 1.5,
               }}>
                 你的卫星轨道状态
               </h3>
               <p style={{
                 fontFamily: '"Noto Sans SC", sans-serif',
-                fontSize: 13, color: 'rgba(232,232,248,0.52)', lineHeight: 1.85,
+                fontSize: 13, color: 'rgba(238,246,255,0.52)', lineHeight: 1.85,
                 marginBottom: 32, maxWidth: 420,
               }}>
                 右侧地球上，你的卫星轨道已被高亮标注。此刻它正以约{' '}
-                <span style={{ fontFamily: '"Space Mono", monospace', color: '#8b6cf8' }}>
+                <span style={{ fontFamily: '"Space Mono", monospace', color: '#9fc4ff' }}>
                   {(7800 - alt * 0.08).toFixed(0)} m/s
                 </span>{' '}
                 的速度运行。
@@ -842,13 +909,13 @@ export default function M2({ onComplete }) {
 
                   {/* ── 主卫星卡片 ── */}
                   <div style={{
-                    borderLeft: '2px solid rgba(107,127,255,0.35)',
+                    borderLeft: '2px solid rgba(125,167,232,0.35)',
                     paddingLeft: 20,
                   }}>
                     {/* 标识行 */}
                     <div style={{
                       fontFamily: '"Space Mono", monospace', fontSize: 7,
-                      color: '#484878', letterSpacing: '0.14em', textTransform: 'uppercase',
+                      color: '#5d78a8', letterSpacing: '0.14em', textTransform: 'uppercase',
                       marginBottom: 10,
                     }}>
                       {orbitZone} · NORAD #{satellite.noradId}
@@ -857,7 +924,7 @@ export default function M2({ onComplete }) {
                     {/* 卫星名称 */}
                     <div style={{
                       fontFamily: '"Noto Serif SC", serif', fontSize: 20,
-                      color: '#e8e8f8', lineHeight: 1.25, marginBottom: 24,
+                      color: '#eef6ff', lineHeight: 1.25, marginBottom: 24,
                       fontWeight: 300,
                     }}>
                       {satellite.name}
@@ -868,7 +935,7 @@ export default function M2({ onComplete }) {
                       <div>
                         <div style={{
                           fontFamily: '"Space Mono", monospace', fontSize: 7,
-                          color: '#484878', letterSpacing: '0.14em', textTransform: 'uppercase',
+                          color: '#5d78a8', letterSpacing: '0.14em', textTransform: 'uppercase',
                           marginBottom: 7,
                         }}>
                           轨道高度
@@ -876,17 +943,17 @@ export default function M2({ onComplete }) {
                         <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
                           <span style={{
                             fontFamily: '"Space Mono", monospace', fontSize: 34,
-                            lineHeight: 1, letterSpacing: '-0.02em', color: '#c8c8e8',
+                            lineHeight: 1, letterSpacing: '-0.02em', color: '#cfe3ff',
                           }}>
                             {satellite.altitudeKm}
                           </span>
-                          <span style={{ fontFamily: '"Space Mono", monospace', fontSize: 12, color: '#484878' }}>km</span>
+                          <span style={{ fontFamily: '"Space Mono", monospace', fontSize: 12, color: '#5d78a8' }}>km</span>
                         </div>
                       </div>
                       <div>
                         <div style={{
                           fontFamily: '"Space Mono", monospace', fontSize: 7,
-                          color: '#484878', letterSpacing: '0.14em', textTransform: 'uppercase',
+                          color: '#5d78a8', letterSpacing: '0.14em', textTransform: 'uppercase',
                           marginBottom: 7,
                         }}>
                           运行速度
@@ -894,17 +961,17 @@ export default function M2({ onComplete }) {
                         <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
                           <span style={{
                             fontFamily: '"Space Mono", monospace', fontSize: 34,
-                            lineHeight: 1, letterSpacing: '-0.02em', color: '#8b6cf8',
+                            lineHeight: 1, letterSpacing: '-0.02em', color: '#9fc4ff',
                           }}>
                             {(7800 - alt * 0.08).toFixed(0)}
                           </span>
-                          <span style={{ fontFamily: '"Space Mono", monospace', fontSize: 12, color: '#484878' }}>m/s</span>
+                          <span style={{ fontFamily: '"Space Mono", monospace', fontSize: 12, color: '#5d78a8' }}>m/s</span>
                         </div>
                       </div>
                     </div>
 
                     {/* 细分割线 */}
-                    <div style={{ height: 1, background: 'rgba(107,127,255,0.10)', marginBottom: 18 }} />
+                    <div style={{ height: 1, background: 'rgba(125,167,232,0.10)', marginBottom: 18 }} />
 
                     {/* 三个次要指标 */}
                     <div style={{ display: 'flex', gap: 28 }}>
@@ -916,13 +983,13 @@ export default function M2({ onComplete }) {
                         <div key={label}>
                           <div style={{
                             fontFamily: '"Space Mono", monospace', fontSize: 7,
-                            color: '#484878', letterSpacing: '0.12em', textTransform: 'uppercase',
+                            color: '#5d78a8', letterSpacing: '0.12em', textTransform: 'uppercase',
                             marginBottom: 5,
                           }}>
                             {label}
                           </div>
                           <div style={{
-                            fontFamily: '"Space Mono", monospace', fontSize: 13, color: '#c8c8e8',
+                            fontFamily: '"Space Mono", monospace', fontSize: 13, color: '#cfe3ff',
                           }}>
                             {value}
                           </div>
@@ -934,13 +1001,13 @@ export default function M2({ onComplete }) {
                   {/* ── 碎片风险条 ── */}
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, maxWidth: 380 }}>
                     <svg width="11" height="10" viewBox="0 0 12 11" fill="none" style={{ flexShrink: 0, marginTop: 2 }}>
-                      <path d="M6 1L11 10H1L6 1Z" stroke="#f87171" strokeWidth="0.9" fill="none" />
-                      <line x1="6" y1="4.5" x2="6" y2="7.5" stroke="#f87171" strokeWidth="0.9" />
-                      <circle cx="6" cy="9" r="0.5" fill="#f87171" />
+                      <path d="M6 1L11 10H1L6 1Z" stroke="#dcecff" strokeWidth="0.9" fill="none" />
+                      <line x1="6" y1="4.5" x2="6" y2="7.5" stroke="#dcecff" strokeWidth="0.9" />
+                      <circle cx="6" cy="9" r="0.5" fill="#dcecff" />
                     </svg>
                     <p style={{
                       fontFamily: '"Noto Sans SC", sans-serif',
-                      fontSize: 11, color: 'rgba(232,232,248,0.42)', lineHeight: 1.75, margin: 0,
+                      fontSize: 11, color: 'rgba(238,246,255,0.42)', lineHeight: 1.75, margin: 0,
                     }}>
                       {orbitZone === 'LEO' && '你的卫星位于碎片最密集的 LEO 区域。全球 28,000+ 颗已编目碎片大多数在此轨道层，2009 年铱星碰撞事件发生于同一区域。'}
                       {orbitZone === 'MEO' && '中轨道区域碎片约 2,000 颗，但 GPS、北斗等关键导航基础设施均运行于此，任何碰撞都可能造成大规模通信中断。'}
@@ -952,12 +1019,12 @@ export default function M2({ onComplete }) {
               ) : (
                 <div style={{
                   borderRadius: 10,
-                  padding: '40px', background: 'rgba(8,8,26,0.72)',
-                  border: '1px solid #1a1a35', textAlign: 'center',
+                  padding: '40px', background: 'rgba(5,20,48,0.72)',
+                  border: '1px solid #15315a', textAlign: 'center',
                 }}>
                   <p style={{
                     fontFamily: '"Noto Sans SC", sans-serif',
-                    fontSize: 13, color: '#484878', margin: 0,
+                    fontSize: 13, color: '#5d78a8', margin: 0,
                   }}>
                     请先在上方填写个人信息以匹配卫星。
                   </p>
@@ -976,13 +1043,13 @@ export default function M2({ onComplete }) {
               transition={{ duration: 0.65, ease: EASE }}
               viewport={{ once: true, amount: 0.2 }}
             >
-              <div style={{ fontFamily: '"Space Mono", monospace', fontSize: 8, color: '#6b7fff', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 22 }}>
+              <div style={{ fontFamily: '"Space Mono", monospace', fontSize: 8, color: '#7da7e8', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 22 }}>
                 03 · MATERIAL SELECTION
               </div>
-              <h3 style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 24, fontWeight: 400, color: '#e8e8f8', marginBottom: 10, lineHeight: 1.5 }}>
+              <h3 style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 24, fontWeight: 400, color: '#eef6ff', marginBottom: 10, lineHeight: 1.5 }}>
                 为卫星选择材料
               </h3>
-              <p style={{ fontFamily: '"Noto Sans SC", sans-serif', fontSize: 13, color: 'rgba(232,232,248,0.52)', lineHeight: 1.85, marginBottom: 32, maxWidth: 420 }}>
+              <p style={{ fontFamily: '"Noto Sans SC", sans-serif', fontSize: 13, color: 'rgba(238,246,255,0.52)', lineHeight: 1.85, marginBottom: 32, maxWidth: 420 }}>
                 为四个关键部件选择材料。它将决定卫星再入大气层时的碎片特征与地面落点风险。这是全站第一个有后果的选择。
               </p>
 
@@ -1011,10 +1078,10 @@ export default function M2({ onComplete }) {
                     <div style={{ fontFamily: '"Space Mono", monospace', fontSize: 7, color: PART_ACCENT[PARTS[matPartIdx].id], letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 5 }}>
                       {String(matPartIdx + 1).padStart(2, '0')} / {PARTS.length} &nbsp;·&nbsp; {PARTS[matPartIdx].labelEn}
                     </div>
-                    <div style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 14, color: '#e8e8f8', marginBottom: 5 }}>
+                    <div style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 14, color: '#eef6ff', marginBottom: 5 }}>
                       {PARTS[matPartIdx].label}
                     </div>
-                    <div style={{ fontFamily: '"Noto Sans SC", sans-serif', fontSize: 11, color: 'rgba(232,232,248,0.35)', lineHeight: 1.7 }}>
+                    <div style={{ fontFamily: '"Noto Sans SC", sans-serif', fontSize: 11, color: 'rgba(238,246,255,0.35)', lineHeight: 1.7 }}>
                       {PARTS[matPartIdx].desc}
                     </div>
                   </div>
@@ -1025,7 +1092,7 @@ export default function M2({ onComplete }) {
                         width: matPartIdx === i ? 20 : 6,
                         background: safeMatls[p.id]
                           ? PART_ACCENT[p.id]
-                          : matPartIdx === i ? PART_ACCENT[PARTS[matPartIdx].id] : 'rgba(107,127,255,0.2)',
+                          : matPartIdx === i ? PART_ACCENT[PARTS[matPartIdx].id] : 'rgba(125,167,232,0.2)',
                         transition: 'all 0.3s ease', cursor: 'pointer',
                       }} />
                     ))}
@@ -1043,13 +1110,13 @@ export default function M2({ onComplete }) {
                       return (
                         <div key={p.id} onClick={() => setMatPartIdx(i)} style={{
                           flex: 1, padding: '8px 2px', cursor: 'pointer',
-                          borderBottom: `1px solid ${isCur ? acc : isDone ? acc + '55' : '#1a1a35'}`,
+                          borderBottom: `1px solid ${isCur ? acc : isDone ? acc + '55' : '#15315a'}`,
                           transition: 'border-color 0.3s',
                         }}>
-                          <div style={{ fontFamily: '"Space Mono", monospace', fontSize: 7, color: isCur ? acc : isDone ? acc + 'aa' : '#484878', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 3, transition: 'color 0.3s' }}>
+                          <div style={{ fontFamily: '"Space Mono", monospace', fontSize: 7, color: isCur ? acc : isDone ? acc + 'aa' : '#5d78a8', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 3, transition: 'color 0.3s' }}>
                             {String(i + 1).padStart(2, '0')}
                           </div>
-                          <div style={{ fontFamily: '"Noto Sans SC", sans-serif', fontSize: 10, color: isCur ? '#e8e8f8' : 'rgba(232,232,248,0.35)', transition: 'color 0.3s' }}>
+                          <div style={{ fontFamily: '"Noto Sans SC", sans-serif', fontSize: 10, color: isCur ? '#eef6ff' : 'rgba(238,246,255,0.35)', transition: 'color 0.3s' }}>
                             {p.label}
                           </div>
                         </div>
@@ -1063,7 +1130,7 @@ export default function M2({ onComplete }) {
                       initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0 }} transition={{ duration: 0.35, ease: EASE }}
                     >
-                      <div style={{ height: 1, background: '#1a1a35' }} />
+                      <div style={{ height: 1, background: '#15315a' }} />
                       {PARTS[matPartIdx].options.map((opt, idx) => {
                         const partAcc  = PART_ACCENT[PARTS[matPartIdx].id]
                         const isSel    = safeMatls[PARTS[matPartIdx].id] === opt.id
@@ -1089,36 +1156,36 @@ export default function M2({ onComplete }) {
                               <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: isSel ? '20px 14px 20px 18px' : '16px 14px 16px 18px', transition: 'padding 0.35s ease', position: 'relative' }}>
                                 {/* 轨道圆指示器 */}
                                 <div style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                  <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: `1px solid ${isSel ? partAcc : isHov ? partAcc + '55' : '#2a2a48'}`, transition: 'border-color 0.3s' }} />
-                                  <div style={{ width: isSel ? 9 : 3, height: isSel ? 9 : 3, borderRadius: '50%', background: isSel ? partAcc : isHov ? partAcc + '66' : '#2a2a48', transition: 'all 0.35s cubic-bezier(0.16,1,0.3,1)' }} />
-                                  <span style={{ position: 'absolute', fontFamily: '"Space Mono", monospace', fontSize: 7, color: isSel ? partAcc : '#484878', letterSpacing: '0.05em', bottom: -13, transition: 'color 0.35s' }}>
+                                  <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: `1px solid ${isSel ? partAcc : isHov ? partAcc + '55' : '#25486f'}`, transition: 'border-color 0.3s' }} />
+                                  <div style={{ width: isSel ? 9 : 3, height: isSel ? 9 : 3, borderRadius: '50%', background: isSel ? partAcc : isHov ? partAcc + '66' : '#25486f', transition: 'all 0.35s cubic-bezier(0.16,1,0.3,1)' }} />
+                                  <span style={{ position: 'absolute', fontFamily: '"Space Mono", monospace', fontSize: 7, color: isSel ? partAcc : '#5d78a8', letterSpacing: '0.05em', bottom: -13, transition: 'color 0.35s' }}>
                                     {String(idx + 1).padStart(2, '0')}
                                   </span>
                                 </div>
                                 {/* 连接线 */}
-                                <div style={{ width: isActive ? 12 : 6, height: 1, background: isSel ? partAcc : '#2a2a48', flexShrink: 0, transition: 'all 0.35s' }} />
+                                <div style={{ width: isActive ? 12 : 6, height: 1, background: isSel ? partAcc : '#25486f', flexShrink: 0, transition: 'all 0.35s' }} />
                                 {/* 文字 */}
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
-                                    <span style={{ fontFamily: '"Space Mono", monospace', fontSize: 7, color: isSel ? partAcc : isHov ? partAcc + '88' : '#484878', letterSpacing: '0.14em', textTransform: 'uppercase', transition: 'color 0.3s' }}>
+                                    <span style={{ fontFamily: '"Space Mono", monospace', fontSize: 7, color: isSel ? partAcc : isHov ? partAcc + '88' : '#5d78a8', letterSpacing: '0.14em', textTransform: 'uppercase', transition: 'color 0.3s' }}>
                                       {opt.en.split(' ').slice(0, 2).join(' ')}
                                     </span>
-                                    <span style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 14, color: isActive ? '#e8e8f8' : 'rgba(232,232,248,0.5)', transition: 'color 0.3s' }}>
+                                    <span style={{ fontFamily: '"Noto Serif SC", serif', fontSize: 14, color: isActive ? '#eef6ff' : 'rgba(238,246,255,0.5)', transition: 'color 0.3s' }}>
                                       {opt.label}
                                     </span>
                                   </div>
-                                  <div style={{ fontFamily: '"Noto Sans SC", sans-serif', fontSize: 11, color: isSel ? 'rgba(232,232,248,0.58)' : isHov ? 'rgba(232,232,248,0.35)' : 'rgba(232,232,248,0.2)', lineHeight: 1.78, maxHeight: isActive ? '60px' : '0px', overflow: 'hidden', transition: 'max-height 0.4s cubic-bezier(0.16,1,0.3,1), color 0.3s' }}>
+                                  <div style={{ fontFamily: '"Noto Sans SC", sans-serif', fontSize: 11, color: isSel ? 'rgba(238,246,255,0.58)' : isHov ? 'rgba(238,246,255,0.35)' : 'rgba(238,246,255,0.2)', lineHeight: 1.78, maxHeight: isActive ? '60px' : '0px', overflow: 'hidden', transition: 'max-height 0.4s cubic-bezier(0.16,1,0.3,1), color 0.3s' }}>
                                     {opt.shortFeature}
                                   </div>
                                   {isSel && (
                                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} transition={{ duration: 0.35, ease: EASE }} style={{ display: 'flex', gap: 20, marginTop: 10, overflow: 'hidden' }}>
                                       <div>
-                                        <div style={{ fontFamily: '"Space Mono", monospace', fontSize: 7, color: '#484878', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 3 }}>再入风险</div>
+                                        <div style={{ fontFamily: '"Space Mono", monospace', fontSize: 7, color: '#5d78a8', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 3 }}>再入风险</div>
                                         <div style={{ fontFamily: '"Space Mono", monospace', fontSize: 10, color: riskColor }}>{opt.risk.toUpperCase()}</div>
                                       </div>
                                       <div style={{ flex: 1, minWidth: 0 }}>
-                                        <div style={{ fontFamily: '"Space Mono", monospace', fontSize: 7, color: '#484878', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 3 }}>特征</div>
-                                        <div style={{ fontFamily: '"Noto Sans SC", sans-serif', fontSize: 11, color: 'rgba(232,232,248,0.55)', lineHeight: 1.7 }}>{opt.shortFeature}</div>
+                                        <div style={{ fontFamily: '"Space Mono", monospace', fontSize: 7, color: '#5d78a8', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 3 }}>特征</div>
+                                        <div style={{ fontFamily: '"Noto Sans SC", sans-serif', fontSize: 11, color: 'rgba(238,246,255,0.55)', lineHeight: 1.7 }}>{opt.shortFeature}</div>
                                       </div>
                                     </motion.div>
                                   )}
@@ -1130,7 +1197,7 @@ export default function M2({ onComplete }) {
                                 </div>
                               </div>
                             </div>
-                            <div style={{ height: 1, background: '#1a1a35' }} />
+                            <div style={{ height: 1, background: '#15315a' }} />
                           </div>
                         )
                       })}
@@ -1142,30 +1209,30 @@ export default function M2({ onComplete }) {
                     {matAllDone && matAiState === 'idle' && (
                       <motion.div key="mat-cta" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, ease: EASE, delay: 0.2 }} style={{ marginTop: 24 }}>
                         <div onClick={handleMatFeedback} style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 12, userSelect: 'none' }}
-                          onMouseEnter={e => { e.currentTarget.querySelector('span').style.color = '#e8e8f8' }}
-                          onMouseLeave={e => { e.currentTarget.querySelector('span').style.color = '#6b7fff' }}
+                          onMouseEnter={e => { e.currentTarget.querySelector('span').style.color = '#eef6ff' }}
+                          onMouseLeave={e => { e.currentTarget.querySelector('span').style.color = '#7da7e8' }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                            {[0,1,2].map(k => (<div key={k} style={{ height: 1, width: 5, background: `rgba(107,127,255,${0.3 + k * 0.2})` }} />))}
+                            {[0,1,2].map(k => (<div key={k} style={{ height: 1, width: 5, background: `rgba(125,167,232,${0.3 + k * 0.2})` }} />))}
                           </div>
-                          <span style={{ fontFamily: '"Space Mono", monospace', fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#6b7fff', transition: 'color 0.3s' }}>
+                          <span style={{ fontFamily: '"Space Mono", monospace', fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#7da7e8', transition: 'color 0.3s' }}>
                             生成材料分析
                           </span>
-                          <div style={{ width: 12, height: 1, background: '#6b7fff' }} />
-                          <div style={{ width: 5, height: 5, borderTop: '1.5px solid #6b7fff', borderRight: '1.5px solid #6b7fff', transform: 'rotate(45deg)' }} />
+                          <div style={{ width: 12, height: 1, background: '#7da7e8' }} />
+                          <div style={{ width: 5, height: 5, borderTop: '1.5px solid #7da7e8', borderRight: '1.5px solid #7da7e8', transform: 'rotate(45deg)' }} />
                         </div>
                       </motion.div>
                     )}
                     {matAiState === 'loading' && (
-                      <motion.div key="mat-loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }} style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 24, padding: '16px 20px', background: 'rgba(8,8,26,0.72)', border: '1px solid #1a1a35' }}>
-                        <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#6b7fff', animation: 'blink 1.2s ease infinite', flexShrink: 0 }} />
-                        <span style={{ fontFamily: '"Space Mono", monospace', fontSize: 8, color: '#484878', letterSpacing: '0.14em' }}>ANALYZING RE-ENTRY PROFILE...</span>
+                      <motion.div key="mat-loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }} style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 24, padding: '16px 20px', background: 'rgba(5,20,48,0.72)', border: '1px solid #15315a' }}>
+                        <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#7da7e8', animation: 'blink 1.2s ease infinite', flexShrink: 0 }} />
+                        <span style={{ fontFamily: '"Space Mono", monospace', fontSize: 8, color: '#5d78a8', letterSpacing: '0.14em' }}>ANALYZING RE-ENTRY PROFILE...</span>
                       </motion.div>
                     )}
                     {(matAiState === 'done' || matAiState === 'error') && (
                       <motion.div key="mat-done" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, ease: EASE }} style={{ marginTop: 24 }}>
-                        <div style={{ borderTop: '1px solid #1a1a35', paddingTop: 20, marginBottom: 20 }}>
-                          <div style={{ fontFamily: '"Space Mono", monospace', fontSize: 8, color: '#6b7fff', letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 14 }}>
+                        <div style={{ borderTop: '1px solid #15315a', paddingTop: 20, marginBottom: 20 }}>
+                          <div style={{ fontFamily: '"Space Mono", monospace', fontSize: 8, color: '#7da7e8', letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 14 }}>
                             材料分析 · RE-ENTRY PROFILE
                           </div>
                           <p className="story-text" style={{ margin: 0 }}>
@@ -1174,17 +1241,17 @@ export default function M2({ onComplete }) {
                         </div>
                         <div onClick={() => chapterRef3.current?.scrollIntoView({ behavior: 'smooth' })}
                           style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 14, userSelect: 'none' }}
-                          onMouseEnter={e => { e.currentTarget.querySelector('span').style.color = '#e8e8f8' }}
-                          onMouseLeave={e => { e.currentTarget.querySelector('span').style.color = '#6b7fff' }}
+                          onMouseEnter={e => { e.currentTarget.querySelector('span').style.color = '#eef6ff' }}
+                          onMouseLeave={e => { e.currentTarget.querySelector('span').style.color = '#7da7e8' }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                            {[0,1,2].map(k => (<div key={k} style={{ height: 1, width: 5, background: `rgba(107,127,255,${0.3 + k * 0.2})` }} />))}
+                            {[0,1,2].map(k => (<div key={k} style={{ height: 1, width: 5, background: `rgba(125,167,232,${0.3 + k * 0.2})` }} />))}
                           </div>
-                          <span style={{ fontFamily: '"Space Mono", monospace', fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#6b7fff', transition: 'color 0.3s' }}>
+                          <span style={{ fontFamily: '"Space Mono", monospace', fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#7da7e8', transition: 'color 0.3s' }}>
                             进入任务选择 · MISSION
                           </span>
-                          <div style={{ width: 12, height: 1, background: '#6b7fff' }} />
-                          <div style={{ width: 5, height: 5, borderTop: '1.5px solid #6b7fff', borderRight: '1.5px solid #6b7fff', transform: 'rotate(45deg)' }} />
+                          <div style={{ width: 12, height: 1, background: '#7da7e8' }} />
+                          <div style={{ width: 5, height: 5, borderTop: '1.5px solid #7da7e8', borderRight: '1.5px solid #7da7e8', transform: 'rotate(45deg)' }} />
                         </div>
                       </motion.div>
                     )}
@@ -1206,19 +1273,19 @@ export default function M2({ onComplete }) {
             >
               <div style={{
                 fontFamily: '"Space Mono", monospace', fontSize: 8,
-                color: '#8b6cf8', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 22,
+                color: '#9fc4ff', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 22,
               }}>
                 04 · MISSION SELECT
               </div>
               <h3 style={{
                 fontFamily: '"Noto Serif SC", serif', fontSize: 24,
-                fontWeight: 400, color: '#e8e8f8', marginBottom: 10, lineHeight: 1.5,
+                fontWeight: 400, color: '#eef6ff', marginBottom: 10, lineHeight: 1.5,
               }}>
                 为卫星指定任务
               </h3>
               <p style={{
                 fontFamily: '"Noto Sans SC", sans-serif',
-                fontSize: 13, color: 'rgba(232,232,248,0.52)', lineHeight: 1.85,
+                fontSize: 13, color: 'rgba(238,246,255,0.52)', lineHeight: 1.85,
                 marginBottom: 32, maxWidth: 420,
               }}>
                 选择一项主任务。它将决定故事走向与 M4 游戏的背景设定。
@@ -1228,7 +1295,7 @@ export default function M2({ onComplete }) {
               {/* 任务选择——终端行设计（无矩形框） */}
               <div style={{ marginBottom: 28 }}>
                 {/* 顶部单线 */}
-                <div style={{ height: 1, background: '#1a1a35' }} />
+                <div style={{ height: 1, background: '#15315a' }} />
 
                 {MISSIONS.map((m, idx) => {
                   const isSel    = mission === m.id
@@ -1252,7 +1319,7 @@ export default function M2({ onComplete }) {
                         {/* 左侧激活竖线（选中时展开） */}
                         <div style={{
                           position: 'absolute', left: 0, top: 0, bottom: 0, width: 2,
-                          background: '#8b6cf8',
+                          background: '#9fc4ff',
                           transform: isSel ? 'scaleY(1)' : 'scaleY(0)',
                           transformOrigin: 'center',
                           transition: 'transform 0.4s cubic-bezier(0.16,1,0.3,1)',
@@ -1263,7 +1330,7 @@ export default function M2({ onComplete }) {
                         <div style={{
                           position: 'absolute', inset: 0,
                           background: isActive
-                            ? 'linear-gradient(to right, rgba(139,108,248,0.06) 0%, transparent 65%)'
+                            ? 'linear-gradient(to right, rgba(159,196,255,0.06) 0%, transparent 65%)'
                             : 'transparent',
                           transition: 'background 0.4s ease',
                           pointerEvents: 'none',
@@ -1285,21 +1352,21 @@ export default function M2({ onComplete }) {
                             {/* 外环 */}
                             <div style={{
                               position: 'absolute', inset: 0, borderRadius: '50%',
-                              border: `1px solid ${isSel ? '#8b6cf8' : isHov ? 'rgba(139,108,248,0.35)' : '#2a2a48'}`,
+                              border: `1px solid ${isSel ? '#9fc4ff' : isHov ? 'rgba(159,196,255,0.35)' : '#25486f'}`,
                               transition: 'border-color 0.3s ease',
                             }} />
                             {/* 内核点（选中时填充） */}
                             <div style={{
                               width: isSel ? 10 : 4, height: isSel ? 10 : 4,
                               borderRadius: '50%',
-                              background: isSel ? '#8b6cf8' : isHov ? 'rgba(139,108,248,0.4)' : '#2a2a48',
+                              background: isSel ? '#9fc4ff' : isHov ? 'rgba(159,196,255,0.4)' : '#25486f',
                               transition: 'all 0.35s cubic-bezier(0.16,1,0.3,1)',
                             }} />
                             {/* 序号 */}
                             <span style={{
                               position: 'absolute',
                               fontFamily: '"Space Mono", monospace', fontSize: 8,
-                              color: isSel ? '#8b6cf8' : '#484878',
+                              color: isSel ? '#9fc4ff' : '#5d78a8',
                               letterSpacing: '0.05em', lineHeight: 1,
                               bottom: -14,
                               transition: 'color 0.35s ease',
@@ -1311,7 +1378,7 @@ export default function M2({ onComplete }) {
                           {/* 连接短线 */}
                           <div style={{
                             width: isActive ? 14 : 8, height: 1,
-                            background: isSel ? '#8b6cf8' : '#2a2a48',
+                            background: isSel ? '#9fc4ff' : '#25486f',
                             flexShrink: 0,
                             transition: 'all 0.35s ease',
                           }} />
@@ -1321,7 +1388,7 @@ export default function M2({ onComplete }) {
                             <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
                               <span style={{
                                 fontFamily: '"Space Mono", monospace', fontSize: 8,
-                                color: isSel ? '#8b6cf8' : isHov ? 'rgba(139,108,248,0.55)' : '#484878',
+                                color: isSel ? '#9fc4ff' : isHov ? 'rgba(159,196,255,0.55)' : '#5d78a8',
                                 letterSpacing: '0.14em', textTransform: 'uppercase',
                                 transition: 'color 0.3s ease',
                               }}>
@@ -1329,7 +1396,7 @@ export default function M2({ onComplete }) {
                               </span>
                               <span style={{
                                 fontFamily: '"Noto Serif SC", serif', fontSize: 15,
-                                color: isActive ? '#e8e8f8' : 'rgba(232,232,248,0.5)',
+                                color: isActive ? '#eef6ff' : 'rgba(238,246,255,0.5)',
                                 transition: 'color 0.3s ease',
                               }}>
                                 {m.label}
@@ -1337,7 +1404,7 @@ export default function M2({ onComplete }) {
                             </div>
                             <div style={{
                               fontFamily: '"Noto Sans SC", sans-serif', fontSize: 12,
-                              color: isSel ? 'rgba(232,232,248,0.62)' : isHov ? 'rgba(232,232,248,0.38)' : 'rgba(232,232,248,0.22)',
+                              color: isSel ? 'rgba(238,246,255,0.62)' : isHov ? 'rgba(238,246,255,0.38)' : 'rgba(238,246,255,0.22)',
                               lineHeight: 1.78,
                               maxHeight: isActive ? '80px' : '0px',
                               overflow: 'hidden',
@@ -1358,11 +1425,11 @@ export default function M2({ onComplete }) {
                                   <div key={l}>
                                     <div style={{
                                       fontFamily: '"Space Mono", monospace', fontSize: 7,
-                                      color: '#484878', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 4,
+                                      color: '#5d78a8', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 4,
                                     }}>
                                       {l}
                                     </div>
-                                    <div style={{ fontFamily: '"Noto Sans SC", sans-serif', fontSize: 12, color: '#8b6cf8' }}>
+                                    <div style={{ fontFamily: '"Noto Sans SC", sans-serif', fontSize: 12, color: '#9fc4ff' }}>
                                       {v}
                                     </div>
                                   </div>
@@ -1378,13 +1445,13 @@ export default function M2({ onComplete }) {
                             transform: isActive ? 'translateX(0)' : 'translateX(-10px)',
                             transition: 'opacity 0.3s ease, transform 0.35s ease',
                           }}>
-                            <div style={{ width: 18, height: 1, background: isSel ? '#8b6cf8' : 'rgba(139,108,248,0.4)' }} />
-                            <div style={{ width: 5, height: 5, borderTop: '1px solid #8b6cf8', borderRight: '1px solid #8b6cf8', transform: 'rotate(45deg)', opacity: isSel ? 1 : 0.5 }} />
+                            <div style={{ width: 18, height: 1, background: isSel ? '#9fc4ff' : 'rgba(159,196,255,0.4)' }} />
+                            <div style={{ width: 5, height: 5, borderTop: '1px solid #9fc4ff', borderRight: '1px solid #9fc4ff', transform: 'rotate(45deg)', opacity: isSel ? 1 : 0.5 }} />
                           </div>
                         </div>
                       </div>
                       {/* 每行底部单线 */}
-                      <div style={{ height: 1, background: '#1a1a35' }} />
+                      <div style={{ height: 1, background: '#15315a' }} />
                     </div>
                   )
                 })}
@@ -1398,17 +1465,17 @@ export default function M2({ onComplete }) {
                     initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 12,
-                      padding: '16px 20px', background: 'rgba(8,8,26,0.72)',
-                      border: '1px solid #1a1a35',
+                      padding: '16px 20px', background: 'rgba(5,20,48,0.72)',
+                      border: '1px solid #15315a',
                     }}
                   >
                     <div style={{
-                      width: 5, height: 5, borderRadius: '50%', background: '#8b6cf8',
+                      width: 5, height: 5, borderRadius: '50%', background: '#9fc4ff',
                       animation: 'blink 1.2s ease infinite', flexShrink: 0,
                     }} />
                     <span style={{
                       fontFamily: '"Space Mono", monospace', fontSize: 8,
-                      color: '#484878', letterSpacing: '0.14em',
+                      color: '#5d78a8', letterSpacing: '0.14em',
                     }}>
                       GENERATING MISSION NARRATIVE...
                     </span>
@@ -1436,16 +1503,16 @@ export default function M2({ onComplete }) {
                               <div style={{ display: 'flex', gap: 24, marginBottom: 18, flexWrap: 'wrap' }}>
                                 {[{ l: '轨道', v: sel.orbit }, { l: '典型案例', v: sel.example }].map(({ l, v }) => (
                                   <div key={l} style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
-                                    <span style={{ fontFamily: '"Space Mono", monospace', fontSize: 7, color: '#484878', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{l}</span>
-                                    <span style={{ fontFamily: '"Noto Sans SC", sans-serif', fontSize: 12, color: 'rgba(232,232,248,0.5)' }}>{v}</span>
+                                    <span style={{ fontFamily: '"Space Mono", monospace', fontSize: 7, color: '#5d78a8', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{l}</span>
+                                    <span style={{ fontFamily: '"Noto Sans SC", sans-serif', fontSize: 12, color: 'rgba(238,246,255,0.5)' }}>{v}</span>
                                   </div>
                                 ))}
                               </div>
                             )
                           })()}
                           {/* 故事文本 */}
-                          <div style={{ borderTop: '1px solid #1a1a35', paddingTop: 22, marginBottom: 24 }}>
-                            <div style={{ fontFamily: '"Space Mono", monospace', fontSize: 8, color: '#8b6cf8', letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 16 }}>
+                          <div style={{ borderTop: '1px solid #15315a', paddingTop: 22, marginBottom: 24 }}>
+                            <div style={{ fontFamily: '"Space Mono", monospace', fontSize: 8, color: '#9fc4ff', letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 16 }}>
                               第二段 · 任务展开 · {satellite?.name ?? ''}
                             </div>
                             <p className="story-text" style={{ margin: 0 }}>
@@ -1518,7 +1585,7 @@ export default function M2({ onComplete }) {
                     width: '100%',
                     marginTop: 8,
                     padding: '14px 16px',
-                    background: 'rgba(8,8,26,0.88)',
+                    background: 'rgba(5,20,48,0.88)',
                     border: `1px solid ${orb.color}30`,
                     borderLeft: `2px solid ${orb.color}`,
                   }}
@@ -1532,7 +1599,7 @@ export default function M2({ onComplete }) {
                     </span>
                     <span style={{
                       fontFamily: '"Noto Sans SC", sans-serif', fontSize: 11,
-                      color: 'rgba(232,232,248,0.38)',
+                      color: 'rgba(238,246,255,0.38)',
                     }}>
                       {orb.full}
                     </span>
@@ -1553,7 +1620,7 @@ export default function M2({ onComplete }) {
                       <div key={l}>
                         <div style={{
                           fontFamily: '"Space Mono", monospace', fontSize: 7,
-                          color: '#484878', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 3,
+                          color: '#5d78a8', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 3,
                         }}>{l}</div>
                         <div style={{
                           fontFamily: '"Space Mono", monospace', fontSize: 11,
@@ -1578,10 +1645,10 @@ export default function M2({ onComplete }) {
                   style={{ display: 'flex', flexDirection: 'column', gap: 5 }}
                 >
                   {[
-                    { id: null,   l: `${satellite?.name ?? 'YOUR SAT'} · ${alt} KM`, c: '#6b7fff', w: 20 },
-                    { id: 'leo',  l: 'LEO · 200–2,000 KM',    c: '#6b7fff', w: 18 },
-                    { id: 'meo',  l: 'MEO · 2,000–35,786 KM', c: '#8b6cf8', w: 18 },
-                    { id: 'geo',  l: 'GEO · 35,786 KM',        c: '#8b6cf8', w: 18 },
+                    { id: null,   l: `${satellite?.name ?? 'YOUR SAT'} · ${alt} KM`, c: '#7da7e8', w: 20 },
+                    { id: 'leo',  l: 'LEO · 200–2,000 KM',    c: '#7da7e8', w: 18 },
+                    { id: 'meo',  l: 'MEO · 2,000–35,786 KM', c: '#9fc4ff', w: 18 },
+                    { id: 'geo',  l: 'GEO · 35,786 KM',        c: '#9fc4ff', w: 18 },
                   ].map(({ id, l, c, w }) => {
                     const isActive = id !== null && activeOrbit === id
                     const isDimmed = activeOrbit !== null && id !== null && activeOrbit !== id
@@ -1599,7 +1666,7 @@ export default function M2({ onComplete }) {
                         }} />
                         <span style={{
                           fontFamily: '"Space Mono", monospace', fontSize: 8,
-                          color: isActive ? c : '#484878',
+                          color: isActive ? c : '#5d78a8',
                           letterSpacing: '0.08em',
                           transition: 'color 0.3s ease',
                         }}>
@@ -1610,7 +1677,7 @@ export default function M2({ onComplete }) {
                   })}
                   <div style={{
                     fontFamily: '"Space Mono", monospace', fontSize: 7,
-                    color: '#2a2a40', marginTop: 2, letterSpacing: '0.06em',
+                    color: '#1e365f', marginTop: 2, letterSpacing: '0.06em',
                   }}>
                     * 轨道半径非等比例缩放
                   </div>
@@ -1623,25 +1690,25 @@ export default function M2({ onComplete }) {
                   initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.3 }}
                   style={{
-                    padding: '14px 18px', background: 'rgba(139,108,248,0.05)',
-                    border: '1px solid rgba(139,108,248,0.18)',
+                    padding: '14px 18px', background: 'rgba(159,196,255,0.05)',
+                    border: '1px solid rgba(159,196,255,0.18)',
                   }}
                 >
                   <div style={{
                     fontFamily: '"Space Mono", monospace', fontSize: 8,
-                    color: '#8b6cf8', letterSpacing: '0.14em', marginBottom: 8,
+                    color: '#9fc4ff', letterSpacing: '0.14em', marginBottom: 8,
                   }}>
                     {satellite?.name ?? 'SATELLITE'} · {orbitZone}
                   </div>
                   <div style={{
                     fontFamily: '"Space Mono", monospace', fontSize: 20,
-                    color: '#6b7fff', marginBottom: 4,
+                    color: '#7da7e8', marginBottom: 4,
                   }}>
                     {alt} km
                   </div>
                   <div style={{
                     fontFamily: '"Noto Sans SC", sans-serif',
-                    fontSize: 11, color: 'rgba(232,232,248,0.42)', lineHeight: 1.7,
+                    fontSize: 11, color: 'rgba(238,246,255,0.42)', lineHeight: 1.7,
                   }}>
                     倾角 {satellite?.inclination ?? '--'}° · 周期 {satellite?.periodMin ?? '--'} min
                   </div>
@@ -1654,19 +1721,19 @@ export default function M2({ onComplete }) {
                   initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.3 }}
                   style={{
-                    padding: '14px 18px', background: 'rgba(139,108,248,0.04)',
-                    border: '1px solid rgba(139,108,248,0.16)',
+                    padding: '14px 18px', background: 'rgba(159,196,255,0.04)',
+                    border: '1px solid rgba(159,196,255,0.16)',
                   }}
                 >
                   <div style={{
                     fontFamily: '"Space Mono", monospace', fontSize: 8,
-                    color: '#8b6cf8', letterSpacing: '0.14em', marginBottom: 8,
+                    color: '#9fc4ff', letterSpacing: '0.14em', marginBottom: 8,
                   }}>
                     {mission ? 'MISSION ASSIGNED' : 'AWAITING ASSIGNMENT'}
                   </div>
                   <div style={{
                     fontFamily: '"Noto Serif SC", serif', fontSize: 16,
-                    color: '#e8e8f8',
+                    color: '#eef6ff',
                   }}>
                     {mission
                       ? MISSIONS.find((m) => m.id === mission)?.label ?? mission
