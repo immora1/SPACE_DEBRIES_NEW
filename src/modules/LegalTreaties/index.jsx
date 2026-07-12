@@ -19,14 +19,7 @@ const FOLDER_OPEN_TRANSITION = {
   ...FOLDER_TWEEN_TRANSITION,
   y: { duration: 0 },
 }
-const FOLDER_RETURN_TRANSITION = {
-  type: 'spring',
-  stiffness: 54,
-  damping: 19,
-  mass: 1.14,
-  restDelta: 0.08,
-  restSpeed: 1.6,
-}
+const FOLDER_RETURN_TRANSITION = { duration: 0.64, ease: EASE }
 const FOLDER_RETURN_SETTLE_TRANSITION = { duration: 0 }
 
 const TAB_LAYOUTS = [
@@ -511,40 +504,103 @@ const LAW_FLOW_TEXT = ARCHIVE_ITEMS
 const LAW_FLOW_MARQUEE_TEXT = `${LAW_FLOW_TEXT}  ·  ${LAW_FLOW_TEXT}  ·  `
 const LAW_FLOW_LINES = [
   {
-    id: 'upper-ledger',
-    layerIndex: 2,
-    fontSize: 18,
+    id: 'upper-ledger-01',
+    layerIndex: 1,
+    fontSize: 16,
     duration: 42,
     offset: 0,
     opacity: 0.42,
-    d: 'M -220 128 C 82 32 292 244 548 142 C 804 40 940 254 1164 154 C 1394 50 1558 250 1816 144 C 1998 70 2128 146 2240 112',
+    d: 'M -240 54 C 52 -30 284 142 540 62 C 802 -20 946 148 1170 66 C 1398 -18 1560 154 1818 64 C 2000 -2 2138 76 2250 46',
   },
   {
-    id: 'standard-river',
+    id: 'upper-ledger-02',
+    layerIndex: 4,
+    fontSize: 17,
+    duration: 45,
+    offset: -140,
+    opacity: 0.4,
+    d: 'M -230 234 C 64 344 286 122 552 230 C 802 330 940 128 1174 224 C 1416 328 1568 122 1810 232 C 1994 318 2120 226 2240 260',
+  },
+  {
+    id: 'standard-river-01',
     layerIndex: 8,
     fontSize: 18,
-    duration: 45,
-    offset: -180,
-    opacity: 0.46,
-    d: 'M -220 330 C 46 454 288 184 556 316 C 780 426 944 182 1168 304 C 1414 438 1560 192 1806 310 C 1990 398 2118 306 2240 354',
+    duration: 44,
+    offset: -280,
+    opacity: 0.36,
+    d: 'M -230 430 C 58 336 292 552 560 440 C 804 336 952 554 1190 434 C 1422 324 1584 550 1826 426 C 2008 342 2130 438 2248 408',
+  },
+  {
+    id: 'standard-river-02',
+    layerIndex: 12,
+    fontSize: 18,
+    duration: 47,
+    offset: -430,
+    opacity: 0.3,
+    d: 'M -240 670 C 40 784 304 542 584 662 C 828 768 992 544 1220 654 C 1454 766 1608 544 1848 652 C 2026 730 2140 662 2250 694',
   },
   {
     id: 'liability-thread',
     layerIndex: 16,
     fontSize: 18,
-    duration: 44,
-    offset: -320,
-    opacity: 0.5,
-    d: 'M -230 498 C 56 382 292 662 560 506 C 806 362 958 658 1192 502 C 1420 350 1586 642 1830 488 C 2006 378 2118 510 2240 456',
+    duration: 49,
+    offset: -620,
+    opacity: 0.23,
+    d: 'M -250 950 C 48 830 304 1078 590 946 C 838 834 996 1072 1222 940 C 1458 806 1616 1066 1858 928 C 2040 824 2142 956 2260 908',
   },
   {
     id: 'source-stream',
-    layerIndex: 24,
-    fontSize: 18,
-    duration: 47,
-    offset: -560,
-    opacity: 0.48,
-    d: 'M -240 732 C 48 836 304 548 588 710 C 832 850 986 554 1216 700 C 1450 844 1602 566 1842 688 C 2028 784 2134 662 2250 706',
+    layerIndex: 22,
+    fontSize: 17,
+    duration: 52,
+    offset: -820,
+    opacity: 0.16,
+    d: 'M -250 1270 C 58 1386 318 1116 602 1254 C 858 1378 1004 1118 1242 1240 C 1482 1366 1628 1118 1870 1232 C 2056 1320 2160 1216 2266 1268',
+  },
+  {
+    id: 'fade-out-stream',
+    layerIndex: 28,
+    fontSize: 16,
+    duration: 56,
+    offset: -1040,
+    opacity: 0.08,
+    d: 'M -260 1620 C 56 1482 318 1768 616 1608 C 862 1476 1022 1750 1254 1596 C 1496 1444 1644 1742 1888 1578 C 2074 1466 2180 1610 2270 1544',
+  },
+  {
+    id: 'rear-fade-01',
+    layerIndex: 34,
+    fontSize: 16,
+    duration: 60,
+    offset: -1260,
+    opacity: 0.42,
+    d: 'M -270 815 C 42 956 330 656 630 804 C 890 934 1030 644 1280 786 C 1518 922 1674 646 1910 780 C 2094 882 2196 774 2280 824',
+  },
+  {
+    id: 'rear-fade-02',
+    layerIndex: 40,
+    fontSize: 15,
+    duration: 64,
+    offset: -1480,
+    opacity: 0.34,
+    d: 'M -280 1110 C 42 966 336 1276 646 1098 C 910 948 1064 1254 1310 1084 C 1550 918 1710 1248 1946 1070 C 2128 938 2226 1112 2290 1036',
+  },
+  {
+    id: 'rear-fade-03',
+    layerIndex: 46,
+    fontSize: 15,
+    duration: 68,
+    offset: -1700,
+    opacity: 0.26,
+    d: 'M -290 1425 C 28 1581 350 1237 670 1409 C 944 1559 1088 1229 1340 1391 C 1586 1551 1734 1235 1982 1373 C 2162 1475 2248 1363 2300 1421',
+  },
+  {
+    id: 'rear-fade-04',
+    layerIndex: 52,
+    fontSize: 15,
+    duration: 72,
+    offset: -1920,
+    opacity: 0.22,
+    d: 'M -300 1735 C 16 1584 352 1902 686 1714 C 960 1556 1118 1870 1378 1690 C 1634 1512 1788 1844 2026 1686 C 2192 1574 2276 1718 2320 1646',
   },
 ]
 
@@ -752,16 +808,17 @@ export default function LegalTreaties({ onComplete = () => {} }) {
 
     function applyDirectY(nextY) {
       session.element.classList.add('is-direct-dragging')
-      session.element.style.setProperty('--folder-offset-y', `${nextY}px`)
+      session.element.style.translate = `-50% ${nextY}px`
     }
 
     function clearDirectY() {
       session.element.classList.remove('is-direct-dragging')
-      session.element.style.removeProperty('--folder-offset-y')
+      session.element.style.removeProperty('translate')
     }
 
     function releaseDirectY() {
       session.element.classList.remove('is-direct-dragging')
+      session.element.style.removeProperty('translate')
     }
 
     function clearDraggingFlag() {
@@ -788,8 +845,10 @@ export default function LegalTreaties({ onComplete = () => {} }) {
       session.lastY = moveEvent.clientY
       session.lastTime = moveEvent.timeStamp
       session.hasMoved = true
-      draggingRef.current = true
-      setIsDraggingFolder(true)
+      if (!draggingRef.current) {
+        draggingRef.current = true
+        setIsDraggingFolder(true)
+      }
 
       session.currentY = Math.max(session.minY, Math.min(session.maxY, deltaY))
       applyDirectY(session.currentY)
@@ -1015,15 +1074,6 @@ export default function LegalTreaties({ onComplete = () => {} }) {
                     startOffset={line.offset}
                   >
                     {LAW_FLOW_MARQUEE_TEXT}
-                    {!isFlowPaused && (
-                      <animate
-                        attributeName="startOffset"
-                        values={`${line.offset - 1700};${line.offset}`}
-                        dur={`${line.duration}s`}
-                        repeatCount="indefinite"
-                        calcMode="linear"
-                      />
-                    )}
                   </textPath>
                 </text>
               </svg>

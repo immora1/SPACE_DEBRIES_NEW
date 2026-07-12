@@ -611,6 +611,8 @@ export default function M8({ onComplete }) {
   const flowNavigationTimerRef = useRef(null)
 
   const selected = OBSERVATION_SET.find((item) => item.id === selectedId) || OBSERVATION_SET[0]
+  const selectedIndex = Math.max(0, OBSERVATION_SET.findIndex((item) => item.id === selected.id))
+  const selectedNumber = String(selectedIndex + 1).padStart(2, '0')
   const activeCommunity = OBSERVATION_SET.find((item) => item.id === activeCommunityId) || selected
   const reportScore = scoreReport(report)
   const practiceAnsweredCount = Object.keys(practice).filter((id) => PRACTICE_IDS.has(id)).length
@@ -981,9 +983,24 @@ export default function M8({ onComplete }) {
 
         <div className="m8-workbench">
           <div className="m8-observation-picker">
+            <div className="m8-workbench-kicker">
+              <span>SELECTED EVENT</span>
+              <b>{selectedNumber} / {String(OBSERVATION_SET.length).padStart(2, '0')}</b>
+            </div>
             <div className="m8-selected-observation">
-              <img src={selected.img} alt="" />
-              <div><span>{selected.type.toUpperCase()}</span><h4>{selected.title}</h4><p>{selected.clue}</p></div>
+              <div className="m8-selected-media">
+                <img src={selected.img} alt="" />
+                <span>{selectedNumber}</span>
+              </div>
+              <div className="m8-selected-copy">
+                <span>{selected.type.toUpperCase()}</span>
+                <h4>{selected.title}</h4>
+                <p>{selected.clue}</p>
+              </div>
+            </div>
+            <div className="m8-observation-strip-head">
+              <span>事件样本</span>
+              <small>点击切换观测素材</small>
             </div>
             <div className="m8-observation-thumbs">
               {OBSERVATION_SET.map((item, index) => (
@@ -1002,6 +1019,13 @@ export default function M8({ onComplete }) {
           </div>
 
           <form className="m8-report-form" onSubmit={submitReport}>
+            <div className="m8-report-panel-head">
+              <div>
+                <span>STRUCTURED REPORT</span>
+                <h4>六项信息记录</h4>
+              </div>
+              <strong>{reportScore}%</strong>
+            </div>
             <div className="m8-form-grid">
               {REQUIRED_FIELDS.map((field) => (
                 <label key={field.id}>
@@ -1039,7 +1063,7 @@ export default function M8({ onComplete }) {
               />
             </label>
             <div className="m8-form-footer">
-              <div><span>REPORT QUALITY</span><strong>{reportScore}%</strong><progress value={reportScore} max="100" /></div>
+              <div><span>REPORT QUALITY</span><strong>{canSubmit ? '可提交' : '补全信息'}</strong><progress value={reportScore} max="100" /></div>
               <button type="submit" disabled={!canSubmit}>提交到社区</button>
             </div>
           </form>

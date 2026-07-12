@@ -14,6 +14,8 @@ node_modules
 dist
 dist-ssr
 .tmp-build-check/
+.tmp-*/
+._*
 *.local
 package-lock.json
 

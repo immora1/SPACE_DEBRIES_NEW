@@ -342,11 +342,15 @@ export default function M2({ onComplete }) {
 
         // ── 表单门控：复用 rects[2]，避免重复 getBoundingClientRect ──
         if (rects[2]) {
-          const shouldLock = rects[2].top < window.innerHeight && formStepRef.current !== 'result'
+          const formGateVisible = rects[2].top < window.innerHeight * 0.72 && rects[2].bottom > window.innerHeight * 0.12
+          const shouldLock = formGateVisible && formStepRef.current !== 'result'
           if (shouldLock !== scrollLockedRef.current) {
             scrollLockedRef.current = shouldLock
             setScrollLocked(shouldLock)
           }
+        } else if (scrollLockedRef.current) {
+          scrollLockedRef.current = false
+          setScrollLocked(false)
         }
 
         ticking = false

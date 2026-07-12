@@ -1656,6 +1656,290 @@
   cursor: not-allowed;
 }
 
+.m8-report-workbench .m8-section-heading {
+  align-items: end;
+  margin-bottom: clamp(22px, 3vw, 34px);
+}
+
+.m8-report-workbench .m8-section-heading h3 {
+  max-width: 720px;
+}
+
+.m8-workbench {
+  --m8-workbench-surface: rgba(9, 12, 28, 0.72);
+  width: min(100%, 1360px);
+  margin-inline: auto;
+  display: grid;
+  grid-template-columns: minmax(360px, 0.82fr) minmax(520px, 1fr);
+  gap: clamp(28px, 4vw, 56px);
+  padding: clamp(18px, 2vw, 26px);
+  border: 1px solid rgba(232, 232, 248, 0.13);
+  border-right-color: rgba(232, 232, 248, 0.07);
+  border-left-color: rgba(232, 232, 248, 0.07);
+  background:
+    linear-gradient(180deg, rgba(232, 232, 248, 0.035), transparent 28%),
+    var(--m8-workbench-surface);
+}
+
+.m8-observation-picker,
+.m8-report-form {
+  min-width: 0;
+  padding: 0;
+}
+
+.m8-observation-picker {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  border-right: 0;
+}
+
+.m8-workbench-kicker,
+.m8-observation-strip-head,
+.m8-report-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.m8-workbench-kicker,
+.m8-report-panel-head > div > span,
+.m8-observation-strip-head span,
+.m8-observation-strip-head small {
+  color: rgba(127, 140, 255, 0.72);
+  font: 700 9px/1.4 'Space Mono', monospace;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.m8-workbench-kicker b {
+  color: rgba(232, 232, 248, 0.56);
+  font: 400 10px/1 'Space Mono', monospace;
+}
+
+.m8-selected-observation {
+  position: relative;
+  display: grid;
+  overflow: hidden;
+  border: 1px solid rgba(232, 232, 248, 0.16);
+  background: rgba(5, 7, 19, 0.62);
+}
+
+.m8-selected-media {
+  position: relative;
+  overflow: hidden;
+  background: #050713;
+}
+
+.m8-selected-media img {
+  width: 100%;
+  aspect-ratio: 16 / 9.4;
+  height: auto;
+  display: block;
+  border: 0;
+  object-fit: cover;
+  filter: saturate(0.86) contrast(1.08) brightness(0.78);
+}
+
+.m8-selected-media::after {
+  position: absolute;
+  inset: auto 0 0;
+  height: 48%;
+  background: linear-gradient(180deg, transparent, rgba(5, 7, 19, 0.74));
+  content: "";
+  pointer-events: none;
+}
+
+.m8-selected-media span {
+  position: absolute;
+  left: 14px;
+  bottom: 12px;
+  z-index: 1;
+  color: rgba(245, 247, 255, 0.9);
+  font: 700 10px/1 'Space Mono', monospace;
+}
+
+.m8-selected-copy {
+  display: grid;
+  gap: 8px;
+  padding: clamp(18px, 2.1vw, 26px);
+}
+
+.m8-selected-copy span,
+.m8-community-event > span {
+  color: rgba(232, 232, 248, 0.5);
+  font: 700 9px/1.6 'Space Mono', monospace;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.m8-selected-copy h4 {
+  margin: 0;
+  color: var(--m8-paper);
+  font-size: clamp(28px, 3vw, 44px);
+  line-height: 1.12;
+}
+
+.m8-selected-copy p {
+  max-width: 520px;
+  margin: 0;
+  color: rgba(232, 232, 248, 0.58);
+  font-size: 12px;
+  line-height: 1.72;
+}
+
+.m8-observation-strip-head {
+  padding-top: 4px;
+}
+
+.m8-observation-strip-head small {
+  color: rgba(232, 232, 248, 0.32);
+  letter-spacing: 0.08em;
+}
+
+.m8-observation-thumbs {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.m8-observation-thumbs button {
+  position: relative;
+  aspect-ratio: 1.28;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid rgba(232, 232, 248, 0.13);
+  background: rgba(232, 232, 248, 0.03);
+  cursor: pointer;
+  transition: border-color 180ms ease, transform 180ms ease, background-color 180ms ease;
+}
+
+.m8-observation-thumbs button.is-active {
+  border-color: rgba(245, 247, 255, 0.88);
+  background: rgba(232, 232, 248, 0.08);
+}
+
+.m8-observation-thumbs img {
+  opacity: 0.46;
+  filter: saturate(0.8) contrast(1.04) brightness(0.7);
+  transition: opacity 180ms ease, filter 180ms ease, transform 240ms ease;
+}
+
+.m8-observation-thumbs .is-active img {
+  opacity: 0.9;
+  filter: saturate(0.94) contrast(1.06) brightness(0.82);
+}
+
+.m8-observation-thumbs span {
+  left: 7px;
+  bottom: 6px;
+  color: rgba(245, 247, 255, 0.88);
+  font: 700 8px/1 'Space Mono', monospace;
+}
+
+.m8-observation-hint {
+  min-height: 46px;
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid rgba(232, 232, 248, 0.13);
+  border-left: 2px solid rgba(232, 232, 248, 0.55);
+  color: rgba(232, 232, 248, 0.58);
+  background: rgba(232, 232, 248, 0.035);
+  font-size: 11px;
+  line-height: 1.65;
+}
+
+.m8-report-form {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  padding: clamp(22px, 2.7vw, 34px);
+  border: 1px solid rgba(232, 232, 248, 0.15);
+  background:
+    linear-gradient(180deg, rgba(232, 232, 248, 0.045), transparent 34%),
+    rgba(8, 10, 24, 0.78);
+}
+
+.m8-report-panel-head {
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(232, 232, 248, 0.12);
+}
+
+.m8-report-panel-head h4 {
+  margin: 7px 0 0;
+  color: rgba(245, 247, 255, 0.92);
+  font: 300 clamp(22px, 2vw, 32px)/1.18 'Noto Serif SC', serif;
+}
+
+.m8-report-panel-head strong {
+  color: var(--m8-paper);
+  font: 300 clamp(34px, 3vw, 48px)/1 'Space Mono', monospace;
+}
+
+.m8-form-grid,
+.m8-form-selects {
+  gap: 12px;
+}
+
+.m8-report-form label {
+  gap: 8px;
+}
+
+.m8-report-form label > span {
+  color: rgba(232, 232, 248, 0.44);
+  font-size: 9px;
+}
+
+.m8-report-form input,
+.m8-report-form select,
+.m8-report-form textarea {
+  min-height: 48px;
+  border-color: rgba(232, 232, 248, 0.15);
+  color: rgba(245, 247, 255, 0.88);
+  background: rgba(4, 6, 18, 0.46);
+  font-size: 12px;
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+.m8-report-form textarea {
+  min-height: clamp(118px, 17vh, 170px);
+}
+
+.m8-report-form input:focus,
+.m8-report-form select:focus,
+.m8-report-form textarea:focus {
+  border-color: rgba(245, 247, 255, 0.44);
+  background: rgba(232, 232, 248, 0.06);
+}
+
+.m8-note-field {
+  margin-top: 0;
+}
+
+.m8-form-footer {
+  min-height: 70px;
+  margin-top: 2px;
+  padding-top: 18px;
+  border-top-color: rgba(232, 232, 248, 0.12);
+}
+
+.m8-form-footer > div {
+  min-width: min(260px, 42vw);
+  grid-template-columns: auto auto;
+}
+
+.m8-form-footer strong {
+  color: rgba(245, 247, 255, 0.86);
+  font-size: 13px;
+}
+
+.m8-form-footer button {
+  min-width: 156px;
+  border-color: rgba(245, 247, 255, 0.84);
+}
+
 .m8-community-layout {
   display: grid;
   grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);

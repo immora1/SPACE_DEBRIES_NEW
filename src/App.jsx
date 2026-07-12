@@ -187,6 +187,7 @@ export default function App() {
   const unlockedModules = useAppStore((s) => s.unlockedModules)
   const completedModules = useAppStore((s) => s.completedModules)
   const scrollLocked = useAppStore((s) => s.scrollLocked)
+  const setScrollLocked = useAppStore((s) => s.setScrollLocked)
   const unlockModule = useAppStore((s) => s.unlockModule)
   const markModuleComplete = useAppStore((s) => s.markModuleComplete)
 
@@ -198,7 +199,11 @@ export default function App() {
 
   useEffect(() => {
     document.body.style.overflow = scrollLocked ? 'hidden' : ''
-    return () => { document.body.style.overflow = '' }
+    document.documentElement.style.overflow = scrollLocked ? 'hidden' : ''
+    return () => {
+      document.body.style.overflow = ''
+      document.documentElement.style.overflow = ''
+    }
   }, [scrollLocked])
 
   useEffect(() => {
@@ -231,7 +236,8 @@ export default function App() {
   ), [allModuleIds])
 
   const scrollToModule = useCallback((id) => {
-    if (scrollLocked || !isModuleNavigable(id)) return
+    if (!isModuleNavigable(id)) return
+    if (scrollLocked) setScrollLocked(false)
     const el = document.querySelector(`[data-module="${id}"]`)
     if (!el) return
 
@@ -239,13 +245,11 @@ export default function App() {
     window.setTimeout(() => {
       el.scrollIntoView({ behavior: 'auto', block: 'start' })
     }, 600)
-  }, [isModuleNavigable, scrollLocked])
+  }, [isModuleNavigable, scrollLocked, setScrollLocked])
 
   const availableModules = useMemo(() => (
-    scrollLocked
-      ? []
-      : allModuleIds
-  ), [allModuleIds, scrollLocked])
+    allModuleIds
+  ), [allModuleIds])
 
   const showM8 = completedSet.has('m7')
 
