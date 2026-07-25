@@ -3,6 +3,7 @@ import { forwardRef, useEffect, useRef } from 'react'
 function MouseReactiveVeil() {
   const veilRef = useRef(null)
   const frameRef = useRef(0)
+  const veilVisibleRef = useRef(false)
   const targetRef = useRef({ x: 0, y: 0 })
   const currentRef = useRef({ x: 0, y: 0 })
 
@@ -11,7 +12,24 @@ function MouseReactiveVeil() {
     const coarsePointer = window.matchMedia?.('(pointer: coarse)')
     if (reduceMotion?.matches || coarsePointer?.matches) return undefined
 
+    const visibilityObserver = 'IntersectionObserver' in window
+      ? new IntersectionObserver(([entry]) => {
+          veilVisibleRef.current = entry.isIntersecting
+          if (!entry.isIntersecting && frameRef.current) {
+            cancelAnimationFrame(frameRef.current)
+            frameRef.current = 0
+          }
+        }, { rootMargin: '120px 0px' })
+      : null
+
+    if (veilRef.current && visibilityObserver) visibilityObserver.observe(veilRef.current)
+    else veilVisibleRef.current = true
+
     const update = () => {
+      if (!veilVisibleRef.current) {
+        frameRef.current = 0
+        return
+      }
       const current = currentRef.current
       const target = targetRef.current
       current.x += (target.x - current.x) * 0.12
@@ -27,6 +45,7 @@ function MouseReactiveVeil() {
     }
 
     const handlePointerMove = (event) => {
+      if (!veilVisibleRef.current) return
       const width = window.innerWidth || 1
       const height = window.innerHeight || 1
       targetRef.current = {
@@ -39,6 +58,7 @@ function MouseReactiveVeil() {
     window.addEventListener('pointermove', handlePointerMove, { passive: true })
     return () => {
       window.removeEventListener('pointermove', handlePointerMove)
+      visibilityObserver?.disconnect()
       if (frameRef.current) cancelAnimationFrame(frameRef.current)
     }
   }, [])

@@ -6,7 +6,7 @@ import './index.css'
 const METHODS = [
   {
     id: 'laser',
-    image: '/cleanup/1.png',
+    image: '/cleanup/1.jpg',
     title: '激光烧蚀',
     titleEn: 'LASER ABLATION',
     status: '研究阶段',
@@ -21,7 +21,7 @@ const METHODS = [
   },
   {
     id: 'arm',
-    image: '/cleanup/2.png',
+    image: '/cleanup/2.jpg',
     title: '机械臂抓取',
     titleEn: 'ROBOTIC CAPTURE',
     status: '任务开发',
@@ -36,7 +36,7 @@ const METHODS = [
   },
   {
     id: 'net',
-    image: '/cleanup/3.png',
+    image: '/cleanup/3.jpg',
     title: '柔性捕捉网',
     titleEn: 'FLEXIBLE NET',
     status: '在轨演示',
@@ -51,7 +51,7 @@ const METHODS = [
   },
   {
     id: 'harpoon',
-    image: '/cleanup/4.png',
+    image: '/cleanup/4.jpg',
     title: '飞行鱼叉',
     titleEn: 'HARPOON CAPTURE',
     status: '在轨演示',
@@ -66,7 +66,7 @@ const METHODS = [
   },
   {
     id: 'tether',
-    image: '/cleanup/5.png',
+    image: '/cleanup/5.jpg',
     title: '电动力缆索',
     titleEn: 'ELECTRODYNAMIC TETHER',
     status: '持续验证',
@@ -81,7 +81,7 @@ const METHODS = [
   },
   {
     id: 'sail',
-    image: '/cleanup/6.png',
+    image: '/cleanup/6.jpg',
     title: '阻力帆',
     titleEn: 'DRAG SAIL',
     status: '成熟部署',
@@ -194,8 +194,13 @@ function buildAssessment(target, method, correct) {
 
 const METHOD_CARD_TRANSITION = {
   type: 'tween',
-  duration: 0.34,
+  duration: 0.52,
   ease: [0.16, 1, 0.3, 1],
+  layout: {
+    type: 'tween',
+    duration: 0.58,
+    ease: [0.16, 1, 0.3, 1],
+  },
 }
 
 const METHOD_CARD_LAYOUTS = [
@@ -207,8 +212,8 @@ const METHOD_CARD_LAYOUTS = [
   { y: 24, rotate: 5, zIndex: 7 },
 ]
 
-const ACTIVE_METHOD_CARD_X = -142
-const COLLAPSED_METHOD_SPREAD = 0.58
+const ACTIVE_METHOD_CARD_X = -118
+const COLLAPSED_METHOD_SPREAD = 0.66
 
 function MethodCard({ method, index, activeMethodId, cardSpacing, middle, onActivate }) {
   const isActive = activeMethodId === method.id
@@ -228,11 +233,13 @@ function MethodCard({ method, index, activeMethodId, cardSpacing, middle, onActi
     }
     if (event.key !== 'Enter' && event.key !== ' ') return
     event.preventDefault()
-    onActivate(method.id)
+    onActivate(isActive ? null : method.id)
   }
 
   return (
     <motion.article
+      layout="size"
+      layoutDependency={isActive}
       role="button"
       tabIndex={0}
       className={`m6-method-card ${isActive ? 'is-active' : ''} ${hasActive ? 'has-active' : ''}`}
@@ -240,7 +247,7 @@ function MethodCard({ method, index, activeMethodId, cardSpacing, middle, onActi
       aria-label={`${method.title}，查看清理方式说明`}
       onClick={(event) => {
         event.stopPropagation()
-        onActivate(method.id)
+        onActivate(isActive ? null : method.id)
       }}
       onKeyDown={handleKeyDown}
       initial={{ opacity: 0, x: 0, y: 18, scale: 0.82 }}
@@ -248,7 +255,7 @@ function MethodCard({ method, index, activeMethodId, cardSpacing, middle, onActi
       viewport={{ once: true }}
       animate={{
         x: isActive ? ACTIVE_METHOD_CARD_X : hasActive ? collapsedX : offsetX,
-        y: isActive ? 112 : hasActive ? 330 : layout.y,
+        y: isActive ? 58 : hasActive ? 272 : layout.y,
         rotate: isActive ? 0 : hasActive ? layout.rotate * 0.3 : layout.rotate,
         scale: isActive ? 1 : hasActive ? 0.88 : 1,
       }}
@@ -280,6 +287,17 @@ function MethodObservatory() {
   const activeMethod = activeMethodId ? METHOD_MAP[activeMethodId] : null
 
   useEffect(() => {
+    if (!activeMethodId) return undefined
+
+    function closeActiveMethod() {
+      setActiveMethodId(null)
+    }
+
+    document.addEventListener('click', closeActiveMethod, true)
+    return () => document.removeEventListener('click', closeActiveMethod, true)
+  }, [activeMethodId])
+
+  useEffect(() => {
     function updateCardSpacing() {
       if (window.matchMedia('(max-width: 720px)').matches) {
         setCardSpacing(76)
@@ -308,7 +326,7 @@ function MethodObservatory() {
               initial={{ opacity: 0, x: 16 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 16 }}
-              transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ duration: 0.42, ease: [0.16, 1, 0.3, 1] }}
               onClick={(event) => event.stopPropagation()}
             >
               <span>{activeMethod.titleEn}</span>

@@ -92,6 +92,7 @@
 }
 
 .law-archive.has-active-folder {
+  isolation: auto;
   perspective: none;
 }
 
@@ -514,11 +515,19 @@
   isolation: isolate;
   overflow: visible;
   transition:
+    opacity 200ms ease,
     color 260ms ease;
 }
 
 .law-folder.is-active .law-folder-tab {
   color: var(--law-folder-ink);
+  visibility: hidden;
+  opacity: 0;
+}
+
+.law-folder.is-muted .law-folder-tab {
+  visibility: hidden;
+  opacity: 0;
 }
 
 .law-folder-tab::before,
@@ -601,8 +610,9 @@
 .law-folder-file-mark {
   position: absolute;
   left: 52%;
-  top: 47px;
-  z-index: 3;
+  top: 18px;
+  --file-mark-shift-y: -20px;
+  z-index: 1;
   color: rgba(5, 7, 19, 0.2);
   font-family: "Space Mono", monospace;
   font-size: clamp(46px, 7vw, 86px);
@@ -610,8 +620,15 @@
   line-height: 0.82;
   letter-spacing: 0;
   pointer-events: none;
-  transform: translateX(-50%) perspective(420px) rotateX(-58deg) skewX(-5deg);
+  transition: opacity 180ms ease, visibility 180ms ease;
+  transform: translate(-50%, var(--file-mark-shift-y)) perspective(420px) rotateX(-58deg) skewX(-5deg);
   transform-origin: center bottom;
+}
+
+.law-folder.is-active .law-folder-file-mark,
+.law-folder.is-muted .law-folder-file-mark {
+  visibility: hidden;
+  opacity: 0;
 }
 
 .law-folder.is-active .law-folder-strip {
@@ -623,7 +640,7 @@
   left: 34px;
   right: 34px;
   top: 62px;
-  z-index: 5;
+  z-index: 8;
   display: grid;
   grid-template-columns: minmax(230px, 0.74fr) minmax(260px, 1fr);
   grid-template-rows: auto auto 1fr;

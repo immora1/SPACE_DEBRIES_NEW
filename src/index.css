@@ -44,14 +44,6 @@
   body {
     margin: 0;
     background-color: #04040f;
-    /* Mesh gradient 鈥?deep indigo/blue/purple blobs, fixed so it tiles behind all modules */
-    background-image:
-      radial-gradient(ellipse at 18% 18%, rgba(55, 65, 195, 0.22) 0px, transparent 52%),
-      radial-gradient(ellipse at 82% 12%, rgba(107, 70, 220, 0.18) 0px, transparent 48%),
-      radial-gradient(ellipse at 60% 55%, rgba(34, 90, 200, 0.14) 0px, transparent 48%),
-      radial-gradient(ellipse at 22% 78%, rgba(80, 50, 190, 0.16) 0px, transparent 44%),
-      radial-gradient(ellipse at 88% 82%, rgba(55, 100, 220, 0.12) 0px, transparent 44%);
-    background-attachment: scroll;
     color: #e8e8f8;
     font-family: 'Noto Sans SC', sans-serif;
     font-size: 14px;
@@ -71,6 +63,192 @@
 }
 
 @layer components {
+
+  .app-main {
+    min-height: 100vh;
+    background: #050713;
+  }
+
+  .optional-module-shell {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+  }
+
+  .optional-module-shell:not(.is-expanded) {
+    display: contents;
+  }
+
+  .optional-module-shell.is-expanded {
+    width: 100%;
+    padding: 0;
+  }
+
+  .optional-module-card {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 28px;
+    margin: 20px 0 0;
+    padding: 26px 30px;
+    border: 1px solid rgba(245, 247, 255, 0.96);
+    border-radius: 8px;
+    color: #080b16;
+    background: #f8f9fd;
+    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.22);
+  }
+
+  .optional-module-copy {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .optional-module-mark {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(8, 11, 22, 0.18);
+    border-radius: 6px;
+    background: #eef0f5;
+  }
+
+  .optional-module-text {
+    min-width: 0;
+  }
+
+  .optional-module-kicker,
+  .optional-module-expanded-label {
+    color: rgba(8, 11, 22, 0.48);
+    font: 700 8px/1.4 'Space Mono', monospace;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .optional-module-title {
+    margin: 5px 0 2px;
+    color: #080b16;
+    font: 400 21px/1.25 'PingFang SC', 'Noto Sans SC', sans-serif;
+  }
+
+  .optional-module-description {
+    color: rgba(8, 11, 22, 0.58);
+    font: 400 12px/1.6 'PingFang SC', 'Noto Sans SC', sans-serif;
+  }
+
+  .optional-module-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 0 0 auto;
+  }
+
+  .optional-module-action {
+    min-width: 136px;
+    min-height: 42px;
+    padding: 0 24px;
+    border: 1px solid #080b16;
+    border-radius: 999px;
+    font: 600 11px/1 'PingFang SC', 'Noto Sans SC', sans-serif;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color 180ms ease, background-color 180ms ease, transform 220ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 180ms ease;
+  }
+
+  .optional-module-action--secondary {
+    color: #080b16;
+    background: transparent;
+  }
+
+  .optional-module-action--primary {
+    color: #fff;
+    background: #080b16;
+  }
+
+  .optional-module-action--compact {
+    min-width: 96px;
+    min-height: 34px;
+    padding-inline: 18px;
+    font-size: 10px;
+  }
+
+  .optional-module-expanded-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 14px clamp(18px, 3.2vw, 56px);
+    border-top: 1px solid rgba(245, 247, 255, 0.92);
+    border-bottom: 1px solid rgba(8, 11, 22, 0.12);
+    background: #f8f9fd;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .optional-module-action:not(:disabled):hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.14);
+    }
+
+    .optional-module-action--secondary:not(:disabled):hover {
+      color: #fff;
+      background: #080b16;
+    }
+
+    .optional-module-action--primary:not(:disabled):hover {
+      color: #080b16;
+      background: #fff;
+    }
+  }
+
+  @media (max-width: 720px) {
+    .optional-module-card {
+      align-items: stretch;
+      flex-direction: column;
+      padding: 22px 20px;
+    }
+
+    .optional-module-actions {
+      width: 100%;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .optional-module-action {
+      width: 100%;
+      min-width: 0;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .optional-module-copy {
+      align-items: flex-start;
+    }
+
+    .optional-module-title {
+      font-size: 18px;
+    }
+
+    .optional-module-description {
+      font-size: 11px;
+    }
+
+    .optional-module-expanded-bar {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .optional-module-action {
+      transition-duration: 0.01ms;
+    }
+  }
 
   .story-text {
     font-family: 'Noto Serif SC', serif;
@@ -176,6 +354,27 @@
   .text-accent-glow {
     color: #6b7fff;
     text-shadow: 0 0 20px rgba(107, 127, 255, 0.5);
+  }
+}
+
+[data-module="m3"],
+[data-module="m2"] {
+  position: relative;
+  isolation: isolate;
+}
+
+[data-module="m3"] {
+  z-index: 3;
+}
+
+[data-module="m2"] {
+  z-index: 2;
+  margin-top: clamp(-440px, -32svh, -260px);
+}
+
+@media (max-width: 760px) {
+  [data-module="m2"] {
+    margin-top: -180px;
   }
 }
 

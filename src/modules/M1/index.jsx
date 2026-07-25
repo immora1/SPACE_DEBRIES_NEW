@@ -572,16 +572,35 @@ function SceneSources() {
   const numberDivRefs = useRef([null, null, null])
   const ripplesRef    = useRef([[], [], []])
   const lastPosRef    = useRef([{x:0,y:0},{x:0,y:0},{x:0,y:0}])
+  const lastRippleAtRef = useRef([0, 0, 0])
+  const panelRectRefs = useRef([null, null, null])
+  const activePanelRef = useRef(-1)
   const rafRef        = useRef(null)
+  const requestDrawRef = useRef(() => {})
   const sourcesContainerRef = useRef(null)
   const sourcesVisRef       = useRef(false)
 
-  // Canvas dot-grid + ripple RAF loop
+  // Draw only the active panel and stop the RAF as soon as its ripples expire.
   useEffect(() => {
-    const DOT_GAP   = 24
+    const DOT_GAP   = 26
     const DOT_R     = 1.4
     const DOT_COLOR = 'rgba(107,127,255,0.22)'
+    const DPR       = Math.min(window.devicePixelRatio || 1, 1.25)
     const dims      = [{w:0,h:0},{w:0,h:0},{w:0,h:0}]
+    const resizeTimers = [null, null, null]
+    let lastPaint = 0
+
+    const resizeCanvas = (canvas, panel, i, width, height) => {
+      const nextWidth = Math.max(1, Math.round(width * DPR))
+      const nextHeight = Math.max(1, Math.round(height * DPR))
+      if (canvas.width !== nextWidth) canvas.width = nextWidth
+      if (canvas.height !== nextHeight) canvas.height = nextHeight
+      canvas.style.width = `${width}px`
+      canvas.style.height = `${height}px`
+      dims[i] = { w: width, h: height }
+      panelRectRefs.current[i] = panel.getBoundingClientRect()
+      requestDrawRef.current()
+    }
 
     const observers = canvasRefs.current.map((canvas, i) => {
       if (!canvas) return null
@@ -590,72 +609,115 @@ function SceneSources() {
       const ro = new ResizeObserver(entries => {
         for (const entry of entries) {
           const { width, height } = entry.contentRect
-          const dpr = window.devicePixelRatio || 1
-          canvas.width  = Math.round(width  * dpr)
-          canvas.height = Math.round(height * dpr)
-          canvas.style.width  = width  + 'px'
-          canvas.style.height = height + 'px'
-          dims[i] = { w: width, h: height }
+          if (!dims[i].w || !dims[i].h) {
+            resizeCanvas(canvas, panel, i, width, height)
+            continue
+          }
+          if (resizeTimers[i]) window.clearTimeout(resizeTimers[i])
+          resizeTimers[i] = window.setTimeout(() => {
+            resizeTimers[i] = null
+            resizeCanvas(canvas, panel, i, width, height)
+          }, 90)
         }
       })
       ro.observe(panel)
       return ro
     })
 
-    const srcVisIo = new IntersectionObserver(([e]) => { sourcesVisRef.current = e.isIntersecting }, { rootMargin: '100px' })
-    if (sourcesContainerRef.current) srcVisIo.observe(sourcesContainerRef.current)
+    const draw = (timestamp) => {
+      rafRef.current = null
+      const activeIndex = activePanelRef.current
+      if (!sourcesVisRef.current || activeIndex < 0) return
+      if (timestamp - lastPaint < 30) {
+        rafRef.current = requestAnimationFrame(draw)
+        return
+      }
+      lastPaint = timestamp
 
-    const draw = () => {
-      if (!sourcesVisRef.current) { rafRef.current = requestAnimationFrame(draw); return }
       const now = performance.now()
-      canvasRefs.current.forEach((canvas, i) => {
-        if (!canvas) return
-        const ctx = canvas.getContext('2d')
-        if (!ctx) return
-        const { w, h } = dims[i]
-        if (!w || !h) return
-        const dpr = window.devicePixelRatio || 1
-        ctx.clearRect(0, 0, canvas.width, canvas.height)
-        ctx.save()
-        ctx.scale(dpr, dpr)
+      const canvas = canvasRefs.current[activeIndex]
+      const ctx = canvas?.getContext('2d')
+      const { w, h } = dims[activeIndex]
+      if (!canvas || !ctx || !w || !h) return
 
-        // Expire ripples older than 1.2 s
-        ripplesRef.current[i] = ripplesRef.current[i].filter(r => (now - r.born) < 1200)
+      ripplesRef.current[activeIndex] = ripplesRef.current[activeIndex]
+        .filter(ripple => (now - ripple.born) < 1200)
+      const ripples = ripplesRef.current[activeIndex]
 
-        const ripples = ripplesRef.current[i]
-        for (let x = DOT_GAP / 2; x < w; x += DOT_GAP) {
-          for (let y = DOT_GAP / 2; y < h; y += DOT_GAP) {
-            let scale = 1
-            for (const r of ripples) {
-              const age      = (now - r.born) / 1000
-              const waveFront = age * 220
-              const dist     = Math.hypot(x - r.x, y - r.y)
-              const diff     = Math.abs(dist - waveFront)
-              if (diff < 38) {
-                const intensity = (1 - diff / 38) * Math.exp(-age * 2.2)
-                scale += intensity * 2.8
-              }
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0)
+      ctx.beginPath()
+
+      for (let x = DOT_GAP / 2; x < w; x += DOT_GAP) {
+        for (let y = DOT_GAP / 2; y < h; y += DOT_GAP) {
+          let scale = 1
+          for (const ripple of ripples) {
+            const age = (now - ripple.born) / 1000
+            const waveFront = age * 220
+            const distance = Math.hypot(x - ripple.x, y - ripple.y)
+            const difference = Math.abs(distance - waveFront)
+            if (difference < 38) {
+              const intensity = (1 - difference / 38) * Math.exp(-age * 2.2)
+              scale += intensity * 2.8
             }
-            ctx.beginPath()
-            ctx.arc(x, y, DOT_R * scale, 0, Math.PI * 2)
-            ctx.fillStyle = DOT_COLOR
-            ctx.fill()
           }
+          const radius = DOT_R * scale
+          ctx.moveTo(x + radius, y)
+          ctx.arc(x, y, radius, 0, Math.PI * 2)
         }
-        ctx.restore()
-      })
-      rafRef.current = requestAnimationFrame(draw)
+      }
+      ctx.fillStyle = DOT_COLOR
+      ctx.fill()
+
+      if (ripples.length > 0) rafRef.current = requestAnimationFrame(draw)
     }
 
-    rafRef.current = requestAnimationFrame(draw)
+    const requestDraw = () => {
+      if (sourcesVisRef.current && activePanelRef.current >= 0 && !rafRef.current) {
+        rafRef.current = requestAnimationFrame(draw)
+      }
+    }
+    requestDrawRef.current = requestDraw
+
+    const srcVisIo = new IntersectionObserver(([entry]) => {
+      sourcesVisRef.current = entry.isIntersecting
+      if (entry.isIntersecting) {
+        requestDraw()
+      } else if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current)
+        rafRef.current = null
+      }
+    }, { rootMargin: '100px' })
+
+    if (sourcesContainerRef.current) {
+      srcVisIo.observe(sourcesContainerRef.current)
+    } else {
+      sourcesVisRef.current = true
+    }
+
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current)
+      resizeTimers.forEach(timer => timer && window.clearTimeout(timer))
       observers.forEach(ro => ro && ro.disconnect())
       srcVisIo.disconnect()
+      requestDrawRef.current = () => {}
     }
   }, [])
 
   const applyHover = useCallback((idx) => {
+    activePanelRef.current = idx
+    if (idx >= 0) {
+      panelRectRefs.current[idx] = panelRefs.current[idx]?.getBoundingClientRect() ?? null
+      requestDrawRef.current()
+    } else {
+      ripplesRef.current.forEach((_, index) => { ripplesRef.current[index] = [] })
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current)
+        rafRef.current = null
+      }
+    }
+
     panelRefs.current.forEach((el, j) => {
       if (!el) return
       el.style.flex = idx < 0 ? '1' : j === idx ? '3' : '0.65'
@@ -690,7 +752,7 @@ function SceneSources() {
     videoRefs.current.forEach((el, j) => {
       if (!el) return
       if (idx >= 0 && j === idx) {
-        el.currentTime = 0
+        if (el.ended) el.currentTime = 0
         el.play().catch(() => {})
       } else {
         el.pause()
@@ -711,18 +773,30 @@ function SceneSources() {
   }, [])
 
   const handleMouseMove = useCallback((e, i) => {
-    const panel = panelRefs.current[i]
-    if (!panel) return
-    const rect = panel.getBoundingClientRect()
+    if (activePanelRef.current !== i) return
+    const now = performance.now()
+    if (now - lastRippleAtRef.current[i] < 40) return
+    const rect = panelRectRefs.current[i]
+    if (!rect) return
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top
     const last = lastPosRef.current[i]
     const dx = x - last.x, dy = y - last.y
-    if (dx * dx + dy * dy > 16) {
-      ripplesRef.current[i].push({ x, y, born: performance.now() })
-      if (ripplesRef.current[i].length > 10) ripplesRef.current[i].shift()
+    if (dx * dx + dy * dy > 144) {
+      ripplesRef.current[i].push({ x, y, born: now })
+      if (ripplesRef.current[i].length > 6) ripplesRef.current[i].shift()
+      lastRippleAtRef.current[i] = now
+      requestDrawRef.current()
     }
     lastPosRef.current[i] = { x, y }
+  }, [])
+
+  const handlePanelTransitionEnd = useCallback((event, i) => {
+    if (event.target !== event.currentTarget || event.propertyName !== 'flex-grow') return
+    const panel = panelRefs.current[i]
+    if (!panel) return
+    panelRectRefs.current[i] = panel.getBoundingClientRect()
+    requestDrawRef.current()
   }, [])
 
   return (
@@ -766,6 +840,7 @@ function SceneSources() {
           onMouseEnter={() => applyHover(i)}
           onMouseLeave={() => { applyHover(-1); lastPosRef.current[i] = {x:0,y:0} }}
           onMouseMove={(e) => handleMouseMove(e, i)}
+          onTransitionEnd={(event) => handlePanelTransitionEnd(event, i)}
           style={{
             flex: 1, overflow: 'hidden', position: 'relative',
             cursor: 'default', minWidth: 0,
@@ -785,7 +860,7 @@ function SceneSources() {
                 position: 'absolute', inset: 0,
                 width: '100%', height: '100%',
                 objectFit: 'cover',
-                filter: 'grayscale(0.88)',
+                opacity: 0.76,
               }}
             />
           ) : (
@@ -793,14 +868,14 @@ function SceneSources() {
               position: 'absolute', inset: 0,
               backgroundImage: `url(${src.img})`,
               backgroundSize: 'cover', backgroundPosition: 'center',
-              filter: 'grayscale(0.92)',
+              opacity: 0.76,
             }} />
           )}
 
           {/* Blue tint overlay — static, GPU layer cached */}
           <div style={{
             position: 'absolute', inset: 0,
-            background: 'linear-gradient(to top, rgba(5,7,19,0.88), rgba(5,7,19,0.14))',
+            background: 'linear-gradient(to top, rgba(5,7,19,0.9), rgba(7,10,25,0.34))',
           }} />
 
           {/* Brightness overlay — only this animates (opacity = compositor only) */}
@@ -1250,12 +1325,13 @@ function SceneTrend() {
     const ro = new ResizeObserver(resize)
     ro.observe(canvas)
 
-    const visIo = new IntersectionObserver(([e]) => { trendVisRef.current = e.isIntersecting }, { rootMargin: '100px' })
-    if (sceneRef.current) visIo.observe(sceneRef.current)
-
-    let rafId, lastFrameTime = performance.now()
+    let rafId = 0
+    let lastFrameTime = performance.now()
     const draw = (now = performance.now()) => {
-      if (!trendVisRef.current) { rafId = requestAnimationFrame(draw); return }
+      if (!trendVisRef.current) {
+        rafId = 0
+        return
+      }
       const dt = Math.min((now - lastFrameTime) / 1000, 0.05)
       lastFrameTime = now
       // Slow leftward drift — 0.7% of screen width per second (base)
@@ -1384,8 +1460,29 @@ function SceneTrend() {
       }
       rafId = requestAnimationFrame(draw)
     }
-    rafId = requestAnimationFrame(ts => draw(ts))
-    return () => { cancelAnimationFrame(rafId); ro.disconnect(); visIo.disconnect() }
+
+    const visIo = new IntersectionObserver(([entry]) => {
+      trendVisRef.current = entry.isIntersecting
+      if (entry.isIntersecting) {
+        if (!rafId) rafId = requestAnimationFrame(draw)
+      } else if (rafId) {
+        cancelAnimationFrame(rafId)
+        rafId = 0
+      }
+    }, { rootMargin: '100px' })
+
+    if (sceneRef.current) {
+      visIo.observe(sceneRef.current)
+    } else {
+      trendVisRef.current = true
+      rafId = requestAnimationFrame(draw)
+    }
+
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId)
+      ro.disconnect()
+      visIo.disconnect()
+    }
   }, [particles])
 
   /* Autoplay 1960 → 2026 in 4s, stops on first mousemove */

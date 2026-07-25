@@ -1,5 +1,5 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react'
-import { animate, motion, useMotionValue, useReducedMotion, useTransform } from 'framer-motion'
+﻿import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion } from 'framer-motion'
 import gsap from 'gsap'
 import useAppStore from '../../store/useAppStore'
 import './index.css'
@@ -30,7 +30,7 @@ const GUIDE_STEPS = [
   {
     type: 'meteor',
     action: '向左拖拽',
-    image: '/m8-game/meteor-fireball.png',
+    image: '/m8-game/meteor-split.png',
     title: '流星',
     clue: '单条亮线，时间很短，可能突然爆闪。',
     reportHint: '向左拖拽完成判断。',
@@ -80,6 +80,7 @@ const STANDARD_CARDS = [
   {
     id: 'meteor',
     code: 'FIREBALL',
+    image: '/m8-game/meteor-fireball.png',
     title: '流星',
     signal: '通常极快，1–3 秒内划过；可能有短拖尾，偶尔爆闪。',
     warning: '如果持续几十秒并分裂成多点同向飞行，就要谨慎排除再入碎片。',
@@ -198,17 +199,105 @@ function ObservationCardContent({ item, indexLabel, totalLabel, isGuide = false 
   )
 }
 
-function QueuedCardBack({ index }) {
+const ReportComparison = memo(function ReportComparison() {
+  const [reportFront, setReportFront] = useState('good')
+  const [reportSwapPhase, setReportSwapPhase] = useState('idle')
+  const reportSwapTargetRef = useRef(null)
+
+  function beginReportSwap(target) {
+    if (target === reportFront || reportSwapPhase !== 'idle') return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setReportFront(target)
+      return
+    }
+    reportSwapTargetRef.current = target
+    setReportSwapPhase('separating')
+  }
+
+  function handleReportTransitionEnd(event) {
+    if (event.target !== event.currentTarget || event.propertyName !== 'transform') return
+    if (event.currentTarget.dataset.reportCard !== 'good') return
+
+    if (reportSwapPhase === 'separating') {
+      const target = reportSwapTargetRef.current
+      if (!target) {
+        setReportSwapPhase('idle')
+        return
+      }
+      setReportFront(target)
+      setReportSwapPhase('returning')
+      return
+    }
+
+    if (reportSwapPhase === 'returning') {
+      reportSwapTargetRef.current = null
+      setReportSwapPhase('idle')
+    }
+  }
+
+  function handleReportKeyDown(event, target) {
+    if (event.key !== 'Enter' && event.key !== ' ') return
+    event.preventDefault()
+    beginReportSwap(target)
+  }
+
   return (
-    <div className="m8-stack-back-face" aria-hidden="true">
-      <span />
-      <i />
-      <i />
-      <i />
-      <b>{String(index).padStart(2, '0')}</b>
+    <div className={['m8-report-compare', `is-${reportSwapPhase}`].join(' ')}>
+      <article
+        className={['is-bad', reportFront === 'bad' ? 'is-front' : 'is-back'].join(' ')}
+        data-report-card="bad"
+        role="button"
+        tabIndex={0}
+        aria-label="将信息不足报告移到前面"
+        aria-pressed={reportFront === 'bad'}
+        aria-disabled={reportSwapPhase !== 'idle'}
+        onClick={() => beginReportSwap('bad')}
+        onKeyDown={(event) => handleReportKeyDown(event, 'bad')}
+        onTransitionEnd={handleReportTransitionEnd}
+      >
+        <span>信息不足</span>
+        <blockquote>{BAD_REPORT.text}</blockquote>
+        <div className="m8-report-flag-group is-missing">
+          <p>缺少</p>
+          <ol className="m8-report-flags" aria-label="这份记录缺少的信息">
+            {BAD_REPORT.missing.map((item, index) => (
+              <li key={item}>
+                <span>{String(index + 1).padStart(2, '0')}</span>
+                <b>{item}</b>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </article>
+      <article
+        className={['is-good', reportFront === 'good' ? 'is-front' : 'is-back'].join(' ')}
+        data-report-card="good"
+        role="button"
+        tabIndex={0}
+        aria-label="将可复核记录移到前面"
+        aria-pressed={reportFront === 'good'}
+        aria-disabled={reportSwapPhase !== 'idle'}
+        onClick={() => beginReportSwap('good')}
+        onKeyDown={(event) => handleReportKeyDown(event, 'good')}
+        onTransitionEnd={handleReportTransitionEnd}
+      >
+        <span>可复核记录</span>
+        <blockquote>{GOOD_REPORT.text}</blockquote>
+        <div className="m8-report-flag-group is-included">
+          <p>包含</p>
+          <ol className="m8-report-flags" aria-label="这份记录包含的信息">
+            {GOOD_REPORT.fields.map((item, index) => (
+              <li key={item}>
+                <span>{String(index + 1).padStart(2, '0')}</span>
+                <b>{item}</b>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </article>
     </div>
   )
-}
+})
 
 function ClassificationDeck({ items, practice, onAnswer, onRestart }) {
   const [cursor, setCursor] = useState(0)
@@ -218,12 +307,14 @@ function ClassificationDeck({ items, practice, onAnswer, onRestart }) {
   const [feedback, setFeedback] = useState(null)
   const [guideFeedback, setGuideFeedback] = useState(null)
   const [guideDragging, setGuideDragging] = useState(false)
-  const [backpackEntry, setBackpackEntry] = useState(null)
+  const [backpackEntries, setBackpackEntries] = useState([])
   const resolvingRef = useRef(false)
   const draggingRef = useRef(false)
   const guideFeedbackTimerRef = useRef(null)
   const guideCardRef = useRef(null)
   const guidePointerRef = useRef(null)
+  const currentCardRef = useRef(null)
+  const backpackRef = useRef(null)
   const reduceMotion = useReducedMotion()
   const x = useMotionValue(0)
   const y = useMotionValue(0)
@@ -233,14 +324,9 @@ function ClassificationDeck({ items, practice, onAnswer, onRestart }) {
   const guideY = useMotionValue(0)
   const guideScale = useMotionValue(1)
   const guideOpacity = useMotionValue(1)
-  const guideTiltX = useMotionValue(0)
-  const guideTiltY = useMotionValue(0)
-  const rotateX = useMotionValue(0)
-  const rotateY = useMotionValue(0)
-  const rotate = useTransform(x, [-320, 0, 320], [-10, 0, 10])
-  const guideRotate = useTransform(guideX, [-320, 0, 320], [-9, 0, 9])
   const current = items[cursor]
   const guide = GUIDE_STEPS[guideIndex]
+  const backpackEntry = backpackEntries[backpackEntries.length - 1] || null
   const correctCount = items.filter((item) => practice[item.id] === item.type).length
   const score = Math.round((correctCount / items.length) * 100)
 
@@ -256,8 +342,6 @@ function ClassificationDeck({ items, practice, onAnswer, onRestart }) {
     guideY.set(0)
     guideScale.set(1)
     guideOpacity.set(1)
-    guideTiltX.set(0)
-    guideTiltY.set(0)
     setGuideFeedback(null)
     setGuideDragging(false)
 
@@ -292,7 +376,7 @@ function ClassificationDeck({ items, practice, onAnswer, onRestart }) {
     })
 
     return () => ctx.revert()
-  }, [guide.vector, guideDone, guideIndex, guideOpacity, guideScale, guideTiltX, guideTiltY, guideX, guideY, reduceMotion])
+  }, [guide.vector, guideDone, guideIndex, guideOpacity, guideScale, guideX, guideY, reduceMotion])
 
   useEffect(() => {
     if (guideDone || guideDragging || resolving || guideFeedback || reduceMotion) {
@@ -301,17 +385,13 @@ function ClassificationDeck({ items, practice, onAnswer, onRestart }) {
 
     const targetX = guide.vector.x * 48
     const targetY = guide.vector.y * 44
-    const targetTiltX = guide.vector.y > 0 ? -11 : 1.8
-    const targetTiltY = guide.vector.x ? guide.vector.x * -11 : 0
     const controls = [
       animate(guideX, [0, targetX, 0], { duration: 1.55, ease: 'easeInOut', repeat: Infinity }),
       animate(guideY, [0, targetY, 0], { duration: 1.55, ease: 'easeInOut', repeat: Infinity }),
-      animate(guideTiltX, [0, targetTiltX, 0], { duration: 1.55, ease: 'easeInOut', repeat: Infinity }),
-      animate(guideTiltY, [0, targetTiltY, 0], { duration: 1.55, ease: 'easeInOut', repeat: Infinity }),
     ]
 
     return () => controls.forEach((control) => control.stop())
-  }, [guide.vector, guideDone, guideDragging, guideFeedback, guideTiltX, guideTiltY, guideX, guideY, reduceMotion, resolving])
+  }, [guide.vector, guideDone, guideDragging, guideFeedback, guideX, guideY, reduceMotion, resolving])
 
   useEffect(() => () => {
     if (guideFeedbackTimerRef.current) window.clearTimeout(guideFeedbackTimerRef.current)
@@ -324,31 +404,43 @@ function ClassificationDeck({ items, practice, onAnswer, onRestart }) {
     const correct = type === current.type
     const label = PRACTICE_OPTIONS.find(([option]) => option === current.type)?.[1]
     setFeedback({ correct, label })
-    if (type === 'debris') {
-      setBackpackEntry({
-        title: current.title,
-        correct,
-        index: cursor + 1,
-      })
-    }
     onAnswer(current.id, type)
 
-    const duration = reduceMotion ? 0.01 : 0.34
-    const exitX = vector.x * Math.max(window.innerWidth * 0.68, 720)
-    const exitY = vector.y * Math.max(window.innerHeight * 0.5, 420)
+    const isBackpackDrop = type === 'debris'
+    const duration = reduceMotion ? 0.01 : isBackpackDrop ? 0.52 : 0.34
+    const cardRect = currentCardRef.current?.getBoundingClientRect()
+    const targetRect = backpackRef.current?.getBoundingClientRect()
+    const hasBackpackTarget = isBackpackDrop && cardRect && targetRect
+    const exitX = hasBackpackTarget
+      ? x.get() + targetRect.left + targetRect.width / 2 - (cardRect.left + cardRect.width / 2)
+      : vector.x * Math.max(window.innerWidth * 0.68, 720)
+    const exitY = hasBackpackTarget
+      ? y.get() + targetRect.top + targetRect.height / 2 - (cardRect.top + cardRect.height / 2)
+      : vector.y * Math.max(window.innerHeight * 0.5, 420)
     await Promise.all([
       animate(x, exitX, { duration, ease: [0.22, 1, 0.36, 1] }),
       animate(y, exitY, { duration, ease: [0.22, 1, 0.36, 1] }),
-      animate(scale, 0.92, { duration }),
-      animate(opacity, 0, { duration: duration * 0.78 }),
+      animate(scale, isBackpackDrop ? 0.24 : 0.92, { duration, ease: [0.22, 1, 0.36, 1] }),
+      animate(opacity, isBackpackDrop ? 0.08 : 0, { duration: duration * 0.82 }),
     ])
+
+    if (isBackpackDrop) {
+      setBackpackEntries((entries) => [
+        ...entries,
+        {
+          id: current.id,
+          title: current.title,
+          correct,
+          index: cursor + 1,
+          image: current.img || current.image,
+        },
+      ])
+    }
 
     x.set(0)
     y.set(0)
     scale.set(1)
     opacity.set(1)
-    rotateX.set(0)
-    rotateY.set(0)
     setCursor((value) => value + 1)
     draggingRef.current = false
     resolvingRef.current = false
@@ -360,8 +452,6 @@ function ClassificationDeck({ items, practice, onAnswer, onRestart }) {
     animate(guideY, 0, reduceMotion ? { duration: 0.01 } : { type: 'spring', stiffness: 420, damping: 34 })
     animate(guideScale, 1, reduceMotion ? { duration: 0.01 } : { type: 'spring', stiffness: 360, damping: 28 })
     animate(guideOpacity, 1, { duration: reduceMotion ? 0.01 : 0.2 })
-    animate(guideTiltX, 0, { duration: reduceMotion ? 0.01 : 0.18 })
-    animate(guideTiltY, 0, { duration: reduceMotion ? 0.01 : 0.18 })
   }
 
   async function completeGuideDrag(vector) {
@@ -384,8 +474,6 @@ function ClassificationDeck({ items, practice, onAnswer, onRestart }) {
     guideY.set(0)
     guideScale.set(1)
     guideOpacity.set(1)
-    guideTiltX.set(0)
-    guideTiltY.set(0)
     resolvingRef.current = false
     setResolving(false)
 
@@ -413,7 +501,7 @@ function ClassificationDeck({ items, practice, onAnswer, onRestart }) {
     setGuideDone(false)
     setFeedback(null)
     setGuideFeedback(null)
-    setBackpackEntry(null)
+    setBackpackEntries([])
     if (guideFeedbackTimerRef.current) {
       window.clearTimeout(guideFeedbackTimerRef.current)
       guideFeedbackTimerRef.current = null
@@ -428,25 +516,6 @@ function ClassificationDeck({ items, practice, onAnswer, onRestart }) {
     guideY.set(0)
     guideScale.set(1)
     guideOpacity.set(1)
-    guideTiltX.set(0)
-    guideTiltY.set(0)
-    rotateX.set(0)
-    rotateY.set(0)
-  }
-
-  function handlePointerMove(event) {
-    if (resolvingRef.current || draggingRef.current || reduceMotion) return
-    const rect = event.currentTarget.getBoundingClientRect()
-    const px = (event.clientX - rect.left) / rect.width - 0.5
-    const py = (event.clientY - rect.top) / rect.height - 0.5
-    rotateY.set(px * 8)
-    rotateX.set(py * -8)
-  }
-
-  function handlePointerLeave() {
-    if (reduceMotion) return
-    animate(rotateX, 0, { type: 'spring', stiffness: 260, damping: 26 })
-    animate(rotateY, 0, { type: 'spring', stiffness: 260, damping: 26 })
   }
 
   if (!guideDone) {
@@ -467,15 +536,13 @@ function ClassificationDeck({ items, practice, onAnswer, onRestart }) {
             <motion.article
               ref={guideCardRef}
               className={['m8-game-card', 'm8-training-card', 'is-current', 'is-guide-demo', guideFeedback && `is-${guideFeedback.type}`].filter(Boolean).join(' ')}
-              style={{ x: guideX, y: guideY, scale: guideScale, opacity: guideOpacity, rotate: guideRotate, rotateX: guideTiltX, rotateY: guideTiltY }}
+              style={{ x: guideX, y: guideY, scale: guideScale, opacity: guideOpacity }}
               drag={resolving ? false : true}
               dragElastic={0.72}
               dragMomentum={false}
               onDragStart={() => {
                 setGuideDragging(true)
                 setGuideFeedback(null)
-                animate(guideTiltX, 0, { duration: reduceMotion ? 0.01 : 0.16 })
-                animate(guideTiltY, 0, { duration: reduceMotion ? 0.01 : 0.16 })
               }}
               onDragEnd={(_, info) => {
                 setGuideDragging(false)
@@ -532,27 +599,30 @@ function ClassificationDeck({ items, practice, onAnswer, onRestart }) {
       </div>
 
       <div className="m8-game-stage">
-        {items.slice(cursor + 1, cursor + 3).map((item, index) => (
+        {items.slice(cursor + 1, cursor + 2).map((item, index) => (
           <article
             key={item.id}
             className="m8-game-card m8-training-card is-queued"
             style={{ '--stack-index': index + 1 }}
             aria-hidden="true"
           >
-            <QueuedCardBack index={cursor + index + 2} />
+            <ObservationCardContent
+              item={item}
+              indexLabel={String(cursor + index + 2).padStart(2, '0')}
+              totalLabel={String(items.length).padStart(2, '0')}
+            />
           </article>
         ))}
         <motion.article
           key={current.id}
+          ref={currentCardRef}
           className="m8-game-card m8-training-card is-current"
-          style={{ x, y, scale, opacity, rotate, rotateX, rotateY }}
+          style={{ x, y, scale, opacity }}
           drag={resolving ? false : true}
           dragElastic={0.72}
           dragMomentum={false}
           onDragStart={() => {
             draggingRef.current = true
-            rotateX.set(0)
-            rotateY.set(0)
           }}
           onDragEnd={(_, info) => {
             draggingRef.current = false
@@ -563,8 +633,6 @@ function ClassificationDeck({ items, practice, onAnswer, onRestart }) {
               animate(y, 0, reduceMotion ? { duration: 0.01 } : { type: 'spring', stiffness: 420, damping: 34 })
             }
           }}
-          onPointerMove={handlePointerMove}
-          onPointerLeave={handlePointerLeave}
         >
           <ObservationCardContent
             item={current}
@@ -576,19 +644,38 @@ function ClassificationDeck({ items, practice, onAnswer, onRestart }) {
 
       <div className="m8-drop-slots" role="group" aria-label="太空垃圾背包">
         <button
+          ref={backpackRef}
           type="button"
           disabled={resolving}
-          className={['m8-drop-slot', 'm8-backpack-slot', backpackEntry && 'is-filled'].filter(Boolean).join(' ')}
+          className={['m8-drop-slot', 'm8-backpack-slot', backpackEntries.length && 'is-filled'].filter(Boolean).join(' ')}
           onClick={() => submit(DEBRIS_SLOT.type, DEBRIS_SLOT.vector)}
         >
           <span className="m8-backpack-mark" aria-hidden="true">
+            <AnimatePresence initial={false}>
+              {backpackEntries.slice(-4).map((entry, index) => (
+                <motion.span
+                  key={`${entry.id}-${entry.index}`}
+                  className="m8-backpack-inserted"
+                  style={{ '--backpack-index': index }}
+                  initial={{ opacity: 0, y: -18, scale: 0.82 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  <img src={entry.image} alt="" draggable="false" />
+                </motion.span>
+              ))}
+            </AnimatePresence>
             <i />
           </span>
           <span className="m8-drop-copy">
             <strong>{backpackEntry ? '已放入太空垃圾背包' : '太空垃圾背包'}</strong>
             <small>{backpackEntry ? `SCENE ${String(backpackEntry.index).padStart(2, '0')} · ${backpackEntry.title}` : '向下拖拽卡片，把疑似太空垃圾收入背包'}</small>
           </span>
-          <span className="m8-backpack-state" aria-hidden="true">{backpackEntry ? 'IN' : '↓'}</span>
+          <span className="m8-backpack-state" aria-label={`已收纳 ${backpackEntries.length} 张卡片`}>
+            <b>{backpackEntries.length}</b>
+            <small>已收纳</small>
+          </span>
         </button>
       </div>
     </div>
@@ -640,6 +727,7 @@ export default function M8({ onComplete }) {
     if (!root) return undefined
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const heroInteractionArea = heroMarkRef.current?.closest('.m8-header')
     let observer = null
     let blurObserver = null
     let xTo = null
@@ -693,16 +781,16 @@ export default function M8({ onComplete }) {
 
     function handlePointerMove(event) {
       if (!xTo || !yTo) return
-      const rect = root.getBoundingClientRect()
+      const rect = heroInteractionArea.getBoundingClientRect()
       const px = (event.clientX - rect.left) / rect.width - 0.5
       const py = (event.clientY - rect.top) / rect.height - 0.5
       xTo(px * 18)
       yTo(py * 12)
     }
 
-    root.addEventListener('pointermove', handlePointerMove)
+    if (heroInteractionArea) heroInteractionArea.addEventListener('pointermove', handlePointerMove)
     return () => {
-      root.removeEventListener('pointermove', handlePointerMove)
+      if (heroInteractionArea) heroInteractionArea.removeEventListener('pointermove', handlePointerMove)
       if (observer) observer.disconnect()
       if (blurObserver) blurObserver.disconnect()
       ctx.revert()
@@ -864,39 +952,9 @@ export default function M8({ onComplete }) {
       <section id="m8-compare" className="m8-band m8-compare m8-animate-section">
         <div className="m8-section-heading m8-section-heading--tight">
           <span>01 / REPORT ANATOMY</span>
-          <div><h3>感受不足以复核。</h3><p>报告只保留别人能验证的信息。</p></div>
+          <div><h3>报告对比。</h3><p>对照主观感受与可验证信息，判断哪些内容应该写入报告。</p></div>
         </div>
-        <div className="m8-report-compare">
-          <article className="is-bad">
-            <span>信息不足</span>
-            <blockquote>{BAD_REPORT.text}</blockquote>
-            <div className="m8-report-flag-group is-missing">
-              <p>没有</p>
-              <ol className="m8-report-flags" aria-label="这份记录缺少的信息">
-                {BAD_REPORT.missing.map((item, index) => (
-                  <li key={item}>
-                    <span>{String(index + 1).padStart(2, '0')}</span>
-                    <b>{item}</b>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          </article>
-          <article className="is-good">
-            <span>可复核记录</span>
-            <blockquote>{GOOD_REPORT.text}</blockquote>
-            <div className="m8-report-flag-group is-included">
-              <ol className="m8-report-flags" aria-label="这份记录包含的信息">
-                {GOOD_REPORT.fields.map((item, index) => (
-                  <li key={item}>
-                    <span>{String(index + 1).padStart(2, '0')}</span>
-                    <b>{item}</b>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          </article>
-        </div>
+        <ReportComparison />
         <div className="m8-required-fields" aria-label="观测报告必须包含的信息">
           <div className="m8-required-intro">
             <span>报告必须包含以下内容</span>
@@ -983,39 +1041,11 @@ export default function M8({ onComplete }) {
 
         <div className="m8-workbench">
           <div className="m8-observation-picker">
-            <div className="m8-workbench-kicker">
-              <span>SELECTED EVENT</span>
-              <b>{selectedNumber} / {String(OBSERVATION_SET.length).padStart(2, '0')}</b>
-            </div>
             <div className="m8-selected-observation">
               <div className="m8-selected-media">
                 <img src={selected.img} alt="" />
-                <span>{selectedNumber}</span>
-              </div>
-              <div className="m8-selected-copy">
-                <span>{selected.type.toUpperCase()}</span>
-                <h4>{selected.title}</h4>
-                <p>{selected.clue}</p>
               </div>
             </div>
-            <div className="m8-observation-strip-head">
-              <span>事件样本</span>
-              <small>点击切换观测素材</small>
-            </div>
-            <div className="m8-observation-thumbs">
-              {OBSERVATION_SET.map((item, index) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={selectedId === item.id ? 'is-active' : ''}
-                  onClick={() => selectObservation(item)}
-                  aria-label={`选择事件 ${index + 1}：${item.title}`}
-                >
-                  <img src={item.img} alt="" loading="lazy" /><span>{String(index + 1).padStart(2, '0')}</span>
-                </button>
-              ))}
-            </div>
-            <p className="m8-observation-hint">{selected.reportHint}</p>
           </div>
 
           <form className="m8-report-form" onSubmit={submitReport}>
@@ -1067,6 +1097,26 @@ export default function M8({ onComplete }) {
               <button type="submit" disabled={!canSubmit}>提交到社区</button>
             </div>
           </form>
+        </div>
+        <div className="m8-observation-carousel" aria-label="切换观测素材">
+          <div className="m8-observation-strip-head">
+            <span>事件样本</span>
+            <small>{selectedNumber} / {String(OBSERVATION_SET.length).padStart(2, '0')} · 横向滚动选择</small>
+          </div>
+          <div className="m8-observation-thumbs">
+            {OBSERVATION_SET.map((item, index) => (
+              <button
+                key={item.id}
+                type="button"
+                className={selectedId === item.id ? 'is-active' : ''}
+                onClick={() => selectObservation(item)}
+                aria-label={`选择事件 ${index + 1}：${item.title}`}
+              >
+                <img src={item.img} alt="" loading="lazy" /><span>{String(index + 1).padStart(2, '0')}</span>
+              </button>
+            ))}
+          </div>
+          <p className="m8-observation-hint">{selected.reportHint}</p>
         </div>
       </section>
 

@@ -1,0 +1,325 @@
+.stage-nav {
+  position: sticky;
+  top: 0;
+  z-index: 10000;
+  width: 100%;
+  padding: 14px clamp(18px, 3.2vw, 56px) 10px;
+  pointer-events: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.stage-nav__inner {
+  width: min(100%, 1680px);
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(24px, 4vw, 68px);
+  margin: 0 auto;
+}
+
+.stage-nav__brand {
+  padding: 0;
+  border: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  flex: 0 0 auto;
+  color: rgba(245, 247, 255, 0.94);
+  background: transparent;
+  font: 500 clamp(17px, 1.5vw, 22px)/1 'Lexend', sans-serif;
+  letter-spacing: 0;
+  white-space: nowrap;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: opacity 180ms ease, transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.stage-nav__brand:focus-visible {
+  outline: 1px solid rgba(245, 247, 255, 0.76);
+  outline-offset: 6px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .stage-nav__brand:hover {
+    opacity: 0.78;
+    transform: translateY(-1px);
+  }
+}
+
+.stage-nav__logo {
+  width: clamp(26px, 2.2vw, 34px);
+  height: clamp(26px, 2.2vw, 34px);
+  flex: 0 0 auto;
+  color: #f5f7ff;
+}
+
+.stage-nav__brand-text {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.stage-nav__brand-text i {
+  color: rgba(245, 247, 255, 0.34);
+  font-style: normal;
+}
+
+.stage-nav__brand-text b {
+  color: rgba(245, 247, 255, 0.52);
+  font-size: clamp(9px, 0.8vw, 12px);
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.stage-nav__navigation {
+  min-width: 0;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  pointer-events: auto;
+}
+
+.stage-nav__scroller {
+  min-width: 0;
+  max-width: 100%;
+  padding: 2px 0 5px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.stage-nav__scroller::-webkit-scrollbar {
+  display: none;
+}
+
+.stage-nav__capsules {
+  position: relative;
+  width: max-content;
+  min-height: 42px;
+  isolation: isolate;
+}
+
+.stage-nav__shape {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.16));
+}
+
+.stage-nav__shape path {
+  fill: #f5f7ff;
+}
+
+.stage-nav__items {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+
+.stage-nav__item {
+  position: relative;
+  width: 90px;
+  min-width: 0;
+  min-height: 42px;
+  flex: 0 0 90px;
+  display: grid;
+  place-items: center;
+  padding: 0 14px;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  color: rgba(8, 11, 22, 0.66);
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  opacity: 1;
+  transition:
+    color 240ms ease,
+    opacity 220ms ease,
+    width 560ms cubic-bezier(0.34, 1.42, 0.64, 1),
+    flex-basis 560ms cubic-bezier(0.34, 1.42, 0.64, 1);
+}
+
+.stage-nav__item:first-child,
+.stage-nav__item:last-child {
+  padding-inline: 18px;
+}
+
+.stage-nav__item-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  transform: translateY(0);
+  transition: transform 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.stage-nav__code {
+  font: 700 7px/1 'Space Mono', monospace;
+  letter-spacing: 0;
+  opacity: 0.64;
+}
+
+.stage-nav__label {
+  font: 600 10.5px/1 'PingFang SC', 'Noto Sans SC', sans-serif;
+  letter-spacing: 0;
+}
+
+.stage-nav__active-dots {
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  transform: translate(-50%, 3px) scale(0.72);
+  transition: opacity 240ms ease, transform 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.stage-nav__active-dots i {
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.stage-nav__item.is-active {
+  width: 124px;
+  flex-basis: 124px;
+  color: #080b16;
+}
+
+.stage-nav__item.is-active .stage-nav__item-copy {
+  transform: translateY(-3px);
+}
+
+.stage-nav__item.is-active .stage-nav__active-dots {
+  opacity: 0.72;
+  transform: translate(-50%, 0) scale(1);
+}
+
+.stage-nav__item.is-completed:not(.is-active) {
+  color: rgba(8, 11, 22, 0.78);
+}
+
+.stage-nav__item.is-disabled {
+  color: rgba(8, 11, 22, 0.26);
+  cursor: not-allowed;
+}
+
+.stage-nav__item:focus-visible {
+  outline: none;
+}
+
+.stage-nav__item:focus-visible .stage-nav__label {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .stage-nav__item:not(:disabled):hover {
+    color: #080b16;
+  }
+
+  .stage-nav__item:not(:disabled):hover .stage-nav__item-copy {
+    transform: translateY(-2px);
+  }
+
+  .stage-nav__item.is-active:not(:disabled):hover .stage-nav__item-copy {
+    transform: translateY(-3px);
+  }
+}
+
+@media (max-width: 1180px) {
+  .stage-nav__brand-text b,
+  .stage-nav__brand-text i {
+    display: none;
+  }
+
+  .stage-nav__item {
+    width: 82px;
+    flex-basis: 82px;
+    padding-inline: 12px;
+  }
+
+  .stage-nav__item.is-active {
+    width: 114px;
+    flex-basis: 114px;
+  }
+}
+
+@media (max-width: 920px) {
+  .stage-nav__inner {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .stage-nav__navigation,
+  .stage-nav__scroller {
+    width: 100%;
+  }
+}
+
+@media (max-width: 560px) {
+  .stage-nav {
+    padding: 11px 14px 8px;
+  }
+
+  .stage-nav__brand {
+    font-size: 16px;
+  }
+
+  .stage-nav__logo {
+    width: 25px;
+    height: 25px;
+  }
+
+  .stage-nav__capsules,
+  .stage-nav__item {
+    min-height: 38px;
+  }
+
+  .stage-nav__item {
+    width: 76px;
+    flex-basis: 76px;
+    padding: 0 10px;
+  }
+
+  .stage-nav__item.is-active {
+    width: 106px;
+    flex-basis: 106px;
+  }
+
+  .stage-nav__item:first-child,
+  .stage-nav__item:last-child {
+    padding-inline: 14px;
+  }
+
+  .stage-nav__label {
+    font-size: 10px;
+  }
+
+  .stage-nav__active-dots {
+    bottom: 5px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage-nav__item,
+  .stage-nav__item-copy,
+  .stage-nav__active-dots {
+    transition-duration: 0.01ms;
+  }
+}

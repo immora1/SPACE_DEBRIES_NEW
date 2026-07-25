@@ -229,11 +229,13 @@ function Satellite({ selections, activePart }) {
 
 // ── Part accent colours (mirrored from index.jsx) ──────────────────────────
 const GLB_PART_ACCENT = {
-  frame:      '#6b7fff',
-  solar:      '#38bdf8',
-  insulation: '#fbbf24',
-  propulsion: '#34d399',
+  frame:      '#8498ff',
+  solar:      '#4f9cff',
+  insulation: '#ffc857',
+  propulsion: '#4ee6bf',
 }
+
+const GLB_MODEL_MAX_SPAN = 6.6
 
 // Name-pattern matching (try first, then fall back to spatial)
 const NAME_PATTERNS = {
@@ -269,8 +271,11 @@ function classifyBySpatial(meshCenter, meshSize, sceneCenter, sceneSize) {
 function GLBScene({ activePart = 'frame' }) {
   const { scene } = useGLTF('/simple_satellite_low_poly_free.glb')
   const clonedScene  = useRef(null)
-  const partMeshes   = useRef({ frame: [], solar: [], insulation: [], propulsion: [] })
-  const tCol         = useRef(new THREE.Color())
+  const modelScale   = useRef(1)
+  const partMaterials = useRef({ frame: [], solar: [], insulation: [], propulsion: [] })
+  const accentColor   = useRef(new THREE.Color())
+  const targetColor   = useRef(new THREE.Color())
+  const targetEmissive = useRef(new THREE.Color())
 
   if (!clonedScene.current) {
     const cloned = scene.clone(true)
@@ -285,6 +290,9 @@ function GLBScene({ activePart = 'frame' }) {
     const sceneBbox   = new THREE.Box3().setFromObject(cloned)
     const sceneCenter = sceneBbox.getCenter(new THREE.Vector3())
     const sceneSize   = sceneBbox.getSize(new THREE.Vector3())
+    const maxSpan     = Math.max(sceneSize.x, sceneSize.y, sceneSize.z)
+
+    modelScale.current = maxSpan > 0 ? GLB_MODEL_MAX_SPAN / maxSpan : 1
 
     cloned.traverse(obj => {
       if (!obj.isMesh) return
@@ -293,7 +301,15 @@ function GLBScene({ activePart = 'frame' }) {
       const meshSize   = bbox.getSize(new THREE.Vector3())
       const part       = classifyByName(obj.name) ||
         classifyBySpatial(meshCenter, meshSize, sceneCenter, sceneSize)
-      partMeshes.current[part].push(obj)
+      const materials = Array.isArray(obj.material) ? obj.material : [obj.material]
+      materials.forEach((material) => {
+        partMaterials.current[part].push({
+          material,
+          baseColor: material.color?.clone() || null,
+          baseEmissive: material.emissive?.clone() || null,
+          baseEmissiveIntensity: material.emissiveIntensity || 0,
+        })
+      })
     })
 
     clonedScene.current = cloned
@@ -301,16 +317,32 @@ function GLBScene({ activePart = 'frame' }) {
 
   useFrame(() => {
     const accentHex = GLB_PART_ACCENT[activePart] ?? '#6b7fff'
-    for (const [part, meshes] of Object.entries(partMeshes.current)) {
+    accentColor.current.set(accentHex)
+
+    for (const [part, records] of Object.entries(partMaterials.current)) {
       const isActive = part === activePart
-      const tIntensity = isActive ? 0.72 : 0
-      tCol.current.set(isActive ? accentHex : '#000000')
-      for (const mesh of meshes) {
-        const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
-        for (const mat of mats) {
-          if (!mat.emissive) continue
-          mat.emissive.lerp(tCol.current, 0.06)
-          if (Math.abs(mat.emissiveIntensity - tIntensity) > 0.001) mat.emissiveIntensity += (tIntensity - mat.emissiveIntensity) * 0.06
+      for (const record of records) {
+        const { material } = record
+
+        if (record.baseColor && material.color) {
+          targetColor.current.copy(record.baseColor)
+          if (isActive) targetColor.current.lerp(accentColor.current, 0.48)
+          else targetColor.current.multiplyScalar(0.62)
+          material.color.lerp(targetColor.current, 0.08)
+        }
+
+        if (material.emissive) {
+          if (isActive) targetEmissive.current.copy(accentColor.current)
+          else if (record.baseEmissive) targetEmissive.current.copy(record.baseEmissive).multiplyScalar(0.18)
+          else targetEmissive.current.set('#000000')
+
+          material.emissive.lerp(targetEmissive.current, 0.1)
+          const targetIntensity = isActive
+            ? Math.max(1.12, record.baseEmissiveIntensity)
+            : record.baseEmissiveIntensity * 0.18
+          if (Math.abs(material.emissiveIntensity - targetIntensity) > 0.001) {
+            material.emissiveIntensity += (targetIntensity - material.emissiveIntensity) * 0.1
+          }
         }
       }
     }
@@ -319,7 +351,9 @@ function GLBScene({ activePart = 'frame' }) {
   return (
     <group rotation={[0.1, 0, 0]}>
       <Center>
-        <primitive object={clonedScene.current} />
+        <group scale={modelScale.current}>
+          <primitive object={clonedScene.current} />
+        </group>
       </Center>
     </group>
   )
@@ -338,26 +372,28 @@ export function GLBSatelliteModel({ accent = '#6b7fff', activePart = 'frame' }) 
       {inView && (
         <Canvas
           frameloop="always"
-          camera={{ position: [0, 0.4, 9.5], fov: 44 }}
-          dpr={[1, 1]}
-          gl={{ antialias: true, alpha: true }}
+          camera={{ position: [0, 0.2, 8.2], fov: 39 }}
+          dpr={[1, 1.5]}
+          gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
+          onCreated={({ gl }) => { gl.toneMappingExposure = 0.9 }}
           style={{ background: 'transparent', width: '100%', height: '100%' }}
         >
-          <ambientLight intensity={0.22} />
-          <directionalLight position={[4, 6, 3]}   intensity={1.4} color="#c0d0ff" />
-          <directionalLight position={[-3, -2, -5]} intensity={0.20} color="#1a1060" />
-          <pointLight position={[-4, 3, 2]} intensity={1.1} color={accent} distance={16} />
-          <pointLight position={[3, -2, 4]} intensity={0.5} color="#ffffff" distance={10} />
+          <ambientLight intensity={0.34} />
+          <hemisphereLight args={['#dce8ff', '#0b1020', 0.58]} />
+          <directionalLight position={[1.5, 4.5, 8]} intensity={1.38} color="#edf3ff" />
+          <directionalLight position={[-5, 1, 4]} intensity={0.56} color="#789ee8" />
+          <directionalLight position={[3, -3, -6]} intensity={0.28} color="#465b91" />
+          <pointLight position={[-4, 3, 3]} intensity={0.72} color={accent} distance={18} />
+          <pointLight position={[4, -1, 5]} intensity={0.4} color="#ffffff" distance={14} />
 
-          <BackgroundPlanet />
           <GLBScene activePart={activePart} />
 
           <OrbitControls
             autoRotate
             autoRotateSpeed={1.4}
             enableZoom
-            minDistance={4.0}
-            maxDistance={16.0}
+            minDistance={5.8}
+            maxDistance={14.0}
             enablePan={false}
             maxPolarAngle={Math.PI * 0.78}
             minPolarAngle={Math.PI * 0.18}

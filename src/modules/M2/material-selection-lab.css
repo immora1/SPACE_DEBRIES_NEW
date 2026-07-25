@@ -1,0 +1,668 @@
+.m2-material-lab {
+  width: min(100%, 700px);
+  font-family: 'PingFang SC', 'Noto Sans SC', sans-serif;
+}
+
+.m2-material-heading {
+  max-width: 600px;
+  margin-bottom: 30px;
+}
+
+.m2-material-heading > span {
+  color: rgba(159, 196, 255, 0.76);
+  font: 9px/1.4 'Space Mono', monospace;
+  letter-spacing: 0;
+}
+
+.m2-material-heading h3 {
+  margin: 18px 0 10px;
+  color: #f5f7ff;
+  font-family: 'Noto Serif SC', serif;
+  font-size: 34px;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+.m2-material-heading p {
+  max-width: 560px;
+  margin: 0;
+  color: rgba(238, 246, 255, 0.58);
+  font-size: 14px;
+  line-height: 1.9;
+}
+
+.m2-material-workspace {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.92fr) minmax(0, 1.08fr);
+  gap: 18px;
+  align-items: start;
+  overflow: visible;
+}
+
+.m2-material-model-panel {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  overflow: visible;
+}
+
+.m2-material-model {
+  width: 100%;
+  height: 320px;
+  margin-left: 0;
+  overflow: visible;
+  background: transparent;
+}
+
+.m2-material-model-fallback {
+  width: 100%;
+  height: 100%;
+}
+
+.m2-material-part-copy {
+  margin-top: 12px;
+}
+
+.m2-material-part-copy > span {
+  color: rgba(159, 196, 255, 0.68);
+  font: 8px/1.4 'Space Mono', monospace;
+  letter-spacing: 0;
+}
+
+.m2-material-part-copy h4 {
+  margin: 8px 0 6px;
+  color: #f5f7ff;
+  font-family: 'Noto Serif SC', serif;
+  font-size: 18px;
+  font-weight: 400;
+}
+
+.m2-material-part-copy p {
+  margin: 0;
+  color: rgba(238, 246, 255, 0.44);
+  font-size: 11px;
+  line-height: 1.72;
+}
+
+.m2-material-part-tabs {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: flex-end;
+  gap: 0;
+  margin: 0 8px -1px;
+  overflow: visible;
+}
+
+.m2-material-part-tabs button {
+  --m2-tab-width: 25%;
+  position: relative;
+  z-index: var(--m2-tab-layer, 1);
+  width: auto;
+  min-width: 0;
+  min-height: 40px;
+  flex: 0 0 var(--m2-tab-width);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 12px;
+  align-items: center;
+  gap: 5px;
+  margin-left: -5.333%;
+  padding: 2px 8px 0;
+  border: 0;
+  color: rgba(8, 11, 22, 0.42);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  isolation: isolate;
+  transition: color 220ms ease;
+}
+
+.m2-material-part-tabs button:first-child {
+  margin-left: 0;
+}
+
+.m2-material-part-tabs button:nth-child(1) {
+  --m2-tab-width: 28%;
+}
+
+.m2-material-part-tabs button:nth-child(2) {
+  --m2-tab-width: 32%;
+}
+
+.m2-material-part-tabs button:nth-child(3) {
+  --m2-tab-width: 29%;
+}
+
+.m2-material-part-tabs button:nth-child(4) {
+  --m2-tab-width: 27%;
+}
+
+.m2-material-part-tabs button::before {
+  position: absolute;
+  inset: 0 3px;
+  z-index: -1;
+  border: 1px solid rgba(245, 247, 255, 0.72);
+  border-bottom: 0;
+  border-radius: 9px 9px 0 0;
+  background: rgba(224, 229, 239, 0.9);
+  content: '';
+  transform: perspective(34px) rotateX(5deg);
+  transform-origin: bottom;
+  transition: background-color 220ms ease, border-color 220ms ease, filter 220ms ease;
+}
+
+.m2-material-part-tabs button:hover {
+  z-index: 5;
+  color: rgba(8, 11, 22, 0.76);
+}
+
+.m2-material-part-tabs button:hover::before {
+  background: rgba(238, 241, 247, 0.96);
+}
+
+.m2-material-part-tabs button.is-active {
+  z-index: 20;
+  color: #0b0d12;
+}
+
+.m2-material-part-tabs button.is-active::before {
+  border-color: rgba(245, 247, 255, 0.98);
+  background: #f8f9fd;
+  filter: drop-shadow(0 -8px 14px rgba(0, 0, 0, 0.08));
+}
+
+.m2-material-part-tabs button.is-complete:not(.is-active) {
+  color: rgba(31, 79, 145, 0.76);
+}
+
+.m2-material-part-tabs button.is-complete:not(.is-active)::before {
+  background: rgba(216, 228, 246, 0.94);
+}
+
+.m2-material-part-tabs button:disabled {
+  cursor: wait;
+  opacity: 0.5;
+}
+
+.m2-material-part-tabs button span {
+  font: 8px/1 'Space Mono', monospace;
+}
+
+.m2-material-part-tabs button b {
+  overflow: visible;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+.m2-material-part-tabs button svg {
+  color: #416fb8;
+}
+.m2-material-interaction {
+  position: relative;
+  z-index: 2;
+  min-width: 0;
+}
+
+.m2-material-selection-card {
+  padding: 0;
+  border: 0;
+  color: #080b16;
+  background: transparent;
+  box-shadow: none;
+}
+
+.m2-material-folder-body {
+  position: relative;
+  z-index: 2;
+  padding: 10px 12px 12px;
+  overflow: hidden;
+  border: 1px solid rgba(245, 247, 255, 0.92);
+  border-radius: 7px;
+  background: rgba(248, 249, 253, 0.96);
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.2);
+}
+
+.m2-material-deck-head {
+  min-height: 27px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  color: rgba(8, 11, 22, 0.4);
+  font: 8px/1 'Space Mono', monospace;
+  letter-spacing: 0;
+}
+
+.m2-material-deck-head > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.m2-material-radio-group {
+  min-width: 0;
+  display: grid;
+  gap: 0;
+  margin: 2px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.m2-material-radio-group > legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.m2-material-radio-option {
+  position: relative;
+  min-width: 0;
+  min-height: 62px;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) 112px;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 5px;
+  border: 0;
+  border-top: 1px solid rgba(8, 11, 22, 0.09);
+  border-radius: 0;
+  color: #080b16;
+  background: transparent;
+  cursor: pointer;
+  transition:
+    border-color 220ms ease,
+    background-color 220ms ease;
+}
+
+.m2-material-radio-option:hover {
+  background: rgba(65, 111, 184, 0.045);
+}
+
+.m2-material-radio-option.is-selected {
+  background: rgba(65, 111, 184, 0.075);
+}
+
+.m2-material-radio-option:last-of-type {
+  border-bottom: 1px solid rgba(8, 11, 22, 0.09);
+}
+
+.m2-material-radio-option:has(input:focus-visible) {
+  outline: 2px solid #7da7e8;
+  outline-offset: -2px;
+}
+
+.m2-material-radio-option > input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.m2-material-radio-control {
+  width: 17px;
+  height: 17px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(8, 11, 22, 0.34);
+  border-radius: 50%;
+  background: #fff;
+}
+
+.m2-material-radio-control i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: transparent;
+  transform: scale(0.5);
+  transition: background-color 180ms ease, transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.m2-material-radio-option.is-selected .m2-material-radio-control {
+  border-color: #345d99;
+}
+
+.m2-material-radio-option.is-selected .m2-material-radio-control i {
+  background: #345d99;
+  transform: scale(1);
+}
+
+.m2-material-radio-copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.m2-material-radio-copy small {
+  overflow: hidden;
+  color: rgba(8, 11, 22, 0.4);
+  font: 7px/1.3 'Space Mono', monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.m2-material-radio-copy b {
+  overflow: hidden;
+  color: #080b16;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.m2-material-radio-copy > span {
+  overflow: hidden;
+  color: rgba(8, 11, 22, 0.52);
+  font-size: 9px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.m2-material-radio-risk {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  justify-content: end;
+  gap: 5px 9px;
+  padding-left: 14px;
+  border-left: 1px solid rgba(8, 11, 22, 0.1);
+}
+
+.m2-material-radio-risk small {
+  color: rgba(8, 11, 22, 0.38);
+  font-size: 7px;
+}
+
+.m2-material-radio-risk b {
+  color: rgba(8, 11, 22, 0.76);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.m2-material-radio-risk .m2-material-risk-meter {
+  grid-column: 1 / -1;
+}
+
+.m2-material-radio-group:disabled {
+  opacity: 0.56;
+}
+
+.m2-material-radio-group:disabled .m2-material-radio-option {
+  cursor: wait;
+}
+.m2-material-risk-meter {
+  display: flex;
+  gap: 4px;
+}
+
+.m2-material-risk-meter i {
+  width: 18px;
+  height: 3px;
+  background: rgba(8, 11, 22, 0.1);
+}
+
+.m2-material-risk-meter i.is-filled {
+  background: #345d99;
+}
+
+.m2-material-analysis-launch,
+.m2-material-analysis-loading,
+.m2-material-report {
+  width: 100%;
+  margin-top: 12px;
+  margin-left: 0;
+  border: 1px solid rgba(245, 247, 255, 0.94);
+  border-radius: 8px;
+  color: #080b16;
+  background: #f8f9fd;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.22);
+}
+
+.m2-material-analysis-launch {
+  min-height: 88px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px 18px;
+}
+
+.m2-material-analysis-launch > span {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.m2-material-analysis-launch > span > span {
+  display: grid;
+  gap: 4px;
+}
+
+.m2-material-analysis-launch b {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.m2-material-analysis-launch small {
+  color: rgba(8, 11, 22, 0.48);
+  font-size: 9px;
+}
+
+.m2-material-analysis-launch button,
+.m2-material-report button {
+  flex-shrink: 0;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 16px;
+  border: 1px solid #0b172a;
+  border-radius: 999px;
+  color: #f8f9fd;
+  background: #0b172a;
+  font: 500 10px/1 'PingFang SC', 'Noto Sans SC', sans-serif;
+  cursor: pointer;
+}
+
+.m2-material-analysis-loading {
+  min-height: 82px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+}
+
+.m2-material-analysis-loading > span {
+  display: flex;
+  gap: 4px;
+}
+
+.m2-material-analysis-loading i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #345d99;
+  animation: m2-material-pulse 1.1s ease-in-out infinite;
+}
+
+.m2-material-analysis-loading i:nth-child(2) { animation-delay: 0.14s; }
+.m2-material-analysis-loading i:nth-child(3) { animation-delay: 0.28s; }
+
+.m2-material-analysis-loading div {
+  display: grid;
+  gap: 5px;
+}
+
+.m2-material-analysis-loading b {
+  font-size: 11px;
+}
+
+.m2-material-analysis-loading small {
+  color: rgba(8, 11, 22, 0.42);
+  font: 8px/1 'Space Mono', monospace;
+}
+
+.m2-material-report {
+  padding: 20px 22px;
+}
+
+.m2-material-report-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(8, 11, 22, 0.12);
+}
+
+.m2-material-report-head span {
+  color: rgba(8, 11, 22, 0.4);
+  font: 8px/1.4 'Space Mono', monospace;
+}
+
+.m2-material-report-head b {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 18px;
+  font-weight: 400;
+}
+
+.m2-material-report > p {
+  max-height: 156px;
+  margin: 16px 0 18px;
+  overflow: auto;
+  color: rgba(8, 11, 22, 0.64);
+  font-family: 'Noto Serif SC', serif;
+  font-size: 12px;
+  line-height: 1.85;
+  scrollbar-width: thin;
+}
+
+@keyframes m2-material-pulse {
+  0%, 100% { opacity: 0.28; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-3px); }
+}
+
+@media (max-width: 1180px) {
+  .m2-material-heading h3 {
+    font-size: 30px;
+  }
+
+  .m2-material-workspace {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .m2-material-model-panel {
+    display: grid;
+    grid-template-columns: minmax(280px, 1fr) minmax(150px, 0.46fr);
+    gap: 18px;
+    align-items: center;
+  }
+
+  .m2-material-model {
+    height: 260px;
+  }
+
+  .m2-material-part-copy {
+    margin-top: 0;
+  }
+
+  .m2-material-analysis-launch,
+  .m2-material-analysis-loading,
+  .m2-material-report {
+    width: 100%;
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .m2-material-heading h3 {
+    font-size: 28px;
+  }
+
+  .m2-material-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .m2-material-model-panel {
+    display: grid;
+    grid-template-columns: 136px minmax(0, 1fr);
+    gap: 16px;
+    align-items: center;
+  }
+
+  .m2-material-model {
+    width: 100%;
+    height: 156px;
+    margin-left: 0;
+  }
+
+  .m2-material-part-copy {
+    margin: 0;
+  }
+
+  .m2-material-part-tabs {
+    gap: 0;
+    margin-inline: 2px;
+  }
+
+  .m2-material-part-tabs button {
+    min-height: 38px;
+    gap: 4px;
+    padding-inline: 7px;
+  }
+
+  .m2-material-part-tabs button b {
+    font-size: 8px;
+    white-space: nowrap;
+  }
+
+  .m2-material-selection-card {
+    padding: 0;
+  }
+
+  .m2-material-folder-body {
+    padding: 8px 10px 10px;
+  }
+
+  .m2-material-radio-option {
+    grid-template-columns: 18px minmax(0, 1fr);
+    gap: 10px 12px;
+  }
+
+  .m2-material-radio-risk {
+    grid-column: 2;
+    justify-content: start;
+    padding: 8px 0 0;
+    border-top: 1px solid rgba(8, 11, 22, 0.1);
+    border-left: 0;
+  }
+
+  .m2-material-analysis-launch,
+  .m2-material-analysis-loading,
+  .m2-material-report {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .m2-material-analysis-launch {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .m2-material-analysis-loading i {
+    animation: none;
+  }
+}

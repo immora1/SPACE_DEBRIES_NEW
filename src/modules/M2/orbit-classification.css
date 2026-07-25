@@ -1,0 +1,680 @@
+.m2-orbit-classification {
+  position: relative;
+  z-index: 11;
+  width: min(100%, 600px);
+  font-family: 'PingFang SC', 'Noto Sans SC', sans-serif;
+}
+
+.m2-orbit-classification-head {
+  max-width: 540px;
+  margin-bottom: 28px;
+}
+
+.m2-orbit-classification-head > span {
+  color: rgba(159, 196, 255, 0.76);
+  font: 8px/1.4 'Space Mono', monospace;
+  letter-spacing: 0;
+}
+
+.m2-orbit-classification-head h3 {
+  margin: 16px 0 10px;
+  color: #f5f7ff;
+  font-family: 'PingFang SC', 'Noto Sans SC', sans-serif;
+  font-size: 34px;
+  font-weight: 500;
+  line-height: 1.24;
+  letter-spacing: 0;
+}
+
+.m2-orbit-classification-head p {
+  max-width: 500px;
+  margin: 0;
+  color: rgba(238, 246, 255, 0.58);
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.m2-orbit-card-stack {
+  --orbit-card-height: 344px;
+  --orbit-tab-step: 44px;
+  position: relative;
+  width: calc(100% - 18px);
+  height: calc(var(--orbit-card-height) + var(--orbit-tab-step) * 2 + 20px);
+  margin-left: 2px;
+  isolation: isolate;
+  overflow: visible;
+  contain: layout style;
+}
+
+.m2-orbit-card {
+  --orbit-card-glass-alpha: 0.64;
+  --orbit-stack-y: 0px;
+  --orbit-stack-rotate: 0deg;
+  position: absolute;
+  inset: 0 0 auto;
+  width: 100%;
+  height: var(--orbit-card-height);
+  display: block;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 8px;
+  color: #080b16;
+  background: rgba(248, 249, 253, var(--orbit-card-glass-alpha));
+  -webkit-backdrop-filter: blur(8px) saturate(1.06);
+  backdrop-filter: blur(8px) saturate(1.06);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.16);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+  transform: translate3d(0, var(--orbit-stack-y), 0) rotate(var(--orbit-stack-rotate));
+  transform-origin: 50% 50%;
+  backface-visibility: hidden;
+  transition:
+    transform 620ms cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 420ms ease,
+    border-color 260ms ease,
+    box-shadow 360ms ease;
+  will-change: transform;
+}
+
+.m2-orbit-card.is-depth-0 {
+  --orbit-card-glass-alpha: 0.76;
+  --orbit-stack-y: calc(var(--orbit-tab-step) * 2);
+  --orbit-stack-rotate: 0deg;
+}
+
+.m2-orbit-card.is-depth-1 {
+  --orbit-card-glass-alpha: 0.64;
+  --orbit-stack-y: var(--orbit-tab-step);
+  --orbit-stack-rotate: -0.45deg;
+}
+
+.m2-orbit-card.is-depth-2 {
+  --orbit-card-glass-alpha: 0.54;
+  --orbit-stack-y: 0px;
+  --orbit-stack-rotate: 0.45deg;
+}
+
+.m2-orbit-card::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--orbit-accent, #9fc4ff);
+  content: '';
+  opacity: 0.46;
+  transform: scaleY(0.32);
+  transform-origin: top;
+  transition: opacity 300ms ease, transform 460ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.m2-orbit-card.is-front {
+  background: rgba(255, 255, 255, var(--orbit-card-glass-alpha));
+  box-shadow: 0 28px 64px rgba(0, 0, 0, 0.24);
+}
+
+.m2-orbit-card.is-rear {
+  background: rgba(248, 249, 253, var(--orbit-card-glass-alpha));
+  -webkit-backdrop-filter: blur(8px) saturate(1.06);
+  backdrop-filter: blur(8px) saturate(1.06);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.16);
+}
+
+.m2-orbit-card.is-active::before,
+.m2-orbit-card.is-selected::before {
+  opacity: 0.96;
+  transform: scaleY(1);
+}
+
+.m2-orbit-card:focus-visible {
+  outline: 2px solid #f8f9fd;
+  outline-offset: 4px;
+}
+
+.m2-orbit-card-tab {
+  position: relative;
+  z-index: 2;
+  height: var(--orbit-tab-step);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 0 22px;
+  border-bottom: 1px solid rgba(8, 11, 22, 0.1);
+  background: rgba(255, 255, 255, 0.16);
+  transition: background-color 320ms ease;
+}
+
+.m2-orbit-card.is-front .m2-orbit-card-tab {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.m2-orbit-card.is-rear .m2-orbit-card-tab {
+  border: 0;
+  border-radius: 8px 8px 0 0;
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: none;
+}
+
+.m2-orbit-card.is-active:not(.is-front) .m2-orbit-card-tab {
+  background: rgba(214, 230, 252, 0.58);
+}
+
+.m2-orbit-card-name {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.m2-orbit-card-name b {
+  flex: none;
+  color: #080b16;
+  font: 500 20px/1 'Space Mono', monospace;
+  letter-spacing: 0;
+}
+
+.m2-orbit-card-name small {
+  overflow: hidden;
+  color: rgba(8, 11, 22, 0.54);
+  font-size: 11px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.m2-orbit-card-tab-meta {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: rgba(8, 11, 22, 0.42);
+  font: 7px/1 'Space Mono', monospace;
+}
+
+.m2-orbit-card-tab-meta svg {
+  transition: transform 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.m2-orbit-card.is-front .m2-orbit-card-tab-meta svg {
+  transform: rotate(180deg);
+}
+
+.m2-orbit-card-body {
+  position: relative;
+  z-index: 1;
+  height: calc(100% - var(--orbit-tab-step));
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  padding: 18px 22px 20px;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 220ms ease, visibility 0s linear;
+}
+
+.m2-orbit-card.is-rear .m2-orbit-card-body {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: none;
+}
+
+.m2-orbit-card-topline,
+.m2-orbit-card-summary,
+.m2-orbit-card-data,
+.m2-orbit-card-footer {
+  width: 100%;
+  display: flex;
+}
+
+.m2-orbit-card-topline {
+  justify-content: space-between;
+  gap: 16px;
+  color: rgba(8, 11, 22, 0.42);
+  font: 7px/1.4 'Space Mono', monospace;
+  letter-spacing: 0;
+}
+
+.m2-orbit-card-summary {
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 12px;
+}
+
+.m2-orbit-card-count {
+  display: grid;
+  gap: 5px;
+}
+
+.m2-orbit-card-count b {
+  color: #080b16;
+  font: 400 44px/1 'Space Mono', monospace;
+  letter-spacing: 0;
+}
+
+.m2-orbit-card-count small,
+.m2-orbit-card-data small {
+  color: rgba(8, 11, 22, 0.42);
+  font: 7px/1.4 'Space Mono', monospace;
+  letter-spacing: 0;
+}
+
+.m2-orbit-card-density-mark {
+  min-width: 82px;
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+}
+
+.m2-orbit-card-density-mark small,
+.m2-orbit-card-density-mark b {
+  color: rgba(8, 11, 22, 0.4);
+  font: 500 7px/1 'Space Mono', monospace;
+}
+
+.m2-orbit-card-density-bars {
+  height: 28px;
+  display: flex;
+  align-items: end;
+  gap: 4px;
+}
+
+.m2-orbit-card-density-bars i {
+  width: 5px;
+  height: 9px;
+  display: block;
+  background: rgba(8, 11, 22, 0.12);
+  transform: skewY(-12deg);
+  transition: background-color 280ms ease, height 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.m2-orbit-card-density-bars i:nth-child(1) { height: 9px; }
+.m2-orbit-card-density-bars i:nth-child(2) { height: 13px; }
+.m2-orbit-card-density-bars i:nth-child(3) { height: 17px; }
+.m2-orbit-card-density-bars i:nth-child(4) { height: 21px; }
+.m2-orbit-card-density-bars i:nth-child(5) { height: 25px; }
+
+.m2-orbit-card-density-bars i.is-active {
+  background: #345d99;
+}
+
+.m2-orbit-card-density-mark b {
+  color: rgba(8, 11, 22, 0.58);
+}
+
+.m2-orbit-card-data {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 0.75fr) minmax(0, 1.3fr);
+  margin-top: 18px;
+  border-top: 1px solid rgba(8, 11, 22, 0.12);
+  border-bottom: 1px solid rgba(8, 11, 22, 0.12);
+}
+
+.m2-orbit-card-data > span {
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: 7px;
+  padding: 14px 16px;
+  border-left: 1px solid rgba(8, 11, 22, 0.12);
+}
+
+.m2-orbit-card-data > span:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.m2-orbit-card-data > span:last-child {
+  padding-right: 0;
+}
+
+.m2-orbit-card-data b {
+  overflow-wrap: anywhere;
+  color: rgba(8, 11, 22, 0.78);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.55;
+}
+
+.m2-orbit-card-footer {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  align-content: start;
+  gap: 11px;
+  padding-top: 16px;
+}
+
+.m2-orbit-card-rating {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.m2-orbit-card-rating > small,
+.m2-orbit-card-rating > b {
+  color: rgba(8, 11, 22, 0.46);
+  font: 500 7px/1 'Space Mono', monospace;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.m2-orbit-card-rating > b {
+  color: rgba(8, 11, 22, 0.62);
+}
+
+.m2-orbit-card-rating-planets {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.m2-orbit-card-rating-planets i {
+  position: relative;
+  width: 22px;
+  height: 17px;
+  display: block;
+  flex: none;
+  filter: drop-shadow(0 5px 5px rgba(8, 11, 22, 0.12));
+}
+
+.m2-orbit-card-rating-planets i::before {
+  position: absolute;
+  top: 1px;
+  left: 5px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #c2c4c8;
+  content: '';
+  transition: background-color 300ms ease;
+}
+
+.m2-orbit-card-rating-planets i::after {
+  position: absolute;
+  top: 5px;
+  left: 1px;
+  width: 20px;
+  height: 7px;
+  border: 2px solid #999ca1;
+  border-top-color: transparent;
+  border-radius: 50%;
+  content: '';
+  transform: rotate(-17deg);
+  transition: border-color 300ms ease;
+}
+
+.m2-orbit-card-rating-planets i.is-active::before {
+  background: #17284d;
+}
+
+.m2-orbit-card-rating-planets i.is-active::after {
+  border-color: #84a5d4;
+  border-top-color: transparent;
+}
+
+.m2-orbit-card-note {
+  color: rgba(8, 11, 22, 0.62);
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.m2-orbit-card-stack.is-separating .m2-orbit-card {
+  pointer-events: none;
+  transition-duration: 380ms;
+  transition-timing-function: cubic-bezier(0.55, 0, 0.45, 1);
+}
+
+.m2-orbit-card-stack.is-separating .is-shuffle-front {
+  transform: translate3d(calc(-50% - 14px), var(--orbit-stack-y), 0) rotate(-2deg);
+}
+
+.m2-orbit-card-stack.is-separating .is-shuffle-target {
+  transform: translate3d(calc(50% + 14px), var(--orbit-stack-y), 0) rotate(2deg);
+}
+
+.m2-orbit-card-stack.is-separating .is-shuffle-bystander {
+  transform: translate3d(0, var(--orbit-stack-y), 0) rotate(var(--orbit-stack-rotate)) scale(0.985);
+}
+
+.m2-orbit-card-stack.is-returning .m2-orbit-card {
+  pointer-events: none;
+  transition-duration: 620ms;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.m2-orbit-narrative {
+  width: min(520px, 100%);
+  margin-inline: auto;
+  color: #eef6ff;
+  font-family: 'PingFang SC', 'Noto Sans SC', sans-serif;
+  text-align: center;
+  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
+}
+
+.m2-orbit-narrative-content {
+  min-height: 194px;
+}
+
+.m2-orbit-narrative-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 12px;
+}
+
+.m2-orbit-narrative-heading span {
+  color: #9fc4ff;
+  font: 500 13px/1.3 'Space Mono', monospace;
+}
+
+.m2-orbit-narrative-heading h3 {
+  margin: 0;
+  color: #f6f8ff;
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.m2-orbit-narrative-section {
+  margin-top: 14px;
+}
+
+.m2-orbit-narrative-section + .m2-orbit-narrative-section {
+  margin-top: 11px;
+}
+
+.m2-orbit-narrative-section h4 {
+  margin: 0;
+  color: rgba(159, 196, 255, 0.78);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.m2-orbit-narrative-section p {
+  margin: 6px auto 0;
+  color: rgba(238, 246, 255, 0.68);
+  font-size: 11px;
+  line-height: 1.85;
+}
+
+.m2-orbit-narrative-section + .m2-orbit-narrative-section p {
+  color: rgba(238, 246, 255, 0.46);
+  font-size: 10px;
+}
+
+.m2-orbit-narrative-highlight {
+  position: relative;
+  z-index: 0;
+  display: inline-block;
+  margin-inline: 1px;
+  padding-inline: 5px;
+  color: rgba(247, 250, 255, 0.94);
+  background: transparent;
+  font-weight: 500;
+  white-space: nowrap;
+  isolation: isolate;
+}
+
+.m2-orbit-narrative-highlight::before {
+  position: absolute;
+  z-index: -1;
+  top: 50%;
+  right: 0;
+  left: 0;
+  height: 1.15em;
+  border-radius: 999px;
+  background: rgba(78, 116, 191, 0.3);
+  content: '';
+  transform: translateY(-48%) rotate(-3deg);
+  transform-origin: center;
+}
+
+@media (max-width: 1180px) {
+  .m2-orbit-classification-head h3 {
+    font-size: 30px;
+  }
+
+  .m2-orbit-card-stack {
+    --orbit-card-height: 356px;
+    --orbit-tab-step: 42px;
+  }
+
+  .m2-orbit-card-data {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr);
+  }
+
+  .m2-orbit-card-data > span:nth-child(3) {
+    grid-column: 1 / -1;
+    padding: 10px 0;
+    border-top: 1px solid rgba(8, 11, 22, 0.1);
+    border-left: 0;
+  }
+
+  .m2-orbit-narrative {
+    width: min(430px, 100%);
+  }
+
+  .m2-orbit-narrative-section p {
+    font-size: 10px;
+  }
+
+  .m2-orbit-narrative-section + .m2-orbit-narrative-section p {
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 760px) {
+  .m2-orbit-classification {
+    width: calc(100vw - 96px);
+    max-width: none;
+  }
+
+  .m2-orbit-classification-head {
+    margin-bottom: 22px;
+  }
+
+  .m2-orbit-classification-head h3 {
+    font-size: 28px;
+  }
+
+  .m2-orbit-card-stack {
+    --orbit-card-height: 360px;
+    --orbit-tab-step: 38px;
+    width: calc(100% - 6px);
+    margin-left: 0;
+  }
+
+  .m2-orbit-card {
+    border-radius: 6px;
+  }
+
+  .m2-orbit-card-tab {
+    padding-inline: 16px;
+  }
+
+  .m2-orbit-card-name {
+    gap: 8px;
+  }
+
+  .m2-orbit-card-name b {
+    font-size: 17px;
+  }
+
+  .m2-orbit-card-name small {
+    font-size: 10px;
+  }
+
+  .m2-orbit-card-tab-meta span {
+    display: none;
+  }
+
+  .m2-orbit-card-body {
+    padding: 16px;
+  }
+
+  .m2-orbit-card-count b {
+    font-size: 38px;
+  }
+
+  .m2-orbit-card-data {
+    margin-top: 14px;
+  }
+
+  .m2-orbit-card-data > span {
+    padding-inline: 10px;
+  }
+
+  .m2-orbit-card-rating {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+  }
+
+  .m2-orbit-card-rating > small {
+    display: none;
+  }
+
+  .m2-orbit-card-rating-planets {
+    gap: 5px;
+  }
+
+  .m2-orbit-card-rating-planets i {
+    width: 19px;
+    height: 15px;
+  }
+
+  .m2-orbit-card-rating-planets i::before {
+    left: 4px;
+    width: 13px;
+    height: 13px;
+  }
+
+  .m2-orbit-card-rating-planets i::after {
+    top: 4px;
+    width: 18px;
+    height: 7px;
+  }
+
+  .m2-orbit-card-stack.is-separating .is-shuffle-front {
+    transform: translate3d(calc(-50% - 8px), var(--orbit-stack-y), 0) rotate(-2deg);
+  }
+
+  .m2-orbit-card-stack.is-separating .is-shuffle-target {
+    transform: translate3d(calc(50% + 8px), var(--orbit-stack-y), 0) rotate(2deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .m2-orbit-card,
+  .m2-orbit-card::before,
+  .m2-orbit-card-tab-meta svg,
+  .m2-orbit-card-body,
+  .m2-orbit-card-rating-planets i::before,
+  .m2-orbit-card-rating-planets i::after {
+    transition-duration: 0.01ms !important;
+  }
+}

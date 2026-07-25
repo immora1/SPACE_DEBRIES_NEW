@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from 'rea
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, useGLTF } from '@react-three/drei'
 import { AnimatePresence, motion } from 'framer-motion'
+import { ArrowRight, CalendarDays, Eye, Satellite } from 'lucide-react'
 import gsap from 'gsap'
 import * as THREE from 'three'
 import useAppStore from '../../store/useAppStore'
@@ -409,166 +410,258 @@ const GUIDE_STYLES = `
     position: absolute;
     top: 50%;
     z-index: 3;
-    width: min(360px, calc(25vw - clamp(34px, 6vw, 116px) - 28px));
+    width: clamp(236px, 20vw, 310px);
+    height: auto;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
     color: #f4f4ff;
+    background: transparent;
+    box-shadow: none;
     pointer-events: none;
     transform: translateY(-50%);
     transition: opacity 180ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .m4-start-guide-left {
-    left: clamp(24px, 4vw, 78px);
+    left: clamp(24px, 4vw, 82px);
   }
 
   .m4-start-guide-right {
-    right: clamp(34px, 6vw, 116px);
-  }
-
-  .m4-guide-eyebrow {
-    margin: 0;
-    color: rgba(232,232,248,0.5);
-    font-family: "Space Mono", monospace;
-    font-size: 9px;
-    letter-spacing: 0.2em;
-    line-height: 1.8;
+    right: clamp(24px, 4vw, 82px);
   }
 
   .m4-guide-number {
     display: flex;
     align-items: baseline;
-    gap: 14px;
-    margin: 18px 0 14px;
+    gap: 16px;
+    margin: 26px 0 20px;
   }
 
   .m4-guide-number strong {
     color: #f4f4ff;
     font-family: "Lexend", sans-serif;
-    font-size: clamp(68px, 7vw, 112px);
+    font-size: clamp(68px, 5.5vw, 86px);
     font-weight: 400;
-    letter-spacing: -0.14em;
+    letter-spacing: 0;
     line-height: 0.82;
   }
 
-  .m4-guide-number span {
-    color: rgba(232,232,248,0.72);
-    font-family: "Noto Sans SC", sans-serif;
-    font-size: 14px;
-    letter-spacing: 0.18em;
+  .m4-guide-number-copy {
+    display: grid;
+    gap: 7px;
+  }
+
+  .m4-guide-number-copy span {
+    color: #f4f4ff;
+    font-family: "PingFang FC", "PingFang SC", "Noto Sans SC", sans-serif;
+    font-size: 17px;
+    font-weight: 500;
+    letter-spacing: 0;
+    line-height: 1;
+  }
+
+  .m4-guide-number-copy small {
+    color: rgba(232,232,248,0.5);
+    font-family: "Lexend", sans-serif;
+    font-size: 8px;
+    letter-spacing: 0;
+    line-height: 1;
   }
 
   .m4-guide-rule {
-    position: relative;
     width: 100%;
     height: 1px;
-    margin: 0 0 13px;
-    background: #f4f4ff;
-  }
-
-  .m4-guide-rule::after {
-    position: absolute;
-    top: -3px;
-    right: 0;
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: #f4f4ff;
-    content: "";
-  }
-
-  .m4-guide-kicker {
     margin: 0;
-    color: rgba(232,232,248,0.62);
-    font-family: "Space Mono", monospace;
-    font-size: 9px;
-    letter-spacing: 0.12em;
-    line-height: 1.8;
+    background: rgba(244,244,255,0.72);
   }
 
-  .m4-guide-icon {
-    display: flex;
+  .m4-guide-orbit-data {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: auto;
+    padding-top: 16px;
+  }
+
+  .m4-guide-orbit-data > span {
+    min-width: 0;
+    display: grid;
+    gap: 7px;
+  }
+
+  .m4-guide-orbit-data > span + span {
+    padding-left: 12px;
+    border-left: 1px solid rgba(244,244,255,0.18);
+  }
+
+  .m4-guide-orbit-data small {
+    color: rgba(232,232,248,0.46);
+    font-family: "PingFang FC", "PingFang SC", "Noto Sans SC", sans-serif;
+    font-size: 8px;
+    line-height: 1;
+  }
+
+  .m4-guide-orbit-data b {
+    color: rgba(244,244,255,0.78);
+    font-family: "Lexend", sans-serif;
+    font-size: 8px;
+    font-weight: 500;
+    line-height: 1.35;
+  }
+
+  .m4-guide-card-head {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr) auto;
     align-items: center;
     gap: 10px;
-    margin-bottom: 18px;
-    color: rgba(244,244,255,0.82);
+    padding-bottom: 11px;
+    border-bottom: 1px solid rgba(244,244,255,0.18);
   }
 
-  .m4-guide-icon::after {
-    width: 56px;
-    height: 1px;
-    background: #f4f4ff;
-    content: "";
+  .m4-guide-card-icon {
+    width: 24px;
+    height: 24px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 0;
+    color: #8fb5ff;
+    background: transparent;
   }
 
-  .m4-start-guide h2 {
-    margin: 0 0 12px;
+  .m4-guide-card-kicker,
+  .m4-guide-card-index {
+    font-family: "Lexend", sans-serif;
+    line-height: 1;
+  }
+
+  .m4-guide-card-kicker {
+    color: rgba(232,232,248,0.58);
+    font-size: 9px;
+    font-weight: 500;
+  }
+
+  .m4-guide-card-index {
+    color: rgba(232,232,248,0.42);
+    font-size: 11px;
+  }
+
+  .m4-guide-card-title {
+    margin: 16px 0 8px;
     color: #f4f4ff;
-    font-family: "Noto Sans SC", sans-serif;
-    font-size: clamp(20px, 2vw, 30px);
-    font-weight: 400;
-    letter-spacing: 0.08em;
+    font-family: "PingFang FC", "PingFang SC", "Noto Sans SC", sans-serif;
+    font-size: clamp(21px, 1.7vw, 25px);
+    font-weight: 500;
+    line-height: 1.32;
+    letter-spacing: 0;
+    white-space: normal;
   }
 
-  .m4-start-guide p {
+  .m4-guide-card-copy {
     margin: 0;
-    color: rgba(232,232,248,0.68);
-    font-family: "Noto Sans SC", sans-serif;
-    font-size: 13px;
-    letter-spacing: 0.08em;
-    line-height: 1.9;
+    color: rgba(232,232,248,0.66);
+    font-family: "PingFang FC", "PingFang SC", "Noto Sans SC", sans-serif;
+    font-size: 11px;
+    line-height: 1.65;
+    letter-spacing: 0;
   }
 
-  .m4-guide-action {
-    display: flex;
-    align-items: center;
+  .m4-guide-metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 10px;
-    margin-top: 18px;
-    color: rgba(139,108,248,0.88);
-    font-family: "Space Mono", monospace;
-    font-size: 9px;
-    letter-spacing: 0.18em;
+    margin: auto 0 14px;
+    padding: 11px 0;
+    border-top: 1px solid rgba(244,244,255,0.18);
+    border-bottom: 1px solid rgba(244,244,255,0.18);
   }
 
-  .m4-guide-action::before {
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: #8b6cf8;
-    content: "";
-    animation: m4-guide-signal 1.8s ease-in-out infinite;
+  .m4-guide-metric {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 16px minmax(0, 1fr);
+    gap: 7px;
+    align-items: center;
+    color: #8fb5ff;
+  }
+
+  .m4-guide-metric + .m4-guide-metric {
+    padding-left: 10px;
+    border-left: 1px solid rgba(244,244,255,0.18);
+  }
+
+  .m4-guide-metric > span {
+    min-width: 0;
+    display: grid;
+    gap: 5px;
+  }
+
+  .m4-guide-metric small {
+    color: rgba(232,232,248,0.44);
+    font-family: "PingFang FC", "PingFang SC", "Noto Sans SC", sans-serif;
+    font-size: 8px;
+    line-height: 1;
+  }
+
+  .m4-guide-metric b {
+    overflow: hidden;
+    color: #f4f4ff;
+    font-family: "Lexend", sans-serif;
+    font-size: 9px;
+    font-weight: 500;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .m4-guide-metric > svg {
+    width: 15px;
+    height: 15px;
   }
 
   .m4-guide-jump-button {
-    display: inline-flex;
+    width: 100%;
+    min-height: 40px;
+    display: flex;
     align-items: center;
-    gap: 8px;
-    margin-top: 17px;
-    padding: 9px 12px;
-    border: 1px solid rgba(244,244,255,0.3);
-    border-radius: 4px;
-    color: rgba(244,244,255,0.9);
-    background: rgba(8,8,26,0.34);
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0;
+    padding: 0 18px;
+    border: 1px solid rgba(244,244,255,0.42);
+    border-radius: 999px;
+    color: #f7f8fc;
+    background: rgba(5,7,19,0.24);
     cursor: pointer;
     pointer-events: auto;
-    font-family: "Lexend", sans-serif;
-    font-size: 8px;
-    letter-spacing: 0.12em;
+    font-family: "PingFang FC", "PingFang SC", "Noto Sans SC", sans-serif;
+    font-size: 11px;
+    font-weight: 500;
     line-height: 1;
-    text-transform: uppercase;
-    transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease, transform 180ms ease;
+    transition: color 220ms ease, background-color 220ms ease, transform 300ms cubic-bezier(0.16,1,0.3,1);
   }
 
   .m4-guide-jump-button:hover,
   .m4-guide-jump-button:focus-visible {
-    border-color: rgba(139,108,248,0.72);
-    color: #f4f4ff;
-    background: rgba(139,108,248,0.16);
+    color: #080b16;
+    background: #f7f8fc;
     outline: none;
-    transform: translateY(-1px);
+    transform: translateY(-2px);
   }
 
-          <span className="m4-guide-jump-icon" aria-hidden="true">→</span>
-    font-size: 12px;
-    line-height: 1;
+  .m4-guide-jump-icon {
+    flex-shrink: 0;
+    transition: transform 300ms cubic-bezier(0.16,1,0.3,1);
+  }
+
+  .m4-guide-jump-button:hover .m4-guide-jump-icon,
+  .m4-guide-jump-button:focus-visible .m4-guide-jump-icon {
+    transform: translateX(4px);
   }
 
   .m4-orbit-handle-halo {
@@ -612,74 +705,164 @@ const GUIDE_STYLES = `
     letter-spacing: 0.18em;
   }
 
-  @media (max-width: 960px) {
+  @media (max-width: 1180px) {
     .m4-start-guide {
-      width: min(210px, calc(25vw - clamp(24px, 5vw, 58px) - 16px));
+      top: 50%;
+      width: 236px;
+      height: auto;
+      padding: 0;
     }
 
     .m4-start-guide-left {
-      left: clamp(24px, 5vw, 58px);
+      left: 24px;
     }
 
     .m4-start-guide-right {
-      right: clamp(24px, 5vw, 58px);
-    }
-
-    .m4-start-guide-right p {
-      display: none;
-    }
-
-    .m4-guide-action {
-      margin-top: 10px;
-    }
-
-    .m4-guide-jump-button {
-      margin-top: 11px;
-      padding: 8px 10px;
-      font-size: 7px;
-    }
-  }
-
-  @media (max-width: 720px) {
-    .m4-start-guide-left {
-      top: 48px;
-      left: 24px;
-      width: 190px;
-      transform: none;
+      right: 24px;
     }
 
     .m4-guide-number {
-      margin-top: 12px;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .m4-guide-number strong {
+      font-size: 70px;
+    }
+
+    .m4-guide-number-copy span {
+      font-size: 15px;
+    }
+
+    .m4-guide-card-title {
+      margin-top: 14px;
+      font-size: 20px;
+    }
+
+    .m4-guide-card-copy {
+      font-size: 10px;
+    }
+
+    .m4-guide-metrics {
+      gap: 10px;
+      margin-block: 13px;
+      padding-block: 10px;
+    }
+
+    .m4-guide-metric + .m4-guide-metric {
+      padding-left: 10px;
+    }
+  }
+
+  @media (max-width: 900px) {
+    .m4-start-guide {
+      height: auto;
+      min-height: 0;
+    }
+
+    .m4-start-guide-left {
+      top: 108px;
+      left: 24px;
+      width: 190px;
+      padding: 0;
+      color: #f4f4ff;
+      background: transparent;
+      box-shadow: none;
+      transform: none;
+    }
+
+    .m4-start-guide-left .m4-guide-card-head {
+      display: none;
+    }
+
+    .m4-guide-number {
+      margin: 0 0 14px;
+    }
+
+    .m4-guide-number strong,
+    .m4-guide-number-copy span {
+      color: #f4f4ff;
+    }
+
+    .m4-guide-number-copy small,
+    .m4-guide-orbit-data small,
+    .m4-guide-orbit-data b {
+      color: rgba(232,232,248,0.58);
+    }
+
+    .m4-guide-rule {
+      background: rgba(244,244,255,0.72);
+    }
+
+    .m4-guide-orbit-data {
+      display: block;
+      margin-top: 0;
+      padding-top: 12px;
+    }
+
+    .m4-guide-orbit-data > span {
+      display: flex;
+      align-items: baseline;
+      gap: 7px;
+    }
+
+    .m4-guide-orbit-data > span + span {
+      display: none;
     }
 
     .m4-start-guide-right {
       top: auto;
-      right: 24px;
-      bottom: 42px;
-      left: 24px;
+      right: 14px;
+      bottom: 14px;
+      left: 14px;
       width: auto;
+      padding: 14px 16px;
       transform: none;
     }
 
-    .m4-guide-icon,
-    .m4-start-guide-right p {
+    .m4-guide-card-copy,
+    .m4-guide-metrics {
       display: none;
     }
 
-    .m4-start-guide h2 {
-      margin-bottom: 0;
-      font-size: 17px;
+    .m4-guide-card-title {
+      margin: 12px 0 10px;
+      font-size: 18px;
     }
 
-    .m4-guide-action {
-      margin-top: 9px;
+    .m4-guide-jump-button {
+      min-height: 38px;
+    }
+
+    .m4-orbit-static-hint {
+      top: 72%;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .m4-start-guide-left {
+      top: 96px;
+      left: 18px;
+    }
+
+    .m4-start-guide-right {
+      right: 10px;
+      bottom: 10px;
+      left: 10px;
+    }
+
+    .m4-start-guide-right .m4-guide-card-head {
+      display: none;
+    }
+
+    .m4-guide-card-title {
+      margin-top: 0;
     }
   }
 
   @media (prefers-reduced-motion: reduce) {
     .m4-orbit-handle-halo,
-    .m4-orbit-handle-arrow,
-    .m4-guide-action::before {
+    .m4-orbit-handle-arrow {
       animation: none;
     }
   }
@@ -1460,13 +1643,23 @@ function StartGuide({ opacity, progress, onJumpToRecovery }) {
         aria-label="任务编号"
         style={{ opacity: guideOpacity }}
       >
-        <p className="m4-guide-eyebrow">ORBITAL SURVIVAL / SIMULATION 04</p>
+        <div className="m4-guide-card-head">
+          <span className="m4-guide-card-icon" aria-hidden="true"><Satellite size={18} strokeWidth={1.45} /></span>
+          <span className="m4-guide-card-kicker">ORBITAL SURVIVAL</span>
+          <span className="m4-guide-card-index">04</span>
+        </div>
         <div className="m4-guide-number">
           <strong>01</strong>
-          <span>初始轨道</span>
+          <span className="m4-guide-number-copy">
+            <span>初始轨道</span>
+            <small>INITIAL ORBIT</small>
+          </span>
         </div>
         <div className="m4-guide-rule" />
-        <p className="m4-guide-kicker">LOW EARTH ORBIT · DEBRIS RESPONSE</p>
+        <div className="m4-guide-orbit-data">
+          <span><small>轨道类型</small><b>LOW EARTH ORBIT</b></span>
+          <span><small>任务模式</small><b>DEBRIS RESPONSE</b></span>
+        </div>
       </aside>
 
       <aside
@@ -1474,24 +1667,31 @@ function StartGuide({ opacity, progress, onJumpToRecovery }) {
         aria-label="游戏介绍"
         style={{ opacity: guideOpacity }}
       >
-        <div className="m4-guide-icon" aria-hidden="true">
-          <svg width="38" height="20" viewBox="0 0 38 20" fill="none">
-            <ellipse cx="19" cy="10" rx="16" ry="6.5" stroke="currentColor" strokeWidth="1.2" />
-            <circle cx="19" cy="10" r="3.5" stroke="currentColor" strokeWidth="1.2" />
-            <circle cx="33" cy="7" r="1.8" fill="currentColor" />
-          </svg>
+        <div className="m4-guide-card-head">
+          <span className="m4-guide-card-icon" aria-hidden="true"><Eye size={18} strokeWidth={1.45} /></span>
+          <span className="m4-guide-card-kicker">ORBITAL SURVIVAL</span>
+          <span className="m4-guide-card-index">04</span>
         </div>
-        <h2>在碎片风暴中生存</h2>
-        <p>接管一颗受损卫星，在十二个月的近地轨道任务中躲避碎片。每一次判断都会消耗燃料或护甲，也会改变最终结局。</p>
-        <div className="m4-guide-action">12 MONTHS · ONE SATELLITE</div>
+        <h2 className="m4-guide-card-title">在碎片风暴中生存</h2>
+        <p className="m4-guide-card-copy">接管一颗受损卫星，在十二个月的近地轨道任务中躲避碎片。每一次判断都会消耗燃料或护甲，也会改变最终结局。</p>
+        <div className="m4-guide-metrics">
+          <span className="m4-guide-metric">
+            <CalendarDays size={17} strokeWidth={1.4} aria-hidden="true" />
+            <span><small>任务周期</small><b>12 MONTHS</b></span>
+          </span>
+          <span className="m4-guide-metric">
+            <Satellite size={17} strokeWidth={1.4} aria-hidden="true" />
+            <span><small>目标载具</small><b>01 SATELLITE</b></span>
+          </span>
+        </div>
         <button
           type="button"
           className="m4-guide-jump-button"
           onClick={onJumpToRecovery}
           aria-label="直接进入卫星回收页面"
         >
-          <span className="m4-guide-jump-icon" aria-hidden="true">→</span>
           <span>进入回收演示</span>
+          <ArrowRight className="m4-guide-jump-icon" size={16} strokeWidth={1.6} aria-hidden="true" />
         </button>
       </aside>
     </>
@@ -3909,6 +4109,8 @@ export default function M4New({ onComplete = () => {} }) {
   const started = useRef(false)
   const completionUnlocked = useRef(false)
   const progressRef = useRef(0)
+  const moduleRef = useRef(null)
+  const [isModuleInView, setIsModuleInView] = useState(false)
   const [events] = useState(() => pickEvents(damageLevel, clickedHistoryEvents || [], TOTAL_ROUNDS))
   const [gameStatus, setGameStatus] = useState(() => ({
     fuel: 100,
@@ -3955,6 +4157,21 @@ export default function M4New({ onComplete = () => {} }) {
   const recoveryComplete = phase === GAME_PHASE.RECOVERY
     && recoveryStepsVisible
     && activeRecoveryStepIndex >= RECOVERY_STEPS.length - 1
+
+  useEffect(() => {
+    const element = moduleRef.current
+    if (!element || !('IntersectionObserver' in window)) {
+      setIsModuleInView(true)
+      return undefined
+    }
+
+    const moduleViewportObserver = new IntersectionObserver(
+      ([entry]) => setIsModuleInView(entry.isIntersecting),
+      { rootMargin: '160px 0px' },
+    )
+    moduleViewportObserver.observe(element)
+    return () => moduleViewportObserver.disconnect()
+  }, [])
 
   useEffect(() => {
     if (!gameStarted) {
@@ -4248,11 +4465,12 @@ export default function M4New({ onComplete = () => {} }) {
 
   return (
     <div
+      ref={moduleRef}
       onWheel={handleModuleWheel}
       style={{
         position: 'relative',
         width: '100%',
-        height: '100vh',
+        height: '100svh',
         overflow: 'hidden',
         background: 'linear-gradient(rgba(232, 232, 248, 0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(232, 232, 248, 0.025) 1px, transparent 1px), #050713',
         backgroundSize: '100% 168px, 168px 100%, auto',
@@ -4265,6 +4483,7 @@ export default function M4New({ onComplete = () => {} }) {
       )}
 
       <Canvas
+        frameloop={isModuleInView ? 'always' : 'never'}
         camera={{ position: [0, 1.4, 3.2], fov: DEFAULT_CAMERA_FOV }}
         dpr={[0.75, 1.25]}
         style={{ position: 'relative', zIndex: 1, width: '100%', height: '100%' }}

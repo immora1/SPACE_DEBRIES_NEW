@@ -119,7 +119,7 @@ function LoadingDots() {
   )
 }
 
-export default function M7({ onComplete }) {
+export default function M7({ teachingEntry }) {
   const { user, satellite, materials, gameResult, setStoryChapter } = useAppStore()
   const recommendedId = useMemo(() => getRecommendation({ gameResult, materials }), [gameResult, materials])
   const [activeId, setActiveId] = useState(recommendedId)
@@ -221,6 +221,8 @@ export default function M7({ onComplete }) {
       () => {
         const itemStep = 100 / (VIDEOS.length * 2)
         const timeline = gsap.timeline({ repeat: -1 })
+        let isCarouselVisible = false
+        let hasFocusWithin = false
         gsap.set(track, { xPercent: 0 })
         timeline.to({}, { duration: 2.4 })
 
@@ -237,16 +239,24 @@ export default function M7({ onComplete }) {
 
         timeline.set(track, { xPercent: 0 })
 
+        timeline.pause()
+
+        const carouselVisibilityObserver = new IntersectionObserver(([entry]) => {
+          isCarouselVisible = entry.isIntersecting
+          if (isCarouselVisible && !hasFocusWithin) timeline.resume()
+          else timeline.pause()
+        }, { rootMargin: '120px 0px' })
+        carouselVisibilityObserver.observe(viewport)
+
         function pause() {
+          hasFocusWithin = true
           timeline.pause()
         }
 
-        function resume() {
-          timeline.resume()
-        }
-
         function resumeAfterFocus(event) {
-          if (!viewport.contains(event.relatedTarget)) resume()
+          if (viewport.contains(event.relatedTarget)) return
+          hasFocusWithin = false
+          if (isCarouselVisible) timeline.resume()
         }
 
         viewport.addEventListener('focusin', pause)
@@ -255,6 +265,7 @@ export default function M7({ onComplete }) {
         return () => {
           viewport.removeEventListener('focusin', pause)
           viewport.removeEventListener('focusout', resumeAfterFocus)
+          carouselVisibilityObserver.disconnect()
           timeline.kill()
         }
       },
@@ -323,11 +334,6 @@ export default function M7({ onComplete }) {
       setExplanation('你的回答已经把视频内容和前面模块联系起来了。继续补充碎片来源、轨道高度与清理成本之间的关系，会让判断更完整。')
       setExplanationState('error')
     }
-  }
-
-  function handleContinue() {
-    if (answer.trim()) setStoryChapter('m7', answer)
-    onComplete()
   }
 
   return (
@@ -495,6 +501,7 @@ export default function M7({ onComplete }) {
                   id="m7-answer"
                   value={answer}
                   onChange={(event) => setAnswer(event.target.value)}
+                  onBlur={() => answer.trim() && setStoryChapter('m7', answer.trim())}
                   placeholder="写下你的判断与依据..."
                   disabled={!question}
                 />
@@ -516,8 +523,8 @@ export default function M7({ onComplete }) {
 
       <footer className="m7-footer">
         <div><span>ARCHIVE COMPLETE</span><p>资料链接可随时重新访问。</p></div>
-        <button type="button" onClick={handleContinue}>继续下一章节 <span>→</span></button>
       </footer>
+      {teachingEntry}
     </section>
   )
 }

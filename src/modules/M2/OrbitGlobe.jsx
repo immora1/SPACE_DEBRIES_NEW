@@ -48,7 +48,7 @@ function ZoneRing({ r, baseOpacity, active, tube, hexColor, currentStep }) {
 
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]}>
-      <torusGeometry args={[r, tube, 2, 64]} />
+      <torusGeometry args={[r, tube, 6, 128]} />
       <meshBasicMaterial ref={matRef} color={hexColor} transparent opacity={baseOpacity} />
     </mesh>
   )
@@ -79,7 +79,7 @@ function SatOrbit({ altKm, incDeg, currentStep }) {
     <group>
       {/* 杞ㄩ亾鐜細step 1 鏃跺姞绮楀姞浜?*/}
       <mesh rotation={[rx, 0, 0]}>
-        <torusGeometry args={[r, highlight ? 0.013 : 0.007, 4, 64]} />
+        <torusGeometry args={[r, highlight ? 0.013 : 0.007, 6, 128]} />
         <meshBasicMaterial color="#7da7e8" transparent opacity={highlight ? 1.0 : 0.88} />
       </mesh>
       {/* 鍗槦鐐?*/}
@@ -127,8 +127,8 @@ export default function OrbitGlobe({
         <Canvas
           frameloop="always"
           camera={{ position: [0, 2.8, 9.0], fov: 52 }}
-          dpr={[1, 1]}
-          gl={{ antialias: true, alpha: true }}
+          dpr={[1, 1.5]}
+          gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
           style={{ background: 'transparent', width: '100%', height: '100%' }}
         >
         <M4EarthLighting />

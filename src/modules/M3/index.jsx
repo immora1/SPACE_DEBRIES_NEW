@@ -1,13 +1,28 @@
 import { useState, useRef, useMemo, useCallback, Suspense, useEffect } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Html, Line } from '@react-three/drei'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useSpring } from 'framer-motion'
+import { Orbit, X } from 'lucide-react'
 import * as THREE from 'three'
+import { Tooltip } from '../../components/ui/tooltip-card'
+import { calculateTooltipPosition } from '../../components/ui/tooltip-card-position'
 import useAppStore from '../../store/useAppStore'
 import { generateEventNarrative } from '../../services/ai'
 import M4EarthModel, { M4EarthLighting } from '../M1/M4EarthModel'
+import M3InteractionGuide from './M3InteractionGuide.jsx'
+import fallEventData from './fall-events.json'
+import {
+  createFallEventHover,
+  createFallEventPlacements,
+  EARTH_RADIUS,
+  FALL_TRACE_VARIANTS,
+} from './fallEventPlacement.js'
+import { isM3GuideDismissAction } from './interactionGuide.js'
+import './index.css'
 
 const EASE = [0.16, 1, 0.3, 1]
+const FALL_EVENTS = fallEventData['事件']
+const CLOUD_AXIS = new THREE.Vector3(0, 0, 1)
 
 // ── Event data ──────────────────────────────────────────────────────────────
 const ALL_EVENTS = [
@@ -91,41 +106,435 @@ const ALL_EVENTS = [
 const KEY_IDS = new Set(['ablestar', 'kessler', 'kosmos954', 'cerise', 'fy1c', 'iridium', 'issbattery'])
 
 const ERA_META = [
-  { id: 1, range: '1957–1969', name: '太空竞赛时代' },
-  { id: 2, range: '1970–1989', name: '深空探索与空间站' },
-  { id: 3, range: '1990–2009', name: '太空碎片危机浮现' },
-  { id: 4, range: '2010–2019', name: '商业航天崛起' },
-  { id: 5, range: '2020–2026', name: '新太空纪元' },
+  { id: 1, range: '1957–1969', name: '太空竞赛时代', desc: '发射能力首次突破地球引力，轨道也开始积累无法回收的早期残骸。' },
+  { id: 2, range: '1970–1989', name: '深空探索与空间站', desc: '深空探测与长期驻留展开，大型航天器带来新的失控再入风险。' },
+  { id: 3, range: '1990–2009', name: '太空碎片危机浮现', desc: '碰撞与反卫试验让碎片从隐患变成可观测的系统性危机。' },
+  { id: 4, range: '2010–2019', name: '商业航天崛起', desc: '发射频率快速上升，商业星座开始重塑近地轨道密度。' },
+  { id: 5, range: '2020–2026', name: '新太空纪元', desc: '巨型星座与主动清理并存，治理能力必须开始追赶技术扩张。' },
 ]
 
+const EVENTS_BY_ERA = ERA_META.map((era) => ALL_EVENTS.filter((event) => event.era === era.id))
+
 const RING_CONFIG = [
-  { id: 1, radius: 8.0,  speed: 0.048, color: '#1e3a8a', satTypes: ['sputnik', 'dongfanghong'],              size: 0.75 },
-  { id: 2, radius: 9.0,  speed: 0.036, color: '#163070', satTypes: ['early_box', 'cylinder_ant', 'sphere_wing'], size: 0.9 },
-  { id: 3, radius: 10.0, speed: 0.026, color: '#1a3880', satTypes: ['comm', 'obs', 'nav'],                   size: 1.05 },
-  { id: 4, radius: 11.0, speed: 0.018, color: '#1e4090', satTypes: ['platform', 'comms_large', 'multi_module'], size: 1.2 },
-  { id: 5, radius: 12.0, speed: 0.013, color: '#162e78', satTypes: ['iss', 'tiangong'],                      size: 1.4 },
+  { id: 1, radius: 8.0,  speed: 0.048, opacity: 0.34, satTypes: ['sputnik', 'dongfanghong'], size: 0.84 },
+  { id: 2, radius: 9.0,  speed: 0.036, opacity: 0.4, satTypes: ['early_box', 'cylinder_ant', 'sphere_wing'], size: 0.9 },
+  { id: 3, radius: 10.0, speed: 0.026, opacity: 0.48, satTypes: ['comm', 'obs', 'nav'], size: 1.05 },
+  { id: 4, radius: 11.0, speed: 0.018, opacity: 0.56, satTypes: ['platform', 'comms_large', 'multi_module'], size: 1.2 },
+  { id: 5, radius: 12.0, speed: 0.013, opacity: 0.64, satTypes: ['iss', 'tiangong'], size: 1.4 },
 ]
+
+const ORBIT_ARC_START = Math.PI * 0.5
+const ORBIT_ARC_END = Math.PI * 1.5
 
 // ── 3D Components ──────────────────────────────────────────────────────────
 
-// Orthographic camera: zoom = height/14 so Earth center (y=-7) sits exactly at viewport bottom
+const getSceneMetrics = (width, height) => {
+  const viewportWidth = typeof window === 'undefined' ? width : window.innerWidth
+  const viewportHeight = typeof window === 'undefined' ? height : window.innerHeight
+  const referenceHeight = viewportWidth > 960
+    ? Math.max(980, viewportHeight * 1.12)
+    : height
+  const zoom = Math.max(width / 33, referenceHeight / 14.8)
+  const extension = Math.max(0, height - referenceHeight)
+  const verticalOffset = -extension / (2 * zoom)
+
+  return { zoom, verticalOffset }
+}
+
+// Keep the Earth diameter legible while allowing the outer rings to crop into the stage.
 function CameraSetup() {
   const { camera, size } = useThree()
   useEffect(() => {
-    // width/25 → Ring 5 (R=12) near screen edges; height/14 → Earth equator at viewport bottom
-    camera.zoom = Math.max(size.width / 25, size.height / 14)
+    camera.zoom = getSceneMetrics(size.width, size.height).zoom
     camera.updateProjectionMatrix()
   }, [camera, size.width, size.height])
   return null
 }
 
-function EarthMesh() {
-  const spinRef = useRef()
-  useFrame((_, dt) => { if (spinRef.current) spinRef.current.rotation.y -= dt * 0.02 })
+function createFallTraceGeometry(variant, variantIndex) {
+  const shape = new THREE.Shape()
+  const outer = []
+  const inner = []
+  const segments = 36
+  const startAngle = -variant.arcSpan / 2
+
+  for (let index = 0; index <= segments; index += 1) {
+    const progress = index / segments
+    const angle = startAngle + progress * variant.arcSpan
+    const envelope = Math.sin(progress * Math.PI)
+    const primaryWave = Math.sin(progress * Math.PI * (2.2 + variantIndex * 0.13) + variant.phase)
+    const secondaryWave = Math.sin(progress * Math.PI * 5.4 - variant.phase * 0.6)
+    const radius = 1 + envelope * variant.wave * (primaryWave + secondaryWave * 0.32)
+    outer.push(new THREE.Vector2(
+      Math.cos(angle) * radius + variant.skew * (progress - 0.5),
+      Math.sin(angle) * radius,
+    ))
+
+    const innerRadius = 1 - variant.bandWidth
+      + envelope * variant.wave * 0.3 * Math.sin(progress * Math.PI * 3.6 + variant.phase)
+    inner.push(new THREE.Vector2(
+      Math.cos(angle) * innerRadius + variant.skew * (progress - 0.5) * 0.7,
+      Math.sin(angle) * innerRadius,
+    ))
+  }
+
+  shape.moveTo(outer[0].x, outer[0].y)
+  outer.slice(1).forEach((point) => shape.lineTo(point.x, point.y))
+  inner.slice().reverse().forEach((point) => shape.lineTo(point.x, point.y))
+  shape.closePath()
+
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    depth: 1,
+    steps: 1,
+    bevelEnabled: true,
+    bevelSegments: 2,
+    bevelSize: 0.035,
+    bevelThickness: 0.08,
+    curveSegments: 8,
+  })
+  geometry.center()
+  geometry.computeVertexNormals()
+  geometry.computeBoundingSphere()
+  return geometry
+}
+
+function useFallCloudAssets() {
+  const geometries = useMemo(
+    () => FALL_TRACE_VARIANTS.map((variant, index) => createFallTraceGeometry(variant, index)),
+    [],
+  )
+  const edgeGeometries = useMemo(
+    () => geometries.map((geometry) => new THREE.EdgesGeometry(geometry, 24)),
+    [geometries],
+  )
+  const hitGeometry = useMemo(() => new THREE.CircleGeometry(1.06, 28), [])
+  const materials = useMemo(() => ({
+    major: new THREE.MeshStandardMaterial({
+      color: '#cadbff',
+      emissive: '#6f91f4',
+      emissiveIntensity: 0.08,
+      transparent: true,
+      opacity: 0.16,
+      roughness: 0.88,
+      metalness: 0,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+    }),
+    registry: new THREE.MeshStandardMaterial({
+      color: '#f3f6ff',
+      emissive: '#a9bfff',
+      emissiveIntensity: 0.05,
+      transparent: true,
+      opacity: 0.1,
+      roughness: 0.9,
+      metalness: 0,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+    }),
+    active: new THREE.MeshStandardMaterial({
+      color: '#ffffff',
+      emissive: '#8aa8ff',
+      emissiveIntensity: 0.2,
+      transparent: true,
+      opacity: 0.34,
+      roughness: 0.78,
+      metalness: 0,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+    }),
+    lineMajor: new THREE.LineBasicMaterial({ color: '#dfe7ff', transparent: true, opacity: 0.44, depthWrite: false }),
+    lineRegistry: new THREE.LineBasicMaterial({ color: '#f5f7ff', transparent: true, opacity: 0.28, depthWrite: false }),
+    lineActive: new THREE.LineBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.9, depthWrite: false }),
+    hit: new THREE.MeshBasicMaterial({
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      colorWrite: false,
+      side: THREE.DoubleSide,
+    }),
+  }), [])
+
+  useEffect(() => () => {
+    geometries.forEach((geometry) => geometry.dispose())
+    edgeGeometries.forEach((geometry) => geometry.dispose())
+    hitGeometry.dispose()
+    Object.values(materials).forEach((material) => material.dispose())
+  }, [edgeGeometries, geometries, hitGeometry, materials])
+
+  return { geometries, edgeGeometries, hitGeometry, materials }
+}
+
+function FallEventTooltipCard({ event }) {
+  const source = event['来源']?.[0]
+
+  return (
+    <article className="m3-fall-event-card">
+      <header>
+        <span>FALL EVENT {String(event['事件编号']).padStart(2, '0')}</span>
+        <span>HOVER</span>
+      </header>
+      <span className="m3-fall-event-category">{event['类别']}</span>
+      <h3>{event['事件名称']}</h3>
+      <p>{event['一句话事件介绍']}</p>
+      <dl>
+        <div>
+          <dt>影响范围</dt>
+          <dd>{event['影响范围']}</dd>
+        </div>
+      </dl>
+      {source && (
+        <footer>
+          <span>{source['来源名称']}</span>
+        </footer>
+      )}
+    </article>
+  )
+}
+
+function getFallCloudQuaternion(placement) {
+  const normal = new THREE.Vector3(...placement.normal).normalize()
+  const align = new THREE.Quaternion().setFromUnitVectors(CLOUD_AXIS, normal)
+  const roll = new THREE.Quaternion().setFromAxisAngle(CLOUD_AXIS, placement.roll)
+  return align.multiply(roll)
+}
+
+function FallEventCloud({
+  event,
+  placement,
+  geometries,
+  edgeGeometries,
+  hitGeometry,
+  materials,
+  isHovered,
+  isGuideTarget,
+  onHover,
+  onMove,
+  onLeave,
+  onActivate,
+}) {
+  const orientation = useMemo(() => getFallCloudQuaternion(placement), [placement])
+  const isActive = isHovered
+  const isMajor = event['类别'].startsWith('重大')
+  const fillMaterial = isActive ? materials.active : isMajor ? materials.major : materials.registry
+  const lineMaterial = isActive ? materials.lineActive : isMajor ? materials.lineMajor : materials.lineRegistry
+
+  return (
+    <group position={placement.position} quaternion={orientation} scale={isActive ? 1.035 : 1}>
+      <mesh
+        geometry={geometries[placement.variant]}
+        material={fillMaterial}
+        scale={placement.scale}
+      />
+      <lineSegments
+        geometry={edgeGeometries[placement.variant]}
+        material={lineMaterial}
+        scale={placement.scale}
+      />
+      {isGuideTarget && (
+        <Html
+          position={[0, 0, placement.scale[2] * 1.35 + 0.18]}
+          center
+          zIndexRange={[4, 1]}
+          style={{ pointerEvents: 'none' }}
+        >
+          <span
+            className="m3-guide-scene-anchor"
+            data-m3-guide-target="trace"
+            aria-hidden="true"
+          />
+        </Html>
+      )}
+      <mesh
+        geometry={hitGeometry}
+        material={materials.hit}
+        position={[0, 0, 0.62]}
+        scale={[placement.scale[0], placement.scale[1], 1]}
+        onPointerOver={(pointerEvent) => {
+          pointerEvent.stopPropagation()
+          onHover(event, pointerEvent)
+        }}
+        onPointerMove={(pointerEvent) => {
+          pointerEvent.stopPropagation()
+          onMove(event, pointerEvent)
+        }}
+        onPointerOut={(pointerEvent) => {
+          pointerEvent.stopPropagation()
+          onLeave(event['事件编号'])
+        }}
+        onPointerDown={(pointerEvent) => pointerEvent.stopPropagation()}
+        onPointerUp={(pointerEvent) => pointerEvent.stopPropagation()}
+        onClick={(pointerEvent) => {
+          pointerEvent.stopPropagation()
+          onActivate(event['事件编号'])
+        }}
+      />
+    </group>
+  )
+}
+
+function FallEventLayer({ hoveredId, onHover, onMove, onLeave, onActivate }) {
+  const { geometries, edgeGeometries, hitGeometry, materials } = useFallCloudAssets()
+  const placements = useMemo(
+    () => createFallEventPlacements(FALL_EVENTS).map((placement, index) => ({
+      ...placement,
+      event: FALL_EVENTS[index],
+    })),
+    [],
+  )
+  return (
+    <>
+      {placements.map((placement) => {
+        const { event } = placement
+        const eventId = event['事件编号']
+        return (
+          <FallEventCloud
+            key={eventId}
+            event={event}
+            placement={placement}
+            geometries={geometries}
+            edgeGeometries={edgeGeometries}
+            hitGeometry={hitGeometry}
+            materials={materials}
+            isHovered={hoveredId === eventId}
+            isGuideTarget={eventId === 6}
+            onHover={onHover}
+            onMove={onMove}
+            onLeave={onLeave}
+            onActivate={onActivate}
+          />
+        )
+      })}
+    </>
+  )
+}
+
+function InteractiveEarth({ onGuideAction, onFallHover, onFallMove, onFallLeave, visitKey }) {
+  const rotationRef = useRef()
+  const dragRef = useRef({ pointerId: null, x: 0, y: 0, moved: false })
+  const [hoveredEventId, setHoveredEventId] = useState(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const { gl } = useThree()
+  const isPaused = isDragging || hoveredEventId !== null
+
+  useFrame((_, delta) => {
+    if (rotationRef.current && !isPaused) rotationRef.current.rotation.y -= delta * 0.02
+  })
+
+  useEffect(() => {
+    const canvas = gl.domElement
+    canvas.classList.toggle('is-earth-dragging', isDragging)
+    return () => canvas.classList.remove('is-earth-dragging')
+  }, [gl, isDragging])
+
+  useEffect(() => {
+    dragRef.current = { pointerId: null, x: 0, y: 0, moved: false }
+    setHoveredEventId(null)
+    setIsDragging(false)
+    onFallLeave()
+  }, [onFallLeave, visitKey])
+
+  const getTooltipPoint = useCallback((pointerEvent) => {
+    const canvasRect = gl.domElement.getBoundingClientRect()
+    const nativeEvent = pointerEvent.nativeEvent ?? pointerEvent
+    const mouseX = nativeEvent.clientX - canvasRect.left
+    const mouseY = nativeEvent.clientY - canvasRect.top
+
+    return calculateTooltipPosition({
+      mouseX,
+      mouseY,
+      containerRect: canvasRect,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      tooltipWidth: Math.min(300, Math.max(240, canvasRect.width - 28)),
+      tooltipHeight: Math.min(250, canvasRect.height * 0.52),
+      offset: 16,
+    })
+  }, [gl])
+
+  const onCloudHover = useCallback((event, pointerEvent) => {
+    setHoveredEventId(event['事件编号'])
+    onFallHover(event, getTooltipPoint(pointerEvent))
+  }, [getTooltipPoint, onFallHover])
+
+  const onCloudMove = useCallback((event, pointerEvent) => {
+    onFallMove(event, getTooltipPoint(pointerEvent))
+  }, [getTooltipPoint, onFallMove])
+
+  const onCloudLeave = useCallback((eventId) => {
+    setHoveredEventId((current) => current === eventId ? null : current)
+    onFallLeave(eventId)
+  }, [onFallLeave])
+
+  const endDrag = useCallback((pointerEvent, shouldClearHover) => {
+    if (dragRef.current.pointerId !== pointerEvent.pointerId) return
+    const didMove = dragRef.current.moved
+    dragRef.current.pointerId = null
+    if (pointerEvent.target.hasPointerCapture?.(pointerEvent.pointerId)) {
+      pointerEvent.target.releasePointerCapture(pointerEvent.pointerId)
+    }
+    setIsDragging(false)
+    if (shouldClearHover && !didMove) onFallLeave()
+  }, [onFallLeave])
+
   return (
     <group rotation={[-Math.PI / 2, 0, Math.PI]}>
-      <group ref={spinRef}>
-        <M4EarthModel radius={6.5} />
+      <group ref={rotationRef}>
+        <M4EarthModel radius={EARTH_RADIUS} />
+        <FallEventLayer
+          hoveredId={hoveredEventId}
+          onHover={onCloudHover}
+          onMove={onCloudMove}
+          onLeave={onCloudLeave}
+          onActivate={() => {
+            onGuideAction?.('trace')
+          }}
+        />
+        <mesh
+          onPointerDown={(pointerEvent) => {
+            if (pointerEvent.button !== 0) return
+            pointerEvent.stopPropagation()
+            pointerEvent.target.setPointerCapture?.(pointerEvent.pointerId)
+            dragRef.current = {
+              pointerId: pointerEvent.pointerId,
+              x: pointerEvent.clientX,
+              y: pointerEvent.clientY,
+              moved: false,
+            }
+            setIsDragging(true)
+            setHoveredEventId(null)
+            onFallLeave()
+          }}
+          onPointerMove={(pointerEvent) => {
+            if (dragRef.current.pointerId !== pointerEvent.pointerId || !rotationRef.current) return
+            pointerEvent.stopPropagation()
+            const deltaX = pointerEvent.clientX - dragRef.current.x
+            const deltaY = pointerEvent.clientY - dragRef.current.y
+            if (!dragRef.current.moved && Math.abs(deltaX) + Math.abs(deltaY) > 1) {
+              dragRef.current.moved = true
+              onGuideAction?.('drag')
+            }
+            dragRef.current.x = pointerEvent.clientX
+            dragRef.current.y = pointerEvent.clientY
+            rotationRef.current.rotation.y += deltaX * 0.0055
+            rotationRef.current.rotation.x = THREE.MathUtils.clamp(
+              rotationRef.current.rotation.x + deltaY * 0.0045,
+              -0.78,
+              0.78,
+            )
+          }}
+          onPointerUp={(pointerEvent) => endDrag(pointerEvent, true)}
+          onPointerCancel={(pointerEvent) => endDrag(pointerEvent, false)}
+          onLostPointerCapture={(pointerEvent) => endDrag(pointerEvent, false)}
+        >
+          <sphereGeometry args={[EARTH_RADIUS + 0.025, 48, 32]} />
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} />
+        </mesh>
       </group>
     </group>
   )
@@ -133,26 +542,42 @@ function EarthMesh() {
 
 // 10 satellite shapes across 5 complexity levels — body along X (tangential), panels along Y (radial)
 function MiniSatellite({ type, bodyColor, panelColor, eInt, scale = 1 }) {
-  const b = () => <meshStandardMaterial color={bodyColor}  emissive={bodyColor}  emissiveIntensity={eInt} />
-  const p = () => <meshStandardMaterial color={panelColor} emissive={panelColor} emissiveIntensity={eInt * 1.5} />
+  const b = () => (
+    <meshStandardMaterial
+      color={bodyColor}
+      emissive="#ffffff"
+      emissiveIntensity={Math.min(eInt * 0.12, 0.42)}
+      metalness={0.18}
+      roughness={0.46}
+    />
+  )
+  const p = () => (
+    <meshStandardMaterial
+      color={panelColor}
+      emissive="#416fe5"
+      emissiveIntensity={Math.min(0.08 + eInt * 0.17, 0.58)}
+      metalness={0.08}
+      roughness={0.52}
+    />
+  )
 
   // ── RING 1 ── simplest, 1957–1969 ──────────────────────────────────────────
   // Sputnik: sphere + 4 diagonal trailing antennas
   if (type === 'sputnik') return (
     <group scale={scale}>
       <mesh><sphereGeometry args={[0.07, 8, 6]} />{b()}</mesh>
-      <mesh position={[ 0.10,  0.10, 0]} rotation={[0,0,-0.78]}><cylinderGeometry args={[0.003,0.001,0.15,4]} />{p()}</mesh>
-      <mesh position={[-0.10,  0.10, 0]} rotation={[0,0, 0.78]}><cylinderGeometry args={[0.003,0.001,0.15,4]} />{p()}</mesh>
-      <mesh position={[ 0.10, -0.10, 0]} rotation={[0,0, 0.78]}><cylinderGeometry args={[0.003,0.001,0.15,4]} />{p()}</mesh>
-      <mesh position={[-0.10, -0.10, 0]} rotation={[0,0,-0.78]}><cylinderGeometry args={[0.003,0.001,0.15,4]} />{p()}</mesh>
+      <mesh position={[ 0.10,  0.10, 0]} rotation={[0,0,-0.78]}><cylinderGeometry args={[0.007,0.003,0.15,6]} />{p()}</mesh>
+      <mesh position={[-0.10,  0.10, 0]} rotation={[0,0, 0.78]}><cylinderGeometry args={[0.007,0.003,0.15,6]} />{p()}</mesh>
+      <mesh position={[ 0.10, -0.10, 0]} rotation={[0,0, 0.78]}><cylinderGeometry args={[0.007,0.003,0.15,6]} />{p()}</mesh>
+      <mesh position={[-0.10, -0.10, 0]} rotation={[0,0,-0.78]}><cylinderGeometry args={[0.007,0.003,0.15,6]} />{p()}</mesh>
     </group>
   )
   // 东方红: low-poly faceted sphere + 2 short whip stubs
   if (type === 'dongfanghong') return (
     <group scale={scale}>
       <mesh><sphereGeometry args={[0.08, 5, 4]} />{b()}</mesh>
-      <mesh position={[0,  0.13, 0]}><cylinderGeometry args={[0.005,0.002,0.09,4]} />{p()}</mesh>
-      <mesh position={[0, -0.13, 0]}><cylinderGeometry args={[0.005,0.002,0.09,4]} />{p()}</mesh>
+      <mesh position={[0,  0.13, 0]}><cylinderGeometry args={[0.007,0.003,0.09,6]} />{p()}</mesh>
+      <mesh position={[0, -0.13, 0]}><cylinderGeometry args={[0.007,0.003,0.09,6]} />{p()}</mesh>
     </group>
   )
 
@@ -161,49 +586,57 @@ function MiniSatellite({ type, bodyColor, panelColor, eInt, scale = 1 }) {
   if (type === 'early_box') return (
     <group scale={scale}>
       <mesh><boxGeometry args={[0.13, 0.08, 0.06]} />{b()}</mesh>
-      <mesh position={[0, 0.14, 0]}><boxGeometry args={[0.15, 0.08, 0.005]} />{p()}</mesh>
-      <mesh position={[0.12, 0, 0]}><cylinderGeometry args={[0.004,0.002,0.10,4]} />{p()}</mesh>
+      <mesh position={[0, 0.069, 0]}><cylinderGeometry args={[0.006,0.006,0.058,6]} />{b()}</mesh>
+      <mesh position={[0, 0.145, 0.012]}><boxGeometry args={[0.17, 0.095, 0.012]} />{p()}</mesh>
+      <mesh position={[0.12, 0, 0]}><cylinderGeometry args={[0.007,0.003,0.10,6]} />{p()}</mesh>
     </group>
   )
   // Cylinder + single top antenna
   if (type === 'cylinder_ant') return (
     <group scale={scale}>
       <mesh rotation={[0,0,Math.PI/2]}><cylinderGeometry args={[0.04,0.04,0.18,8]} />{b()}</mesh>
-      <mesh position={[0, 0.11, 0]}><cylinderGeometry args={[0.004,0.002,0.13,4]} />{p()}</mesh>
+      <mesh position={[0, 0.11, 0]}><cylinderGeometry args={[0.007,0.003,0.13,6]} />{p()}</mesh>
     </group>
   )
   // Sphere + single small wing
   if (type === 'sphere_wing') return (
     <group scale={scale}>
       <mesh><sphereGeometry args={[0.07, 7, 5]} />{b()}</mesh>
-      <mesh position={[0, 0.13, 0]}><boxGeometry args={[0.12, 0.08, 0.005]} />{p()}</mesh>
+      <mesh position={[0, 0.091, 0]}><cylinderGeometry args={[0.006,0.006,0.042,6]} />{b()}</mesh>
+      <mesh position={[0, 0.155, 0.012]}><boxGeometry args={[0.15, 0.095, 0.012]} />{p()}</mesh>
     </group>
   )
 
   // ── RING 3 ── modern commercial, 1990–2009 ─────────────────────────────────
   // Comm sat: rectangular bus + 2 full solar wings
   if (type === 'comm') return (
-    <group scale={scale * 0.6}>
+    <group scale={scale * 0.66}>
       <mesh><boxGeometry args={[0.17, 0.07, 0.06]} />{b()}</mesh>
-      <mesh position={[0,  0.14, 0]}><boxGeometry args={[0.22, 0.10, 0.005]} />{p()}</mesh>
-      <mesh position={[0, -0.14, 0]}><boxGeometry args={[0.22, 0.10, 0.005]} />{p()}</mesh>
+      <mesh position={[0,  0.068, 0]}><cylinderGeometry args={[0.006,0.006,0.066,6]} />{b()}</mesh>
+      <mesh position={[0, -0.068, 0]}><cylinderGeometry args={[0.006,0.006,0.066,6]} />{b()}</mesh>
+      <mesh position={[0,  0.155, 0.012]}><boxGeometry args={[0.24, 0.11, 0.012]} />{p()}</mesh>
+      <mesh position={[0, -0.155, 0.012]}><boxGeometry args={[0.24, 0.11, 0.012]} />{p()}</mesh>
     </group>
   )
   // Observation sat: rect bus + wings + instrument boom
   if (type === 'obs') return (
-    <group scale={scale * 0.6}>
+    <group scale={scale * 0.66}>
       <mesh><boxGeometry args={[0.16, 0.07, 0.06]} />{b()}</mesh>
-      <mesh position={[0,  0.14, 0]}><boxGeometry args={[0.20, 0.09, 0.005]} />{p()}</mesh>
-      <mesh position={[0, -0.14, 0]}><boxGeometry args={[0.20, 0.09, 0.005]} />{p()}</mesh>
+      <mesh position={[0,  0.067, 0]}><cylinderGeometry args={[0.006,0.006,0.064,6]} />{b()}</mesh>
+      <mesh position={[0, -0.067, 0]}><cylinderGeometry args={[0.006,0.006,0.064,6]} />{b()}</mesh>
+      <mesh position={[0,  0.15, 0.012]}><boxGeometry args={[0.22, 0.10, 0.012]} />{p()}</mesh>
+      <mesh position={[0, -0.15, 0.012]}><boxGeometry args={[0.22, 0.10, 0.012]} />{p()}</mesh>
       <mesh position={[0.17, 0, 0]} rotation={[0,0,Math.PI/2]}><cylinderGeometry args={[0.004,0.004,0.14,4]} />{p()}</mesh>
     </group>
   )
   // Navigation sat: hexagonal body + 2 wings + dish stub
   if (type === 'nav') return (
-    <group scale={scale * 0.6}>
+    <group scale={scale * 0.66}>
       <mesh><cylinderGeometry args={[0.08,0.08,0.05,6]} />{b()}</mesh>
-      <mesh position={[0,  0.16, 0]}><boxGeometry args={[0.16, 0.09, 0.005]} />{p()}</mesh>
-      <mesh position={[0, -0.16, 0]}><boxGeometry args={[0.16, 0.09, 0.005]} />{p()}</mesh>
+      <mesh position={[0,  0.104, 0]}><cylinderGeometry args={[0.006,0.006,0.048,6]} />{b()}</mesh>
+      <mesh position={[0, -0.104, 0]}><cylinderGeometry args={[0.006,0.006,0.048,6]} />{b()}</mesh>
+      <mesh position={[0,  0.17, 0.012]}><boxGeometry args={[0.19, 0.10, 0.012]} />{p()}</mesh>
+      <mesh position={[0, -0.17, 0.012]}><boxGeometry args={[0.19, 0.10, 0.012]} />{p()}</mesh>
       <mesh position={[-0.12, 0, 0]}><cylinderGeometry args={[0.05,0.01,0.03,12]} />{p()}</mesh>
     </group>
   )
@@ -267,11 +700,36 @@ function MiniSatellite({ type, bodyColor, panelColor, eInt, scale = 1 }) {
   )
 }
 
-function EraRing({ config, events, launchYear, hoveredId, clickedIds, onHover, onLeave, onClick }) {
+function EventTooltipCard({ event, isDebris }) {
+  const era = ERA_META[event.era - 1]
+
+  return (
+    <article className="m3-event-tooltip-card">
+      <div className="m3-event-tooltip-meta">
+        <span>{event.year}</span>
+        <span>ERA 0{event.era}</span>
+      </div>
+      <h3>{event.name}</h3>
+      <p>{event.desc}</p>
+      <footer>
+        <span>{event.nameEn}</span>
+        <span>{isDebris ? `碎片 ${event.debris}` : era?.name}</span>
+      </footer>
+    </article>
+  )
+}
+
+function EraRing({ config, events, launchYear, hoveredId, clickedIds, activeEra, onHover, onLeave, onClick, onGuideAction }) {
   const orbitRef = useRef()
+  const orbitPaused = Boolean(hoveredId) && events.some((event) => event.id === hoveredId)
+  const hasActiveEra = Boolean(activeEra)
+  const isActiveEra = activeEra === config.id
+  const orbitOpacity = hasActiveEra
+    ? (isActiveEra ? 0.94 : config.opacity * 0.22)
+    : config.opacity
   // Negative Z rotation = clockwise when viewed from front (+Z camera)
   useFrame((_, dt) => {
-    if (orbitRef.current) orbitRef.current.rotation.z -= config.speed * dt
+    if (orbitRef.current && !orbitPaused) orbitRef.current.rotation.z -= config.speed * dt
   })
 
   const dots = useMemo(() => events.map((ev, i) => {
@@ -280,12 +738,12 @@ function EraRing({ config, events, launchYear, hoveredId, clickedIds, onHover, o
     return { ev, angle, satType, x: config.radius * Math.cos(angle), y: config.radius * Math.sin(angle) }
   }), [events, config.radius, config.satTypes])
 
-  // Upper semicircle only (θ: 0→π), avoids lower arc crossing at Earth horizon
+  // Draw the left semicircle so the rings extend into the viewport from the right-edge Earth.
   const arcGeo = useMemo(() => {
     const pts = []
     const segs = 96
     for (let i = 0; i <= segs; i++) {
-      const θ = Math.PI * i / segs
+      const θ = ORBIT_ARC_START + ((ORBIT_ARC_END - ORBIT_ARC_START) * i) / segs
       pts.push(new THREE.Vector3(config.radius * Math.cos(θ), config.radius * Math.sin(θ), 0))
     }
     const curve = new THREE.CatmullRomCurve3(pts, false, 'centripetal', 0.01)
@@ -294,14 +752,14 @@ function EraRing({ config, events, launchYear, hoveredId, clickedIds, onHover, o
 
   return (
     <group>
-      {/* Upper semicircle arc in XY plane */}
+      {/* Left-facing semicircle arc in XY plane */}
       <mesh geometry={arcGeo}>
         <meshStandardMaterial
-          color={config.color}
-          emissive={config.color}
-          emissiveIntensity={1.2}
+          color="#f5f7ff"
+          emissive="#f5f7ff"
+          emissiveIntensity={isActiveEra ? 0.7 : 0.35}
           transparent
-          opacity={0.6}
+          opacity={orbitOpacity}
         />
       </mesh>
 
@@ -314,34 +772,41 @@ function EraRing({ config, events, launchYear, hoveredId, clickedIds, onHover, o
           const isClicked= clickedIds.has(ev.id)
           const scale = (isKey ? (isHov ? 2.0 : 1.4) : (isHov ? 1.2 : 0.9)) * config.size
           const eInt = isHov ? 4.0 : isClicked ? 3.0 : (isKey && isActive ? 2.5 : isActive ? 2.0 : 1.4)
-          // M1 palette: body = near-white #ebf2ff, panel = accent blue #6b7fff
-          const bodyColor  = isKey && isActive ? '#f87171' : isActive ? '#ebf2ff' : '#8090c0'
-          const panelColor = isKey && isActive ? '#f87171' : isActive ? '#6b7fff' : '#4a5a9a'
+          const bodyColor = '#f2f5fa'
+          const panelColor = '#3f65cf'
+          const isDebris = KEY_IDS.has(ev.id) && ev.year >= launchYear
 
           return (
             <group key={ev.id} position={[x, y, 0.12]} rotation={[0, 0, angle + Math.PI / 2]}>
-              {/* events on hit sphere only — prevents raytesting all visual child meshes */}
-              <mesh
-                onPointerOver={e => { e.stopPropagation(); onHover(ev) }}
-                onPointerOut={() => onLeave()}
-                onClick={e => { e.stopPropagation(); onClick(ev) }}
-              >
-                <sphereGeometry args={[0.35, 6, 4]} />
-                <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-              </mesh>
-              <MiniSatellite type={satType} bodyColor={bodyColor} panelColor={panelColor} eInt={eInt} scale={scale} />
-              <Html position={[0, -0.5, 0]} center style={{ pointerEvents: 'none', userSelect: 'none' }}>
-                <div style={{
-                  fontFamily: "'Space Mono', monospace",
-                  fontSize: 5,
-                  transform: 'scaleY(-1)',
-                  color: isKey && isActive ? '#f87171' : isActive ? '#6b7fff' : '#2a3060',
-                  whiteSpace: 'nowrap',
-                  letterSpacing: '0.04em',
-                  opacity: isHov ? 1 : 0.75,
-                }}>
-                  {ev.nameEn}
-                </div>
+              <MiniSatellite
+                type={satType}
+                bodyColor={bodyColor}
+                panelColor={panelColor}
+                eInt={eInt}
+                scale={scale}
+              />
+              <Html position={[0, 0, 0.5]} center zIndexRange={[80, 10]}>
+                <Tooltip
+                  containerClassName="m3-tooltip-host"
+                  content={<EventTooltipCard event={ev} isDebris={isDebris} />}
+                >
+                  <button
+                    type="button"
+                    className={`m3-satellite-anchor${isDebris ? ' is-debris' : ''}${isHov ? ' is-hovered' : ''}`}
+                    aria-label={`${ev.year} ${ev.name}`}
+                    data-m3-guide-target="satellite"
+                    onPointerEnter={() => onHover(ev)}
+                    onPointerLeave={onLeave}
+                    onFocus={() => onHover(ev)}
+                    onBlur={onLeave}
+                    onClick={() => {
+                      onGuideAction?.('satellite')
+                      onClick(ev)
+                    }}
+                  >
+                    <span>{ev.nameEn}</span>
+                  </button>
+                </Tooltip>
               </Html>
             </group>
           )
@@ -351,16 +816,16 @@ function EraRing({ config, events, launchYear, hoveredId, clickedIds, onHover, o
   )
 }
 
-// Static angles — spread nearly full upper semicircle (right-side to left-side)
+// Static angles spread across the visible left semicircle.
 const RAY_ANGLES = [
-  Math.PI * 0.04,   // ERA 1: ~7°  far right
-  Math.PI * 0.24,   // ERA 2: ~43° upper right
-  Math.PI * 0.50,   // ERA 3: 90°  straight up
-  Math.PI * 0.76,   // ERA 4: ~137° upper left
-  Math.PI * 0.96,   // ERA 5: ~173° far left
+  Math.PI * 0.56,
+  Math.PI * 0.78,
+  Math.PI,
+  Math.PI * 1.22,
+  Math.PI * 1.44,
 ]
 
-function EraRays() {
+function EraRays({ activeEra }) {
   return (
     <>
       {RING_CONFIG.map((cfg, i) => {
@@ -369,27 +834,15 @@ function EraRays() {
         const sin    = Math.sin(angle)
         const earthR = 7.1
         const ringR  = cfg.radius
-        const midR   = (earthR + ringR) * 0.5
-        const meta   = ERA_META[i]
         return (
           <group key={cfg.id}>
             <Line
               points={[[earthR * cos, earthR * sin, 0], [ringR * cos, ringR * sin, 0]]}
-              color="#6b7fff"
-              lineWidth={1.2}
+              color="#f5f7ff"
+              lineWidth={0.75}
               transparent
-              opacity={0.75}
+              opacity={activeEra ? (activeEra === cfg.id ? 0.9 : 0.12) : 0.42 + i * 0.06}
             />
-            <Html position={[midR * cos, midR * sin, 0.5]} center style={{ pointerEvents: 'none', userSelect: 'none' }}>
-              <div style={{ textAlign: 'center', transform: 'scaleY(-1)' }}>
-                <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 7, color: '#6b7fff', letterSpacing: '0.1em', whiteSpace: 'nowrap' }}>
-                  ERA 0{meta.id} · {meta.range}
-                </div>
-                <div style={{ fontFamily: "'Noto Sans SC', sans-serif", fontSize: 7, color: '#8888aa', whiteSpace: 'nowrap' }}>
-                  {meta.name}
-                </div>
-              </div>
-            </Html>
           </group>
         )
       })}
@@ -397,27 +850,51 @@ function EraRays() {
   )
 }
 
-function Scene({ launchYear, hoveredId, clickedIds, onHover, onLeave, onClick }) {
-  const eventsByEra = ERA_META.map(era => ALL_EVENTS.filter(e => e.era === era.id))
+function Scene({
+  launchYear,
+  hoveredId,
+  clickedIds,
+  activeEra,
+  onHover,
+  onLeave,
+  onClick,
+  onGuideAction,
+  onFallHover,
+  onFallMove,
+  onFallLeave,
+  visitKey,
+}) {
+  const { size } = useThree()
+  const { zoom, verticalOffset } = getSceneMetrics(size.width, size.height)
+  const rightEdge = size.width / (zoom * 2)
+
   return (
     <>
       <CameraSetup />
       <M4EarthLighting />
 
-      <group position={[0, -7, 0]}>
-        <EarthMesh />
-        <EraRays />
+      <group position={[rightEdge + 0.18, 0.12 + verticalOffset, 0]}>
+        <InteractiveEarth
+          onGuideAction={onGuideAction}
+          onFallHover={onFallHover}
+          onFallMove={onFallMove}
+          onFallLeave={onFallLeave}
+          visitKey={visitKey}
+        />
+        <EraRays activeEra={activeEra} />
         {RING_CONFIG.map((cfg, i) => (
           <EraRing
             key={cfg.id}
             config={cfg}
-            events={eventsByEra[i]}
+            events={EVENTS_BY_ERA[i]}
             launchYear={launchYear}
             hoveredId={hoveredId}
             clickedIds={clickedIds}
+            activeEra={activeEra}
             onHover={onHover}
             onLeave={onLeave}
             onClick={onClick}
+            onGuideAction={onGuideAction}
           />
         ))}
       </group>
@@ -428,13 +905,7 @@ function Scene({ launchYear, hoveredId, clickedIds, onHover, onLeave, onClick })
 // ── Main component ────────────────────────────────────────────────────────
 
 function Spinner() {
-  return (
-    <motion.span
-      animate={{ rotate: 360 }}
-      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-      style={{ display: 'inline-block', width: 10, height: 10, border: '1px solid #6b7fff', borderTopColor: 'transparent', borderRadius: '50%' }}
-    />
-  )
+  return <motion.span className="m3-spinner" animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} />
 }
 
 export default function M3({ onComplete }) {
@@ -446,14 +917,57 @@ export default function M3({ onComplete }) {
 
   const [hoveredEv,  setHoveredEv]  = useState(null)
   const [selectedEv, setSelectedEv] = useState(null)
+  const [hoveredEra, setHoveredEra] = useState(null)
+  const [pinnedEra, setPinnedEra] = useState(null)
   const [clickedIds, setClickedIds] = useState(new Set())
   const [narratives, setNarratives] = useState({})
   const [loadingId,  setLoadingId]  = useState(null)
+  const [guideInView, setGuideInView] = useState(false)
+  const [guideVisitKey, setGuideVisitKey] = useState(0)
+  const [guideDismissed, setGuideDismissed] = useState(false)
+  const [hoveredFallEvent, setHoveredFallEvent] = useState(null)
+  const guideVisualRef = useRef(null)
+  const guideVisitActiveRef = useRef(false)
+  const hoveredFallEventIdRef = useRef(null)
+  const fallHoverX = useSpring(0, { stiffness: 520, damping: 40, mass: 0.34 })
+  const fallHoverY = useSpring(0, { stiffness: 520, damping: 40, mass: 0.34 })
 
   const launchYear = satellite?.launchYear ?? 9999
 
   const onHover  = useCallback(ev => setHoveredEv(ev), [])
   const onLeave  = useCallback(() => setHoveredEv(null), [])
+  const onGuideAction = useCallback((action) => {
+    if (isM3GuideDismissAction(action)) setGuideDismissed(true)
+  }, [])
+
+  const onFallHover = useCallback((event, pointer) => {
+    const hover = createFallEventHover(event, pointer)
+    if (!hover) return
+
+    hoveredFallEventIdRef.current = event['事件编号']
+    fallHoverX.jump(hover.x)
+    fallHoverY.jump(hover.y)
+    setHoveredFallEvent(hover.event)
+  }, [fallHoverX, fallHoverY])
+
+  const onFallMove = useCallback((event, pointer) => {
+    const hover = createFallEventHover(event, pointer)
+    if (!hover) return
+
+    if (hoveredFallEventIdRef.current !== event['事件编号']) {
+      onFallHover(event, pointer)
+      return
+    }
+
+    fallHoverX.set(hover.x)
+    fallHoverY.set(hover.y)
+  }, [fallHoverX, fallHoverY, onFallHover])
+
+  const onFallLeave = useCallback((eventId) => {
+    if (eventId != null && hoveredFallEventIdRef.current !== eventId) return
+    hoveredFallEventIdRef.current = null
+    setHoveredFallEvent(null)
+  }, [])
 
   useEffect(() => { onComplete?.({ autoScroll: false }) }, [onComplete])
 
@@ -482,196 +996,187 @@ export default function M3({ onComplete }) {
   const globeWrapRef = useRef(null)
 
   useEffect(() => {
-    const io = new IntersectionObserver(([e]) => setGlobeInView(e.isIntersecting), { rootMargin: '120px' })
+    if (!('IntersectionObserver' in window)) {
+      setGlobeInView(true)
+      return undefined
+    }
+    const io = new IntersectionObserver(([entry]) => setGlobeInView(entry.isIntersecting), { rootMargin: '120px' })
     if (globeWrapRef.current) io.observe(globeWrapRef.current)
     return () => io.disconnect()
   }, [])
 
+  useEffect(() => {
+    const visual = guideVisualRef.current
+    if (!visual || !('IntersectionObserver' in window)) {
+      guideVisitActiveRef.current = true
+      setGuideInView(true)
+      setGuideVisitKey((current) => current + 1)
+      return undefined
+    }
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && !guideVisitActiveRef.current) {
+        guideVisitActiveRef.current = true
+        setGuideDismissed(false)
+        setGuideVisitKey((current) => current + 1)
+        setGuideInView(true)
+        return
+      }
+
+      if (!entry.isIntersecting && guideVisitActiveRef.current) {
+        guideVisitActiveRef.current = false
+        setGuideInView(false)
+        setGuideDismissed(false)
+        setHoveredEv(null)
+        setSelectedEv(null)
+        onFallLeave()
+      }
+    }, { rootMargin: '-18% 0px -18% 0px' })
+
+    observer.observe(visual)
+    return () => observer.disconnect()
+  }, [onFallLeave])
+
+  const activeEra = hoveredEv?.era ?? hoveredEra ?? selectedEv?.era ?? pinnedEra
+
   return (
-    <div style={{ color: '#e8e8f8', background: '#050713' }}>
-      <div ref={globeWrapRef} style={{ position: 'relative', width: '100%', height: '100vh', minHeight: 500, overflow: 'hidden', transform: 'scaleY(-1)' }}>
-
-        {globeInView && (
-          <Canvas
-            orthographic
-            frameloop="always"
-            camera={{ position: [0, 0, 100] }}
-            style={{ position: 'absolute', inset: 0 }}
-            dpr={[1, 1]}
-            gl={{ antialias: true, alpha: true }}
-          >
-            <Suspense fallback={null}>
-              <Scene
-                launchYear={launchYear}
-                hoveredId={hoveredEv?.id ?? null}
-                clickedIds={clickedIds}
-                onHover={onHover}
-                onLeave={onLeave}
-                onClick={onClick}
-              />
-            </Suspense>
-          </Canvas>
-        )}
-
-        {/* Title overlay */}
-        <div style={{
-          position: 'absolute', top: '8%', left: '50%', transform: 'translateX(-50%) scaleY(-1)',
-          zIndex: 3, textAlign: 'center', pointerEvents: 'none', width: '100%',
-        }}>
-          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, color: '#484878', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 16 }}>
-            03 · HISTORY
-          </div>
-          <h2 style={{
-            fontFamily: "'Noto Serif SC', serif",
-            fontSize: 'clamp(18px, 2.2vw, 28px)',
-            fontWeight: 400, color: '#e8e8f8', lineHeight: 1.7, margin: '0 0 18px',
-          }}>
-            每一次碰撞都留下了痕迹，<br />每一片碎片都还在轨道上。
-          </h2>
-          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 22, color: '#6b7fff', letterSpacing: '0.06em', marginBottom: 6 }}>
-            {ALL_EVENTS.length} 个历史事件
-          </div>
-          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 7, color: '#484878', letterSpacing: '0.16em' }}>
-            CLICK ANY SATELLITE TO EXPLORE · DEBRIS EVENTS GLOW RED
-          </div>
-        </div>
-
-        {/* ERA legend — left side */}
-        <div style={{
-          position: 'absolute', left: 28, top: '50%', transform: 'translateY(-50%) scaleY(-1)',
-          zIndex: 3, pointerEvents: 'none',
-        }}>
-          {ERA_META.map((era, i) => (
-            <div key={era.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-              <div style={{ width: 22, height: 1.5, background: RING_CONFIG[i].color, opacity: 0.55 }} />
-              <div>
-                <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 7, color: RING_CONFIG[i].color, opacity: 0.7, letterSpacing: '0.1em' }}>
-                  ERA 0{era.id} · {era.range}
-                </div>
-                <div style={{ fontFamily: "'Noto Sans SC', sans-serif", fontSize: 9, color: '#484878' }}>
-                  {era.name}
-                </div>
-              </div>
+    <section className="m3">
+      <div ref={globeWrapRef} className="m3-layout">
+        <div className="m3-copy">
+          <header className="m3-header">
+            <span>03 / ORBITAL HISTORY</span>
+            <h2>轨道，记得每一次碰撞。</h2>
+            <p>从第一颗人造卫星到主动清理计划，五条时间轨道记录了航天探索与碎片风险共同增长的历史。</p>
+            <div className="m3-summary" aria-label={`${ALL_EVENTS.length} 个历史事件，${FALL_EVENTS.length} 个坠落事件，5 个轨道阶段`}>
+              <span><strong>{ALL_EVENTS.length}</strong> ARCHIVED EVENTS</span>
+              <span><strong>{FALL_EVENTS.length}</strong> FALL RECORDS</span>
+              <span><strong>05</strong> ORBITAL ERAS</span>
             </div>
-          ))}
+          </header>
+
+          <nav className="m3-era-nav" aria-label="历史阶段">
+            {ERA_META.map((era, index) => {
+              const isActive = activeEra === era.id
+              const isPinned = pinnedEra === era.id
+
+              return (
+                <button
+                  key={era.id}
+                  type="button"
+                  className={`${isActive ? 'is-active' : ''}${isPinned ? ' is-pinned' : ''}`}
+                  aria-pressed={isPinned}
+                  onPointerEnter={() => setHoveredEra(era.id)}
+                  onPointerLeave={() => setHoveredEra(null)}
+                  onFocus={() => setHoveredEra(era.id)}
+                  onBlur={() => setHoveredEra(null)}
+                  onClick={() => setPinnedEra((current) => current === era.id ? null : era.id)}
+                >
+                  <span className="m3-era-index">ERA 0{era.id}</span>
+                  <span className="m3-era-range">{era.range}</span>
+                  <span className="m3-era-symbol" aria-hidden="true">
+                    <Orbit size={17} strokeWidth={1.35} />
+                  </span>
+                  <strong>{era.name}</strong>
+                  <p>{era.desc}</p>
+                  <span className="m3-era-foot">
+                    <span>{String(EVENTS_BY_ERA[index].length).padStart(2, '0')} EVENTS</span>
+                  </span>
+                </button>
+              )
+            })}
+          </nav>
         </div>
 
-        {/* Hover tooltip */}
-        <AnimatePresence>
-          {hoveredEv && (
-            <motion.div
-              key={hoveredEv.id + '-tip'}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.12 }}
-              style={{
-                position: 'absolute', bottom: 90, left: '50%', transform: 'translateX(-50%) scaleY(-1)',
-                zIndex: 10, pointerEvents: 'none',
-              }}
+        <div ref={guideVisualRef} className="m3-visual">
+          <div className="m3-canvas" onPointerLeave={() => onFallLeave()}>
+          {globeInView && (
+            <Canvas
+              orthographic
+              frameloop="always"
+              camera={{ position: [0, 0, 100] }}
+              dpr={[1, 1.5]}
+              gl={{ antialias: true, alpha: true }}
             >
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 10,
-                padding: '6px 16px',
-                background: 'rgba(8,8,26,0.88)', border: '1px solid #1a1a35',
-                backdropFilter: 'blur(10px)',
-              }}>
-                <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 8, color: '#484878' }}>
-                  {hoveredEv.year}
-                </span>
-                <span style={{ fontFamily: "'Noto Sans SC', sans-serif", fontSize: 12, color: '#e8e8f8' }}>
-                  {hoveredEv.name}
-                </span>
-                {KEY_IDS.has(hoveredEv.id) && hoveredEv.year >= launchYear && (
-                  <span style={{
-                    fontFamily: "'Space Mono', monospace", fontSize: 6, color: '#f87171',
-                    border: '1px solid rgba(248,113,113,0.35)', padding: '1px 5px',
-                  }}>
-                    DEBRIS
-                  </span>
-                )}
-              </div>
-            </motion.div>
+              <Suspense fallback={null}>
+                <Scene
+                  launchYear={launchYear}
+                  hoveredId={hoveredEv?.id ?? null}
+                  clickedIds={clickedIds}
+                  activeEra={activeEra}
+                  onHover={onHover}
+                  onLeave={onLeave}
+                  onClick={onClick}
+                  onGuideAction={onGuideAction}
+                  onFallHover={onFallHover}
+                  onFallMove={onFallMove}
+                  onFallLeave={onFallLeave}
+                  visitKey={guideVisitKey}
+                />
+              </Suspense>
+            </Canvas>
           )}
-        </AnimatePresence>
+          </div>
 
-        {/* Selected event panel — right side */}
-        <AnimatePresence>
-          {selectedEv && (
-            <motion.div
-              key={selectedEv.id + '-panel'}
-              initial={{ opacity: 0, x: 24 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 24 }}
-              transition={{ duration: 0.3, ease: EASE }}
-              style={{
-                position: 'absolute', right: 28, top: '50%', transform: 'translateY(-50%) scaleY(-1)',
-                zIndex: 10, width: 300,
-              }}
-            >
-              <div style={{
-                padding: '18px 20px',
-                background: 'rgba(8,8,26,0.92)', border: '1px solid #1a1a35',
-                backdropFilter: 'blur(16px)',
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 8, color: '#484878', letterSpacing: '0.1em' }}>
-                    {selectedEv.year}
-                  </span>
-                  <button
-                    onClick={() => setSelectedEv(null)}
-                    style={{ background: 'none', border: 'none', color: '#484878', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '0 2px' }}
-                  >
-                    ×
-                  </button>
+          <AnimatePresence>
+            {hoveredFallEvent && (
+              <motion.div
+                key={hoveredFallEvent['事件编号']}
+                className="m3-fall-hover-card"
+                style={{ x: fallHoverX, y: fallHoverY }}
+                initial={{ opacity: 0, scale: 0.985 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.985 }}
+                transition={{ duration: 0.16, ease: EASE }}
+              >
+                <FallEventTooltipCard event={hoveredFallEvent} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <M3InteractionGuide
+            active={guideInView && !guideDismissed && !selectedEv}
+            visitKey={guideVisitKey}
+            visualRef={guideVisualRef}
+          />
+
+          <AnimatePresence>
+            {selectedEv && (
+              <motion.aside
+                key={selectedEv.id + '-panel'}
+                className="m3-event-panel"
+                initial={{ opacity: 0, x: 32 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 24, transition: { duration: 0.2 } }}
+                transition={{ duration: 0.3, ease: EASE }}
+                aria-live="polite"
+              >
+                <div className="m3-event-panel-head">
+                  <div><span>{selectedEv.year}</span><small>ERA 0{selectedEv.era}</small></div>
+                  <button type="button" onClick={() => setSelectedEv(null)} aria-label="关闭事件详情"><X size={17} strokeWidth={1.6} /></button>
                 </div>
-                <div style={{ fontFamily: "'Noto Serif SC', serif", fontSize: 14, color: '#e8e8f8', lineHeight: 1.5, marginBottom: 10 }}>
-                  {selectedEv.name}
-                </div>
+                <span className="m3-event-panel-code">{selectedEv.nameEn}</span>
+                <h3>{selectedEv.name}</h3>
+                <p>{selectedEv.desc}</p>
+
                 {KEY_IDS.has(selectedEv.id) && (
-                  <div style={{ marginBottom: 10 }}>
-                    <span style={{
-                      fontFamily: "'Space Mono', monospace", fontSize: 6, color: '#f87171',
-                      border: '1px solid rgba(248,113,113,0.3)', padding: '2px 6px', letterSpacing: '0.08em',
-                    }}>
-                      DEBRIS EVENT · +{selectedEv.debris}
-                    </span>
-                  </div>
+                  <div className="m3-event-debris"><span>DEBRIS EVENT</span><strong>{selectedEv.debris}</strong></div>
                 )}
-                <p style={{ fontFamily: "'Noto Sans SC', sans-serif", fontSize: 11, color: '#8888a8', lineHeight: 1.9, margin: '0 0 12px' }}>
-                  {selectedEv.desc}
-                </p>
 
                 {loadingId === selectedEv.id && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Spinner />
-                    <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 8, color: '#484878', letterSpacing: '0.1em' }}>
-                      SATELLITE LOG...
-                    </span>
-                  </div>
+                  <div className="m3-event-loading"><Spinner /><span>SATELLITE LOG...</span></div>
                 )}
 
                 {narratives[selectedEv.id] && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    style={{ paddingLeft: 10, borderLeft: '2px solid rgba(107,127,255,0.4)' }}
-                  >
-                    <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 7, color: '#484878', letterSpacing: '0.14em', marginBottom: 8, textTransform: 'uppercase' }}>
-                      Satellite Log
-                    </div>
-                    <p style={{ fontFamily: "'Noto Serif SC', serif", fontSize: 11, color: '#b8b8d8', lineHeight: 2, margin: 0, fontStyle: 'italic' }}>
-                      {narratives[selectedEv.id]}
-                    </p>
+                  <motion.div className="m3-event-narrative" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
+                    <span>SATELLITE LOG</span>
+                    <p>{narratives[selectedEv.id]}</p>
                   </motion.div>
                 )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-
+              </motion.aside>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
-    </div>
+    </section>
   )
 }

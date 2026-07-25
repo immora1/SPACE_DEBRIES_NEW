@@ -1,8 +1,8 @@
 import { createElement, lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import useAppStore from './store/useAppStore'
-import ProgressBar from './components/ProgressBar'
 import ModuleWrapper from './components/ModuleWrapper'
 import StageNav from './components/StageNav'
+import AIStoryRail from './components/AIStoryRail'
 
 const M1 = lazy(() => import('./modules/M1'))
 const M2 = lazy(() => import('./modules/M2'))
@@ -14,7 +14,7 @@ const M7 = lazy(() => import('./modules/M7'))
 const M8 = lazy(() => import('./modules/M8'))
 
 const MODULES = [
-  { id: 'm1', Component: M1, connector: null, archDivider: '#04040f' },
+  { id: 'm1', Component: M1, connector: null },
   { id: 'm3', Component: M3, connector: null },
   { id: 'm2', Component: M2, connector: null },
   { id: 'm4', Component: M4, connector: null },
@@ -27,7 +27,7 @@ function ModuleLoader() {
   return <div style={{ height: 120 }} />
 }
 
-function DeferredModule({ Component, eager = false, onComplete }) {
+function DeferredModule({ Component, eager = false, onComplete, componentProps }) {
   const rootRef = useRef(null)
   const [shouldRender, setShouldRender] = useState(eager)
 
@@ -62,7 +62,7 @@ function DeferredModule({ Component, eager = false, onComplete }) {
     >
       {shouldRender ? (
         <Suspense fallback={<ModuleLoader />}>
-          {createElement(Component, { onComplete })}
+          {createElement(Component, { ...componentProps, onComplete })}
         </Suspense>
       ) : (
         <ModuleLoader />
@@ -73,102 +73,64 @@ function DeferredModule({ Component, eager = false, onComplete }) {
 
 const MemoDeferredModule = memo(DeferredModule)
 
-function OptionalModuleCard({ Component, isVisible }) {
+function OptionalModuleCard({ Component, isVisible, onDecision }) {
   const [expanded, setExpanded] = useState(false)
+  const setCurrentModule = useAppStore((state) => state.setCurrentModule)
 
   if (!isVisible) return null
 
   return (
-    <div
-      style={{ margin: '0 auto', maxWidth: expanded ? 'none' : 1080, padding: expanded ? '0 0 80px' : '0 24px 80px' }}
-    >
-      <div style={{
-        height: 1,
-        background: 'linear-gradient(to right, transparent, rgba(232,232,248,0.18), transparent)',
-        marginBottom: 40,
-      }} />
+    <div className={`optional-module-shell${expanded ? ' is-expanded' : ''}`}>
 
       {!expanded ? (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 24,
-            padding: '24px 28px',
-            background: 'rgba(8, 10, 28, 0.78)',
-            border: '1px solid rgba(232,232,248,0.14)',
-            borderRadius: 0,
-            color: '#e8e8f8',
-            cursor: 'pointer',
-          }}
-          onClick={() => setExpanded(true)}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div style={{
-              width: 40, height: 40, borderRadius: 0, flexShrink: 0,
-              border: '1px solid rgba(232,232,248,0.22)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'rgba(232,232,248,0.04)',
-            }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(232,232,248,0.82)" strokeWidth="1.5">
+        <div className="optional-module-card">
+          <div className="optional-module-copy">
+            <div className="optional-module-mark" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#080b16" strokeWidth="1.5">
                 <circle cx="12" cy="12" r="3" />
                 <path d="M12 2a10 10 0 0 1 0 20A10 10 0 0 1 12 2" strokeDasharray="3 3" />
                 <path d="M12 7v2M12 15v2M7 12H5M19 12h-2" />
               </svg>
             </div>
-            <div>
-              <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 8, color: 'rgba(232,232,248,0.42)', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 5 }}>
+            <div className="optional-module-text">
+              <div className="optional-module-kicker">
                 MODULE 08 / FIELD OBSERVATION
               </div>
-              <div style={{ fontFamily: 'Noto Serif SC, serif', fontSize: 20, color: '#e8e8f8', fontWeight: 300, marginBottom: 3 }}>
-                观测教学与社区
+              <div className="optional-module-title">
+                是否进入观测教学？
               </div>
-              <div style={{ fontFamily: 'Noto Sans SC, sans-serif', fontSize: 12, color: 'rgba(232,232,248,0.48)', lineHeight: 1.6 }}>
+              <div className="optional-module-description">
                 学会区分太空垃圾再入、流星与卫星，并提交你的目击报告。
               </div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-            <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,232,248,0.42)', letterSpacing: '0.08em' }}>
-              选读
-            </span>
-            <div
-              style={{
-                padding: '9px 20px',
-                border: '1px solid rgba(232,232,248,0.22)',
-                borderRadius: 0,
-                fontFamily: 'Space Mono, monospace',
-                fontSize: 10,
-                color: '#e8e8f8',
-                letterSpacing: '0.10em',
-                textTransform: 'uppercase',
-                whiteSpace: 'nowrap',
+          <div className="optional-module-actions">
+            <button
+              type="button"
+              className="optional-module-action optional-module-action--primary"
+              onClick={() => {
+                onDecision(true)
+                setExpanded(true)
+                setCurrentModule('m8')
               }}
             >
-              进入探索
-            </div>
+              进入教学
+            </button>
           </div>
         </div>
       ) : (
         <div>
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '14px clamp(18px, 3.2vw, 56px)', marginBottom: 0,
-            background: '#050713',
-            borderTop: '1px solid rgba(232,232,248,0.14)',
-            borderBottom: '1px solid rgba(232,232,248,0.14)',
-          }}>
-            <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 9, color: 'rgba(232,232,248,0.66)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+          <div className="optional-module-expanded-bar">
+            <div className="optional-module-expanded-label">
               MODULE 08 / FIELD OBSERVATION
             </div>
             <button
-              onClick={() => setExpanded(false)}
-              style={{
-                background: 'transparent', border: '1px solid rgba(232,232,248,0.22)', borderRadius: 0,
-                color: '#e8e8f8', fontFamily: 'Space Mono, monospace', fontSize: 9,
-                letterSpacing: '0.08em', padding: '6px 12px', cursor: 'pointer',
+              type="button"
+              className="optional-module-action optional-module-action--secondary optional-module-action--compact"
+              onClick={() => {
+                setExpanded(false)
+                setCurrentModule('m7')
               }}
             >
               收起
@@ -200,7 +162,16 @@ export default function App() {
   useEffect(() => {
     document.body.style.overflow = scrollLocked ? 'hidden' : ''
     document.documentElement.style.overflow = scrollLocked ? 'hidden' : ''
+
+    const preventScroll = (event) => event.preventDefault()
+    if (scrollLocked) {
+      window.addEventListener('wheel', preventScroll, { passive: false })
+      window.addEventListener('touchmove', preventScroll, { passive: false })
+    }
+
     return () => {
+      window.removeEventListener('wheel', preventScroll)
+      window.removeEventListener('touchmove', preventScroll)
       document.body.style.overflow = ''
       document.documentElement.style.overflow = ''
     }
@@ -215,6 +186,20 @@ export default function App() {
     })
   }, [completedSet, unlockedSet, unlockModule])
 
+  const scrollToModuleTarget = useCallback((id, behavior = 'smooth') => {
+    const el = document.querySelector(`[data-module="${id}"]`)
+    if (!el) return
+
+    const headerHeight = document.querySelector('[data-site-header]')?.getBoundingClientRect().height || 0
+    const targetTop = window.scrollY + el.getBoundingClientRect().top - headerHeight - 12
+    const distance = targetTop - window.scrollY
+    const resolvedBehavior = behavior === 'smart'
+      ? Math.abs(distance) <= Math.min(window.innerHeight * 1.25, 1200) ? 'smooth' : 'auto'
+      : behavior
+
+    window.scrollTo({ top: Math.max(0, targetTop), behavior: resolvedBehavior })
+  }, [])
+
   const handleComplete = useCallback((currentId, options = {}) => {
     markModuleComplete(currentId)
     const idx = MODULES.findIndex((m) => m.id === currentId)
@@ -225,11 +210,9 @@ export default function App() {
     if (options.autoScroll === false) return
 
     window.setTimeout(() => {
-      const nextEl = document.querySelector(`[data-module="${nextId}"]`)
-      const scrollTarget = nextEl?.querySelector?.('[data-module-scroll-target]') ?? nextEl
-      scrollTarget?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      scrollToModuleTarget(nextId)
     }, 150)
-  }, [markModuleComplete, unlockModule])
+  }, [markModuleComplete, scrollToModuleTarget, unlockModule])
 
   const isModuleNavigable = useCallback((id) => (
     allModuleIds.includes(id)
@@ -238,30 +221,25 @@ export default function App() {
   const scrollToModule = useCallback((id) => {
     if (!isModuleNavigable(id)) return
     if (scrollLocked) setScrollLocked(false)
-    const el = document.querySelector(`[data-module="${id}"]`)
-    if (!el) return
-
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    window.setTimeout(() => {
-      el.scrollIntoView({ behavior: 'auto', block: 'start' })
-    }, 600)
-  }, [isModuleNavigable, scrollLocked, setScrollLocked])
+    scrollToModuleTarget(id, 'smart')
+  }, [isModuleNavigable, scrollLocked, scrollToModuleTarget, setScrollLocked])
 
   const availableModules = useMemo(() => (
     allModuleIds
   ), [allModuleIds])
 
-  const showM8 = completedSet.has('m7')
+  const handleM8Decision = useCallback(() => {
+    handleComplete('m7', { autoScroll: false })
+  }, [handleComplete])
 
   return (
-    <div style={{ minHeight: '100vh' }}>
-      <ProgressBar completed={completedModules.length} total={MODULES.length} />
+    <main className="app-main">
       <StageNav
         completedModules={completedModules}
         availableModules={availableModules}
         onStageClick={scrollToModule}
       />
-
+      <AIStoryRail />
       {MODULES.map(({ id, Component, connector, archDivider, boundaryDivider }) => {
         return (
           <ModuleWrapper
@@ -277,12 +255,21 @@ export default function App() {
               Component={Component}
               eager={id === 'm1'}
               onComplete={(options) => handleComplete(id, options)}
+              componentProps={id === 'm7'
+                ? {
+                    teachingEntry: (
+                      <OptionalModuleCard
+                        Component={M8}
+                        isVisible
+                        onDecision={handleM8Decision}
+                      />
+                    ),
+                  }
+                : undefined}
             />
           </ModuleWrapper>
         )
       })}
-
-      <OptionalModuleCard Component={M8} isVisible={showM8} />
-    </div>
+    </main>
   )
 }

@@ -12,6 +12,8 @@ const initialState = {
   debrisGenerated: [],
   storyOutline: null,
   storyChapters: { opening: '' },
+  aiTimeline: [],
+  storySessionReady: false,
   preTest: null,
   postTest: null,
   currentModule: 'm1',
@@ -54,6 +56,17 @@ const useAppStore = create(
       setStoryChapter: (key, value) => set((state) => ({
         storyChapters: { ...state.storyChapters, [key]: value },
       })),
+      appendAIOutput: (event) => set((state) => (
+        state.aiTimeline.some((item) => item.id === event.id)
+          ? state
+          : { aiTimeline: [...state.aiTimeline, event] }
+      )),
+      beginStorySession: () => set({
+        aiTimeline: [],
+        storyOutline: null,
+        storyChapters: { opening: '' },
+        storySessionReady: true,
+      }),
       setPreTest: (preTest) => set({ preTest }),
       setPostTest: (postTest) => set({ postTest }),
       setCurrentModule: (currentModule) => set({ currentModule }),
@@ -74,7 +87,12 @@ const useAppStore = create(
     }),
     {
       name: 'space-debris-state',
-      version: 2,
+      version: 3,
+      migrate: (persistedState) => {
+        const migratedState = { ...persistedState }
+        delete migratedState.aiTimeline
+        return migratedState
+      },
       partialize: (state) => Object.fromEntries(persistKeys.map((key) => [key, state[key]])),
     },
   ),
