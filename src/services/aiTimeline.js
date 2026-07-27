@@ -1,64 +1,77 @@
 const FIELD_LABELS = {
-  premise: '故事主线',
-  checkpoints: '发展节点',
-  successEnding: '成功走向',
-  failureEnding: '风险走向',
-  story: '故事内容',
-  feedback: 'AI 分析',
-  narrative: '事件叙事',
-  storyUpdate: '故事变化',
-  knowledgePoints: '知识要点',
-  satFate: '卫星结局',
-  debrisDescription: '碎片结果',
-  storyEnding: '故事结局',
-  question: '生成问题',
-  explanation: 'AI 解释',
+  premise: { zh: '故事主线', en: 'Premise' },
+  checkpoints: { zh: '发展节点', en: 'Checkpoints' },
+  successEnding: { zh: '成功走向', en: 'Success path' },
+  failureEnding: { zh: '风险走向', en: 'Risk path' },
+  story: { zh: '故事内容', en: 'Story' },
+  feedback: { zh: 'AI 分析', en: 'AI analysis' },
+  narrative: { zh: '事件叙事', en: 'Event narrative' },
+  storyUpdate: { zh: '故事变化', en: 'Story update' },
+  knowledgePoints: { zh: '知识要点', en: 'Knowledge points' },
+  satFate: { zh: '卫星结局', en: 'Satellite fate' },
+  debrisDescription: { zh: '碎片结果', en: 'Debris outcome' },
+  storyEnding: { zh: '故事结局', en: 'Story ending' },
+  question: { zh: '生成问题', en: 'Question' },
+  explanation: { zh: 'AI 解释', en: 'AI explanation' },
 }
 
 export const AI_STORY_STAGES = {
-  m1: { code: 'M1', label: '太空垃圾认知', fallback: '故事尚未建立，等待用户进入个性化任务。' },
-  m3: { code: 'M3', label: '历史事件回溯', fallback: '历史事件正在补充卫星面临的风险背景。' },
-  m2: { code: 'M2', label: '卫星身份与轨道', fallback: '用户正在建立卫星身份、材料和任务路线。' },
-  m4: { code: 'M4', label: '轨道生存决策', fallback: '用户的每一次决策都会改变卫星余量与结局。' },
-  law: { code: 'M5', label: '法律责任边界', fallback: '故事正在进入责任认定与治理边界。' },
-  m6: { code: 'M6', label: '清理方案评估', fallback: '故事正在比较不同太空垃圾清理方式。' },
-  m7: { code: 'M7', label: '知识总结', fallback: '用户正在整理观测与辨析结果。' },
-  m8: { code: 'M8', label: '观测报告', fallback: '用户正在提交最终观测记录。' },
+  m1: { code: 'M1', label: { zh: '太空垃圾认知', en: 'Space debris awareness' }, fallback: { zh: '故事尚未建立，等待用户进入个性化任务。', en: 'The story has not started yet. Personalization begins in the mission stage.' } },
+  m2: { code: 'M2', label: { zh: '历史事件回溯', en: 'Historical risk archive' }, fallback: { zh: '历史事件正在补充卫星面临的风险背景。', en: 'Historical events are adding risk context for the satellite.' } },
+  m3: { code: 'M3', label: { zh: '卫星身份与轨道', en: 'Satellite identity and orbit' }, fallback: { zh: '用户正在建立卫星身份、材料和任务路线。', en: 'The user is defining the satellite, materials, and mission route.' } },
+  m4: { code: 'M4', label: { zh: '轨道生存决策', en: 'Orbital survival decisions' }, fallback: { zh: '用户的每一次决策都会改变卫星余量与结局。', en: 'Every decision changes the satellite margins and final outcome.' } },
+  m5: { code: 'M5', label: { zh: '法律责任边界', en: 'Legal responsibility' }, fallback: { zh: '故事正在进入责任认定与治理边界。', en: 'The story is entering questions of attribution and governance.' } },
+  m6: { code: 'M6', label: { zh: '清理方案评估', en: 'Cleanup assessment' }, fallback: { zh: '故事正在比较不同太空垃圾清理方式。', en: 'The story is comparing different debris-cleanup methods.' } },
+  m7: { code: 'M7', label: { zh: '知识总结', en: 'Knowledge archive' }, fallback: { zh: '用户正在整理观测与辨析结果。', en: 'The user is consolidating observation and classification results.' } },
+  m8: { code: 'M8', label: { zh: '观测报告', en: 'Observation report' }, fallback: { zh: '用户正在提交最终观测记录。', en: 'The user is preparing the final observation record.' } },
 }
 
-function formatValue(value) {
+function text(value, language = 'zh') {
+  if (!value || typeof value === 'string') return value || ''
+  return value[language] || value.zh || value.en || ''
+}
+
+function fieldLabel(key, language) {
+  return text(FIELD_LABELS[key], language) || key
+}
+
+function formatValue(value, language) {
+  const separator = language === 'en' ? '; ' : '；'
+  const connector = language === 'en' ? ': ' : '：'
+
   if (Array.isArray(value)) {
     return value
       .map((item) => {
         if (item && typeof item === 'object') {
           const label = item.label || item.id || ''
           const detail = item.beat || item.text || item.description || ''
-          return [label, detail].filter(Boolean).join('：')
+          return [label, detail].filter(Boolean).join(connector)
         }
         return String(item ?? '')
       })
       .filter(Boolean)
-      .join('；')
+      .join(separator)
   }
 
   if (value && typeof value === 'object') {
     return Object.entries(value)
-      .map(([key, nestedValue]) => `${FIELD_LABELS[key] || key}：${formatValue(nestedValue)}`)
+      .map(([key, nestedValue]) => `${fieldLabel(key, language)}${connector}${formatValue(nestedValue, language)}`)
       .filter(Boolean)
-      .join('；')
+      .join(separator)
   }
 
   return String(value ?? '').trim()
 }
 
-export function formatAIOutput(result) {
+export function formatAIOutput(result, language = 'zh') {
   if (typeof result === 'string') return result.trim()
   if (!result || typeof result !== 'object') return ''
+  const connector = language === 'en' ? ': ' : '：'
 
   return Object.entries(result)
     .map(([key, value]) => {
-      const formatted = formatValue(value)
-      return formatted ? `${FIELD_LABELS[key] || key}：${formatted}` : ''
+      const formatted = formatValue(value, language)
+      return formatted ? `${fieldLabel(key, language)}${connector}${formatted}` : ''
     })
     .filter(Boolean)
     .join('\n')
@@ -78,6 +91,7 @@ function inferImpact(result) {
 
 export function createAIOutputEvent(meta, result, options = {}) {
   const createdAt = options.createdAt ?? Date.now()
+  const language = options.language === 'en' ? 'en' : 'zh'
   const stage = AI_STORY_STAGES[meta.stageId] || AI_STORY_STAGES.m1
 
   return {
@@ -85,33 +99,30 @@ export function createAIOutputEvent(meta, result, options = {}) {
     type: meta.type,
     stageId: meta.stageId,
     stageCode: stage.code,
-    stageLabel: stage.label,
+    stageLabel: text(stage.label, language),
     title: meta.title,
-    choice: meta.choice || '由当前故事上下文自动生成',
-    impact: meta.impact || inferImpact(result) || stage.fallback,
-    content: formatAIOutput(result),
+    choice: meta.choice || (language === 'en' ? 'Generated from the current story context' : '由当前故事上下文自动生成'),
+    impact: meta.impact || inferImpact(result) || text(stage.fallback, language),
+    content: formatAIOutput(result, language),
     createdAt,
   }
 }
 
-export function getStoryPhase(entries, currentModule = 'm1') {
+export function getStoryPhase(entries, currentModule = 'm1', language = 'zh') {
   const latest = entries.at(-1)
   const stageId = currentModule || latest?.stageId || 'm1'
   const stage = AI_STORY_STAGES[stageId] || AI_STORY_STAGES.m1
 
   return {
     code: stage.code,
-    label: stage.label,
-    action: latest?.choice || '尚未产生影响故事走线的选择',
-    impact: latest?.impact || stage.fallback,
+    label: text(stage.label, language),
+    action: latest?.choice || (language === 'en' ? 'No story-changing choice has been made yet' : '尚未产生影响故事走线的选择'),
+    impact: latest?.impact || text(stage.fallback, language),
   }
 }
 
 export function getTimelineTickScale(index, hoveredIndex) {
-  if (hoveredIndex === null || hoveredIndex === undefined) {
-    return 0.28
-  }
-
+  if (hoveredIndex === null || hoveredIndex === undefined) return 0.28
   const distance = Math.abs(index - hoveredIndex)
   return [1, 0.76, 0.58, 0.43][distance] ?? 0.28
 }

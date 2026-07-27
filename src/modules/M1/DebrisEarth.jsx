@@ -3,6 +3,7 @@ import { Canvas, useFrame } from '@react-three/fiber'
 import { Html, Line } from '@react-three/drei'
 import * as THREE from 'three'
 import M4EarthModel, { M4EarthLighting } from './M4EarthModel'
+import useI18n from '../../i18n/useI18n'
 
 const DEBRIS_COUNT = 2000
 
@@ -43,7 +44,9 @@ const ANNOTATIONS = [
     value: '28,000 km/h',
     eyebrow: 'COLLISION VELOCITY',
     label: '平均碰撞速度',
+    labelEn: 'Average collision speed',
     sub: '子弹速度的 10 倍',
+    subEn: 'About 10x a bullet speed',
     color: '#cbd3ff',
     targetPos: [-1.25, 1.05, 1.05],
     labelPos: [-2.0, 1.72, 1.15],
@@ -52,9 +55,12 @@ const ANNOTATIONS = [
   },
   {
     value: '~1.3亿',
+    valueEn: '~130M',
     eyebrow: 'UNTRACKED OBJECTS',
     label: '在轨碎片总量',
+    labelEn: 'Estimated orbital fragments',
     sub: '大多无法追踪',
+    subEn: 'Most cannot be tracked',
     color: '#8b9fff',
     targetPos: [1.48, 0.52, 1.02],
     labelPos: [2.58, 1.02, 1.22],
@@ -65,7 +71,9 @@ const ANNOTATIONS = [
     value: '36,500+',
     eyebrow: 'CATALOGUED TARGETS',
     label: '雷达可追踪目标',
+    labelEn: 'Radar-trackable objects',
     sub: '编目在册',
+    subEn: 'Catalogued targets',
     color: '#f87171',
     targetPos: [-0.72, -1.52, 0.92],
     labelPos: [-1.92, -2.12, 1.08],
@@ -246,7 +254,7 @@ function MinimalAnnotation({ annotation, index, reducedMotion, labelDivRefs, lab
   )
 }
 
-function EarthScene({ showAnnotations, reducedMotion }) {
+function EarthScene({ showAnnotations, reducedMotion, language }) {
   const earthRef = useRef(null)
   const debrisRef = useRef(null)
   const labelDivRefs = useRef([])
@@ -336,7 +344,12 @@ function EarthScene({ showAnnotations, reducedMotion }) {
         {showAnnotations && ANNOTATIONS.map((annotation, index) => (
           <MinimalAnnotation
             key={annotation.eyebrow}
-            annotation={annotation}
+            annotation={language === 'en' ? {
+              ...annotation,
+              value: annotation.valueEn || annotation.value,
+              label: annotation.labelEn || annotation.label,
+              sub: annotation.subEn || annotation.sub,
+            } : annotation}
             index={index}
             reducedMotion={reducedMotion}
             labelDivRefs={labelDivRefs}
@@ -349,6 +362,7 @@ function EarthScene({ showAnnotations, reducedMotion }) {
 }
 
 export default function DebrisEarth({ showAnnotations = false }) {
+  const { language } = useI18n()
   const [inView, setInView] = useState(false)
   const wrapRef = useRef(null)
   const reducedMotion = useReducedMotionPreference()
@@ -374,7 +388,7 @@ export default function DebrisEarth({ showAnnotations = false }) {
         >
           <M4EarthLighting />
           <Suspense fallback={null}>
-            <EarthScene showAnnotations={showAnnotations} reducedMotion={reducedMotion} />
+            <EarthScene showAnnotations={showAnnotations} reducedMotion={reducedMotion} language={language} />
           </Suspense>
         </Canvas>
       )}

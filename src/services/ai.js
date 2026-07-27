@@ -4,18 +4,26 @@ import { createAIOutputEvent } from './aiTimeline'
 let aiEventSequence = 0
 
 const MATERIAL_LABELS = {
-  aluminum: '铝合金',
-  titanium: '钛合金',
-  cfrp: '碳纤维复合材料',
-  silicon: '硅基电池板',
-  gaas: '砷化镓电池板',
-  flexible: '柔性薄膜电池板',
-  kapton: '聚酰亚胺薄膜',
-  ceramic: '陶瓷隔热片',
-  aluminized: '镀铝薄膜',
-  'aluminum-tank': '铝合金贮箱',
-  'titanium-tank': '钛合金贮箱',
-  'composite-tank': '复合材料贮箱',
+  aluminum: ['铝合金', 'aluminum alloy'],
+  titanium: ['钛合金', 'titanium alloy'],
+  cfrp: ['碳纤维复合材料', 'carbon-fiber composite'],
+  silicon: ['硅基电池板', 'silicon solar array'],
+  gaas: ['砷化镓电池板', 'GaAs solar array'],
+  flexible: ['柔性薄膜电池板', 'flexible thin-film array'],
+  kapton: ['聚酰亚胺薄膜', 'Kapton film'],
+  ceramic: ['陶瓷隔热片', 'ceramic thermal tile'],
+  aluminized: ['镀铝薄膜', 'aluminized film'],
+  'aluminum-tank': ['铝合金贮箱', 'aluminum propellant tank'],
+  'titanium-tank': ['钛合金贮箱', 'titanium pressure vessel'],
+  'composite-tank': ['复合材料贮箱', 'composite pressure vessel'],
+}
+
+function currentLanguage() {
+  return useAppStore.getState().language === 'en' ? 'en' : 'zh'
+}
+
+function copy(zh, en, language = currentLanguage()) {
+  return language === 'en' ? en : zh
 }
 
 async function chat(systemPrompt, userPrompt, temperature = 0.7, maxTokens = 360) {
@@ -43,7 +51,12 @@ function parseJSON(raw, fallback) {
 }
 
 async function jsonChat(system, user, fallback, temperature = 0.7, maxTokens = 360) {
-  const raw = await chat(`${system}\n只返回 JSON，不要 Markdown。`, user, temperature, maxTokens)
+  const raw = await chat(
+    `${system}\n${copy('请使用中文生成所有字段内容。只返回 JSON，不要 Markdown。', 'Write every field value in English. Return JSON only, without Markdown.')}`,
+    user,
+    temperature,
+    maxTokens,
+  )
   return parseJSON(raw, fallback)
 }
 
@@ -54,52 +67,73 @@ function eventId(type) {
 }
 
 async function trackedJsonChat(meta, ...args) {
+  const language = currentLanguage()
   const result = await jsonChat(...args)
   const resolvedMeta = typeof meta === 'function' ? meta(result) : meta
   const event = createAIOutputEvent(resolvedMeta, result, {
     id: eventId(resolvedMeta.type),
+    language,
   })
   useAppStore.getState().appendAIOutput(event)
   return result
 }
 
 function materialChoice(materials) {
+  const language = currentLanguage()
   const choices = Object.values(materials || {})
     .filter(Boolean)
-    .map((value) => MATERIAL_LABELS[value] || value)
-  return choices.length ? `选择 ${choices.join('、')}` : '提交当前材料组合'
+    .map((value) => MATERIAL_LABELS[value]?.[language === 'en' ? 1 : 0] || value)
+  return choices.length
+    ? copy(`选择 ${choices.join('、')}`, `Selected ${choices.join(', ')}`, language)
+    : copy('提交当前材料组合', 'Submitted the current material set', language)
 }
 
 function satText(satellite) {
-  if (!satellite) return '未知卫星'
-  return `${satellite.name || '卫星'}，高度 ${satellite.altitudeKm || '?'} km，倾角 ${satellite.inclination || '?'}°`
+  const language = currentLanguage()
+  if (!satellite) return copy('未知卫星', 'Unknown satellite', language)
+  return copy(
+    `${satellite.name || '卫星'}，高度 ${satellite.altitudeKm || '?'} km，倾角 ${satellite.inclination || '?'}°`,
+    `${satellite.name || 'Satellite'}, altitude ${satellite.altitudeKm || '?'} km, inclination ${satellite.inclination || '?'}°`,
+    language,
+  )
 }
 
 function userText(user) {
-  if (!user) return '用户'
-  return `${user.name || '用户'}，来自 ${user.city || '未知城市'}，记忆事件：${user.importantEvent || '一件重要的事'}`
+  const language = currentLanguage()
+  if (!user) return copy('用户', 'User', language)
+  return copy(
+    `${user.name || '用户'}，来自 ${user.city || '未知城市'}，记忆事件：${user.importantEvent || '一件重要的事'}`,
+    `${user.name || 'User'}, from ${user.city || 'an unknown city'}, memory event: ${user.importantEvent || 'an important event'}`,
+    language,
+  )
 }
 
 function outlineText(storyOutline) {
   if (!storyOutline) return ''
-  return `主线：${storyOutline.premise || ''}；成功结局：${storyOutline.successEnding || ''}；失败结局：${storyOutline.failureEnding || ''}`
+  return copy(
+    `主线：${storyOutline.premise || ''}；成功结局：${storyOutline.successEnding || ''}；失败结局：${storyOutline.failureEnding || ''}`,
+    `Premise: ${storyOutline.premise || ''}; success ending: ${storyOutline.successEnding || ''}; failure ending: ${storyOutline.failureEnding || ''}`,
+  )
 }
 
 export async function generateStoryOutline({ name, city, importantEvent, satellite }) {
   return trackedJsonChat((result) => ({
     type: 'story-outline',
-    stageId: 'm2',
-    title: '个性化故事主线',
-    choice: `${name || '用户'}提交“${importantEvent || '个人重要事件'}”，匹配 ${satellite?.name || '当前卫星'}`,
-    impact: result.premise || '个人记忆开始与卫星命运连接。',
+    stageId: 'm3',
+    title: copy('个性化故事主线', 'Personalized story premise'),
+    choice: copy(
+      `${name || '用户'}提交“${importantEvent || '个人重要事件'}”，匹配 ${satellite?.name || '当前卫星'}`,
+      `${name || 'The user'} submitted "${importantEvent || 'a personal event'}" and matched with ${satellite?.name || 'the current satellite'}`,
+    ),
+    impact: result.premise || copy('个人记忆开始与卫星命运连接。', 'A personal memory is now connected to the satellite\'s fate.'),
   }),
     '你为太空碎片互动课程生成一条简短叙事主线。字段：premise, checkpoints, successEnding, failureEnding。checkpoints 用 6 个对象：id,label,beat。',
     `学习者：${name}，城市：${city}，个人事件：${importantEvent}。卫星：${satText(satellite)}。`,
     {
-      premise: `${name || '学习者'}把一颗卫星的命运和自己的重要记忆连接起来。`,
-      checkpoints: ['entrance', 'm1', 'm2', 'm3', 'm4'].map((id) => ({ id, label: id.toUpperCase(), beat: '理解轨道碎片风险。' })),
-      successEnding: '卫星完成处置，记忆被保留下来。',
-      failureEnding: '卫星失控，记忆出现偏移。',
+      premise: copy(`${name || '学习者'}把一颗卫星的命运和自己的重要记忆连接起来。`, `${name || 'The learner'} connects an important memory to the fate of a satellite.`),
+      checkpoints: ['entrance', 'm1', 'm2', 'm3', 'm4'].map((id) => ({ id, label: id.toUpperCase(), beat: copy('理解轨道碎片风险。', 'Understand orbital-debris risk.') })),
+      successEnding: copy('卫星完成处置，记忆被保留下来。', 'The satellite is disposed of safely and the memory remains intact.'),
+      failureEnding: copy('卫星失控，记忆出现偏移。', 'The satellite loses control and the memory shifts with it.'),
     },
     0.75,
     520,
@@ -109,14 +143,14 @@ export async function generateStoryOutline({ name, city, importantEvent, satelli
 export async function generateOpeningStory({ name, city, importantEvent, satellite, storyOutline }) {
   return trackedJsonChat((result) => ({
     type: 'opening-story',
-    stageId: 'm2',
-    title: '故事开场生成',
-    choice: `${name || '用户'}确认身份信息与 ${satellite?.name || '卫星'} 的匹配`,
-    impact: result.story || '个性故事正式进入卫星任务阶段。',
+    stageId: 'm3',
+    title: copy('故事开场生成', 'Opening story'),
+    choice: copy(`${name || '用户'}确认身份信息与 ${satellite?.name || '卫星'} 的匹配`, `${name || 'The user'} confirmed the identity match with ${satellite?.name || 'the satellite'}`),
+    impact: result.story || copy('个性故事正式进入卫星任务阶段。', 'The personalized story enters the satellite mission stage.'),
   }),
     '写一段 120 字以内的开场故事。字段：story。',
     `${userText({ name, city, importantEvent })}。${satText(satellite)}。${outlineText(storyOutline)}`,
-    { story: `${satellite?.name || '这颗卫星'}正在近地轨道运行。它的状态，将和${importantEvent || '那件重要的事'}一起被重新审视。` },
+    { story: copy(`${satellite?.name || '这颗卫星'}正在近地轨道运行。它的状态，将和${importantEvent || '那件重要的事'}一起被重新审视。`, `${satellite?.name || 'This satellite'} is operating in low Earth orbit. Its condition will now be reconsidered alongside ${importantEvent || 'that important event'}.`) },
     0.75,
     260,
   )
@@ -126,14 +160,14 @@ export async function generateMaterialFeedback({ materials, satellite, user, sto
   const materialText = Object.entries(materials || {}).map(([k, v]) => `${k}:${v}`).join('，')
   return trackedJsonChat((result) => ({
     type: 'material-feedback',
-    stageId: 'm2',
-    title: '卫星材料分析',
+    stageId: 'm3',
+    title: copy('卫星材料分析', 'Satellite material analysis'),
     choice: materialChoice(materials),
-    impact: result.feedback || '材料组合改变了碰撞存活率和再入残留风险。',
+    impact: result.feedback || copy('材料组合改变了碰撞存活率和再入残留风险。', 'The material set changes collision survivability and re-entry residue risk.'),
   }),
     '评价卫星材料选择，120 字以内。字段：feedback。',
     `${userText(user)}。${satText(satellite)}。材料：${materialText}。${outlineText(storyOutline)}`,
-    { feedback: '材料选择决定了抗撞击、热防护和再入残留，需要在质量、强度和善后之间取舍。' },
+    { feedback: copy('材料选择决定了抗撞击、热防护和再入残留，需要在质量、强度和善后之间取舍。', 'Material choices determine impact resistance, thermal protection, and re-entry residue, requiring tradeoffs between mass, strength, and disposal.') },
     0.65,
     220,
   )
@@ -142,14 +176,14 @@ export async function generateMaterialFeedback({ materials, satellite, user, sto
 export async function generateMissionStory({ mission, satellite, user, material, storyOutline }) {
   return trackedJsonChat((result) => ({
     type: 'mission-story',
-    stageId: 'm2',
-    title: '卫星任务路线',
-    choice: `选择“${mission || '当前任务'}”`,
-    impact: result.story || '任务类型开始约束卫星的轨道和处置余量。',
+    stageId: 'm3',
+    title: copy('卫星任务路线', 'Satellite mission route'),
+    choice: copy(`选择“${mission || '当前任务'}”`, `Selected "${mission || 'the current mission'}"`),
+    impact: result.story || copy('任务类型开始约束卫星的轨道和处置余量。', 'The mission type now constrains orbit and disposal margin.'),
   }),
     '写一段任务展开故事，120 字以内。字段：story。',
     `${userText(user)}。${satText(satellite)}。任务：${mission}。主要材料：${material}。${outlineText(storyOutline)}`,
-    { story: `${satellite?.name || '卫星'}进入任务阶段，轨道、材料和燃料余量开始共同决定它的命运。` },
+    { story: copy(`${satellite?.name || '卫星'}进入任务阶段，轨道、材料和燃料余量开始共同决定它的命运。`, `${satellite?.name || 'The satellite'} enters its mission phase, where orbit, materials, and fuel margin begin shaping its fate.`) },
     0.75,
     260,
   )
@@ -158,14 +192,14 @@ export async function generateMissionStory({ mission, satellite, user, material,
 export async function generateEventNarrative({ event, satellite, user: _user, storyOutline }) {
   return trackedJsonChat((result) => ({
     type: 'history-event',
-    stageId: 'm3',
-    title: `${event?.year || '历史'} · ${event?.name || event?.title || '太空事件'}`,
-    choice: `查看“${event?.name || event?.title || '历史事件'}”`,
-    impact: result.narrative || '历史事件为当前卫星增加了一条风险参照。',
+    stageId: 'm2',
+    title: `${event?.year || copy('历史', 'History')} · ${event?.name || event?.title || copy('太空事件', 'Space event')}`,
+    choice: copy(`查看“${event?.name || event?.title || '历史事件'}”`, `Viewed "${event?.nameEn || event?.name || event?.title || 'historical event'}"`),
+    impact: result.narrative || copy('历史事件为当前卫星增加了一条风险参照。', 'The historical event adds a new risk reference for the current satellite.'),
   }),
     '把历史航天事件连接到当前卫星，100 字以内。字段：narrative。',
     `事件：${event?.year || ''} ${event?.name || event?.title || ''}，${event?.description || ''}。${satText(satellite)}。${outlineText(storyOutline)}`,
-    { narrative: '历史事件说明，轨道上的每一次遗留都会改变后来任务的风险边界。' },
+    { narrative: copy('历史事件说明，轨道上的每一次遗留都会改变后来任务的风险边界。', 'The event shows how every object left in orbit changes the risk boundary for later missions.') },
     0.7,
     220,
   )
@@ -175,14 +209,14 @@ export async function generateHistoryStory({ visitedEvents, satellite, user, dam
   const names = (visitedEvents || []).map((e) => `${e.year || ''} ${e.name || e.title || ''}`).join('；')
   return trackedJsonChat((result) => ({
     type: 'history-summary',
-    stageId: 'm3',
-    title: '历史风险总结',
-    choice: `查看 ${visitedEvents?.length || 0} 个历史事件`,
-    impact: result.story || `累计损伤风险更新为 ${damageLevel || 0}。`,
+    stageId: 'm2',
+    title: copy('历史风险总结', 'Historical risk summary'),
+    choice: copy(`查看 ${visitedEvents?.length || 0} 个历史事件`, `Viewed ${visitedEvents?.length || 0} historical events`),
+    impact: result.story || copy(`累计损伤风险更新为 ${damageLevel || 0}。`, `Cumulative damage risk is now ${damageLevel || 0}.`),
   }),
     '总结学习者看过的历史事件，120 字以内。字段：story。',
     `${userText(user)}。${satText(satellite)}。事件：${names}。损伤值：${damageLevel}。${outlineText(storyOutline)}`,
-    { story: '这些历史节点把碎片问题从个案推向系统风险，也为后续决策埋下约束。' },
+    { story: copy('这些历史节点把碎片问题从个案推向系统风险，也为后续决策埋下约束。', 'These historical moments turn debris from isolated incidents into a systemic risk that constrains later decisions.') },
     0.75,
     260,
   )
@@ -192,15 +226,17 @@ export async function generateGameDecisionFeedback({ decision, threat, outcome, 
   return trackedJsonChat((result) => ({
     type: 'game-decision',
     stageId: 'm4',
-    title: `生存决策 ${decisionIndex + 1} / ${totalDecisions}`,
-    choice: `面对“${threat}”选择“${decision}”`,
-    impact: result.storyUpdate || result.feedback || (outcome === 'correct' ? '主要风险下降，但任务资源被消耗。' : '风险继续累积，后续选择余量减少。'),
+    title: copy(`生存决策 ${decisionIndex + 1} / ${totalDecisions}`, `Survival decision ${decisionIndex + 1} / ${totalDecisions}`),
+    choice: copy(`面对“${threat}”选择“${decision}”`, `Chose "${decision}" in response to "${threat}"`),
+    impact: result.storyUpdate || result.feedback || (outcome === 'correct'
+      ? copy('主要风险下降，但任务资源被消耗。', 'Primary risk decreased, but mission resources were consumed.')
+      : copy('风险继续累积，后续选择余量减少。', 'Risk continues to accumulate and later choices have less margin.')),
   }),
     '评价一次轨道风险决策。字段：feedback, storyUpdate。每项 80 字以内。',
     `${userText(user)}。${satText(satellite)}。第 ${decisionIndex + 1}/${totalDecisions} 轮，威胁：${threat}，决策：${decision}，结果：${outcome}。${outlineText(storyOutline)}`,
     {
-      feedback: outcome === 'correct' ? '决策降低了主要风险，但也消耗了有限资源。' : '决策保留了部分资源，却让风险继续累积。',
-      storyUpdate: `${satellite?.name || '卫星'}的轨道状态发生变化，后续选择余量被重新计算。`,
+      feedback: outcome === 'correct' ? copy('决策降低了主要风险，但也消耗了有限资源。', 'The decision reduced the primary risk but consumed limited resources.') : copy('决策保留了部分资源，却让风险继续累积。', 'The decision preserved some resources while allowing risk to accumulate.'),
+      storyUpdate: copy(`${satellite?.name || '卫星'}的轨道状态发生变化，后续选择余量被重新计算。`, `${satellite?.name || 'The satellite'} changes orbital state and the remaining decision margin is recalculated.`),
     },
     0.65,
     260,
@@ -212,17 +248,19 @@ export async function generateGameReflection({ gameResult, decisions, satellite,
   return trackedJsonChat((result) => ({
     type: 'game-reflection',
     stageId: 'm4',
-    title: '轨道生存任务复盘',
-    choice: `完成 ${decisions?.length || 0} 次决策，其中 ${correct} 次有效`,
-    impact: result.storyEnding || result.satFate || '任务结果确定了卫星和碎片的最终走向。',
+    title: copy('轨道生存任务复盘', 'Orbital survival debrief'),
+    choice: copy(`完成 ${decisions?.length || 0} 次决策，其中 ${correct} 次有效`, `Completed ${decisions?.length || 0} decisions, with ${correct} effective responses`),
+    impact: result.storyEnding || result.satFate || copy('任务结果确定了卫星和碎片的最终走向。', 'The mission result determines the final path of the satellite and its debris.'),
   }),
     '生成任务复盘。字段：knowledgePoints(string[3]), satFate, debrisDescription, storyEnding。',
     `${userText(user)}。${satText(satellite)}。结果：${gameResult}。正确决策：${correct}/${decisions?.length || 0}。材料：${material}。${outlineText(storyOutline)}`,
     {
-      knowledgePoints: ['规避机动会消耗燃料。', '碎片越小越难跟踪。', '任务末期处置必须提前预留能力。'],
-      satFate: gameResult === 'success' ? '卫星保留了处置能力。' : '卫星失去控制，成为新的风险源。',
-      debrisDescription: `${material || '卫星'}残片留在近地轨道。`,
-      storyEnding: gameResult === 'success' ? '那件重要的事仍按原方向推进。' : '那件重要的事出现了无法忽视的偏移。',
+      knowledgePoints: currentLanguage() === 'en'
+        ? ['Avoidance maneuvers consume fuel.', 'Smaller debris is harder to track.', 'End-of-life disposal capability must be reserved in advance.']
+        : ['规避机动会消耗燃料。', '碎片越小越难跟踪。', '任务末期处置必须提前预留能力。'],
+      satFate: gameResult === 'success' ? copy('卫星保留了处置能力。', 'The satellite retains disposal capability.') : copy('卫星失去控制，成为新的风险源。', 'The satellite loses control and becomes a new risk source.'),
+      debrisDescription: copy(`${material || '卫星'}残片留在近地轨道。`, `${material || 'Satellite'} fragments remain in low Earth orbit.`),
+      storyEnding: gameResult === 'success' ? copy('那件重要的事仍按原方向推进。', 'The important event continues along its original path.') : copy('那件重要的事出现了无法忽视的偏移。', 'The important event shifts in a way that can no longer be ignored.'),
     },
     0.65,
     420,
@@ -233,13 +271,13 @@ export async function generateVideoQuestion({ satellite, user }) {
   return trackedJsonChat((result) => ({
     type: 'video-question',
     stageId: 'm7',
-    title: '观测辨析问题',
-    choice: '进入观测教学与辨析环节',
-    impact: result.question || 'AI 根据当前故事背景生成新的观测问题。',
+    title: copy('观测辨析问题', 'Observation question'),
+    choice: copy('进入观测教学与辨析环节', 'Entered observation and classification training'),
+    impact: result.question || copy('AI 根据当前故事背景生成新的观测问题。', 'AI generated a new observation question from the current story context.'),
   }),
     '生成一个观测辨析问题，60 字以内。字段：question。',
     `${userText(user)}。${satText(satellite)}。主题：区分再入碎片、流星和卫星过境。`,
-    { question: '如果夜空中出现一串缓慢移动的亮点，你会先检查哪些线索来判断它是不是卫星星座？' },
+    { question: copy('如果夜空中出现一串缓慢移动的亮点，你会先检查哪些线索来判断它是不是卫星星座？', 'If a string of slowly moving lights appears in the night sky, which clues would you check first to decide whether it is a satellite constellation?') },
     0.75,
     160,
   )
@@ -249,13 +287,13 @@ export async function generateAnswerExplanation({ question, answer, satellite, u
   return trackedJsonChat((result) => ({
     type: 'answer-explanation',
     stageId: 'm7',
-    title: '观测答案解析',
-    choice: `回答“${answer || '未填写答案'}”`,
-    impact: result.explanation || '用户的观测判断被纳入最终知识总结。',
+    title: copy('观测答案解析', 'Observation answer analysis'),
+    choice: copy(`回答“${answer || '未填写答案'}”`, `Answered "${answer || 'no answer provided'}"`),
+    impact: result.explanation || copy('用户的观测判断被纳入最终知识总结。', 'The user\'s observation judgment is included in the final knowledge summary.'),
   }),
     '解释用户答案，120 字以内。字段：explanation。',
     `${userText(user)}。${satText(satellite)}。问题：${question}。回答：${answer}。`,
-    { explanation: '判断时要结合速度、持续时间、方向、亮度变化和是否出现碎裂轨迹，不能只看亮度。' },
+    { explanation: copy('判断时要结合速度、持续时间、方向、亮度变化和是否出现碎裂轨迹，不能只看亮度。', 'Use speed, duration, direction, brightness changes, and fragmentation together; brightness alone is not enough.') },
     0.65,
     240,
   )

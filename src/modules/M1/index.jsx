@@ -4,6 +4,7 @@ import gsap from 'gsap'
 import { SplitText } from 'gsap/SplitText'
 import DebrisEarth from './DebrisEarth'
 import DebrisEarthCountries from './DebrisEarthCountries'
+import useI18n from '../../i18n/useI18n'
 import './index.css'
 
 const ZH   = "'PingFang SC', 'Microsoft YaHei', sans-serif"
@@ -84,7 +85,7 @@ function useM1WordReveal(rootRef) {
       let units = []
 
       if (element.matches('.sh-line1, .sh-line2, .sh-sub')) {
-        units = [...element.querySelectorAll(':scope > .sh-char')]
+        units = [...element.querySelectorAll('.sh-char')]
       } else {
         const directText = [...element.childNodes].some(
           node => node.nodeType === Node.TEXT_NODE && node.textContent.trim(),
@@ -151,9 +152,20 @@ function useM1WordReveal(rootRef) {
 
 // 字符 span 工厂 — GSAP 通过 .sh-char 选择器批量动画
 function charSpans(text) {
-  return text.split('').map((ch, i) => (
-    <span key={i} className="sh-char" style={{ display: 'inline-block' }}>
-      {ch}
+  let characterIndex = 0
+  const words = String(text || '').trim().split(/\s+/).filter(Boolean)
+
+  return words.map((word, wordIndex) => (
+    <span key={`${word}-${wordIndex}`} className="sh-word" style={{ display: 'inline-block', whiteSpace: 'nowrap' }}>
+      {[...word].map((char) => {
+        const index = characterIndex++
+        return (
+          <span key={`${char}-${index}`} className="sh-char" style={{ display: 'inline-block' }}>
+            {char}
+          </span>
+        )
+      })}
+      {wordIndex < words.length - 1 ? '\u00a0' : null}
     </span>
   ))
 }
@@ -194,65 +206,90 @@ const TIMELINE_EVENTS = [
 
 const SIZE_TIERS = [
   {
-    size: '> 10 cm', count: '36,500+', label: '可追踪', badge: 'TRACKED',
+    size: '> 10 cm', count: '36,500+', label: '可追踪', labelEn: 'Trackable', badge: 'TRACKED',
     desc: '被地面雷达持续编目，卫星需主动规避。当数量超过临界密度，规避消耗的燃料将超过卫星设计寿命所需。',
+    descEn: 'Ground radar continuously catalogues these objects, forcing satellites to maneuver. Beyond a critical density, avoidance fuel can exceed the mission reserve.',
     color: '#f87171',
   },
   {
-    size: '1 – 10 cm', count: '~500,000', label: '雷达盲区', badge: 'UNDETECTABLE',
+    size: '1 – 10 cm', count: '~500,000', label: '雷达盲区', labelEn: 'Radar blind spot', badge: 'UNDETECTABLE',
     desc: '当前技术无法追踪，也无法预警。一次撞击可在毫秒内摧毁整颗卫星，同时产生数百个新碎片。',
+    descEn: 'Current systems cannot reliably track or warn against them. One impact can destroy a satellite in milliseconds and create hundreds of new fragments.',
     color: '#fbbf24',
   },
   {
-    size: '< 1 mm', count: '~1.3 亿', label: '微粒云', badge: 'PERVASIVE',
+    size: '< 1 mm', count: '~130M', label: '微粒云', labelEn: 'Particle cloud', badge: 'PERVASIVE',
     desc: '油漆碎片、金属粉尘、冷冻推进剂液滴。无法规避，无法清除，长期侵蚀航天器表面和太阳能电池板。',
+    descEn: 'Paint flakes, metal dust, and frozen propellant droplets cannot be avoided or removed, steadily eroding spacecraft surfaces and solar panels.',
     color: '#6b7fff',
   },
 ]
 
 const COUNTRIES = [
-  { name: 'USA',          count: 25786, detail: '含冷战时期大量测试碎片和现役商业卫星遗留' },
-  { name: 'RUSSIA / CIS', count: 25144, detail: '苏联时代军事卫星残骸占主要来源' },
-  { name: 'CHINA',        count: 8774,  detail: '2007 年反卫星测试单次贡献约 3,500 块' },
-  { name: 'OTHERS',       count: 6528,  detail: '欧洲、日本、印度等国家的卫星遗留' },
+  {
+    name: 'USA', count: 25786,
+    detail: '含冷战时期大量测试碎片和现役商业卫星遗留',
+    detailEn: 'Includes Cold War test fragments and debris left by active commercial missions.',
+  },
+  {
+    name: 'RUSSIA / CIS', count: 25144,
+    detail: '苏联时代军事卫星残骸占主要来源',
+    detailEn: 'Soviet-era military spacecraft and upper stages remain the main source.',
+  },
+  {
+    name: 'CHINA', count: 8774,
+    detail: '2007 年反卫星测试单次贡献约 3,500 块',
+    detailEn: 'The 2007 anti-satellite test added about 3,500 trackable fragments.',
+  },
+  {
+    name: 'OTHERS', count: 6528,
+    detail: '欧洲、日本、印度等国家的卫星遗留',
+    detailEn: 'Includes objects left by European, Japanese, Indian, and other missions.',
+  },
 ]
 
 const SOURCES = [
   {
     img: '/source_1.png',
     video: '/Vedio-卫星残骸.mp4',
-    title: '火箭残骸', label: '01 · ROCKET STAGE',
+    title: '火箭残骸', titleEn: 'Rocket stages', label: '01 · ROCKET STAGE',
     meta: [
-      { k: '在轨数量',  v: '>2,000 件' },
-      { k: '危害等级',  v: '极高',   color: '#f87171' },
-      { k: '轨道寿命',  v: '数十至数百年' },
+      { k: '在轨数量', kEn: 'IN ORBIT', v: '>2,000 件', vEn: '>2,000' },
+      { k: '危害等级', kEn: 'RISK LEVEL', v: '极高', vEn: 'VERY HIGH', color: '#f87171' },
+      { k: '轨道寿命', kEn: 'ORBITAL LIFE', v: '数十至数百年', vEn: 'DECADES–CENTURIES' },
     ],
     desc: '每次发射后被抛弃的上面级火箭是单体最大的轨道碎片来源。残余推进剂遇热膨胀会引发在轨自爆，毫秒间释放数百件新弹片——碰撞与爆炸级联效应的主要触发机制正源于此。',
+    descEn: 'Discarded upper stages are among the largest individual debris objects. Residual propellant can heat, expand, and trigger an orbital explosion that releases hundreds of fragments in milliseconds.',
     detail: '苏联 Zenit 上面级长达 9 米，至今漂浮于 LEO。2007 年中国反卫试验在 850 km 轨道带制造了超 3,500 件可追踪碎片，是史上最大单次人为增量事件，至今仍是 ISS 规避机动的主要威胁源之一。',
+    detailEn: 'A Soviet Zenit upper stage is nine meters long and still remains in LEO. China’s 2007 anti-satellite test created more than 3,500 trackable fragments near 850 km, still a major source of ISS avoidance alerts.',
   },
   {
     img: '/source_2.png',
     video: '/Video-报废卫星.mp4',
-    title: '废弃卫星', label: '02 · DEFUNCT SAT',
+    title: '废弃卫星', titleEn: 'Defunct satellites', label: '02 · DEFUNCT SAT',
     meta: [
-      { k: '在轨总量',  v: '~3,000 颗' },
-      { k: '危害等级',  v: '中等',   color: '#fbbf24' },
-      { k: '主要分布',  v: 'LEO · GEO' },
+      { k: '在轨总量', kEn: 'IN ORBIT', v: '~3,000 颗', vEn: '~3,000' },
+      { k: '危害等级', kEn: 'RISK LEVEL', v: '中等', vEn: 'MEDIUM', color: '#fbbf24' },
+      { k: '主要分布', kEn: 'MAIN ORBITS', v: 'LEO · GEO', vEn: 'LEO · GEO' },
     ],
     desc: '失去姿态控制的金属残骸在轨道上无序翻滚，无法操控，无法清除。大型废弃卫星本身就是潜在碰撞目标——2009 年铱星 33 与报废的 Cosmos 2251 相撞，单次产生超 2,000 件可追踪碎片。',
+    descEn: 'Without attitude control, defunct satellites tumble unpredictably and cannot maneuver. In 2009, Iridium 33 struck the retired Cosmos 2251 and created more than 2,000 trackable fragments.',
     detail: '欧空局 Envisat 重达 8 吨，2012 年通讯中断后仍以 800 km 高度每 98 分钟绕地一周，无法机动规避。LEO 区域超过 3,000 颗已失效卫星中，数百颗体积超过一辆汽车，任何一次碰撞都可触发凯斯勒效应链式反应。',
+    detailEn: 'ESA’s eight-ton Envisat has orbited near 800 km without maneuvering capability since contact was lost in 2012. Hundreds of the more than 3,000 defunct satellites in LEO are larger than a car and could trigger a Kessler cascade.',
   },
   {
     img: '/source_3.png',
     video: '/Video-操作遗留.mp4',
-    title: '操作遗留', label: '03 · LEGACY',
+    title: '操作遗留', titleEn: 'Operational debris', label: '03 · LEGACY',
     meta: [
-      { k: '已编目遗留', v: '数万件' },
-      { k: '危害等级',   v: '低至中',  color: '#34d399' },
-      { k: '增速',       v: '每次任务 +数百' },
+      { k: '已编目遗留', kEn: 'CATALOGUED', v: '数万件', vEn: 'TENS OF THOUSANDS' },
+      { k: '危害等级', kEn: 'RISK LEVEL', v: '低至中', vEn: 'LOW–MEDIUM', color: '#34d399' },
+      { k: '增速', kEn: 'GROWTH', v: '每次任务 +数百', vEn: 'HUNDREDS / MISSION' },
     ],
     desc: '丢失的手套、螺栓、镜头盖，乃至分离的火箭级段——人类每一次进入太空都会留下些什么。这不是事故，而是现有工程流程无法消除的结构性副产品，且随任务频率加速积累。',
+    descEn: 'Lost gloves, bolts, lens covers, and separation hardware make debris a structural by-product of spaceflight rather than a rare accident. The total grows as launch and servicing activity increases.',
     detail: '1965 年 Ed White 太空行走时丢失一只手套，此类遗失至今仍在发生。ISS 各次 EVA 已记录逾 100 件工具及硬件遗失。油漆碎片以 7 km/s 撞击玻璃的冲击力等同于一颗子弹，是低轨航天器表面损伤的首要来源。',
+    detailEn: 'Ed White lost a glove during a 1965 spacewalk, and similar losses continue. More than 100 tools and hardware items have been recorded missing during ISS EVAs; even paint flakes striking at 7 km/s can damage spacecraft like a bullet.',
   },
 ]
 
@@ -267,6 +304,7 @@ const ZONE_STATS = [
 
 /* -- Scene 0: Hero -- */
 function SceneHero({ normX, normY }) {
+  const { language, pick } = useI18n()
   const containerRef = useRef()
   const ghostNumRef  = useRef()
   const ghostX = useTransform(normX, [-1, 1], ['-50px', '50px'])
@@ -335,31 +373,30 @@ function SceneHero({ normX, normY }) {
           fontFamily: LEX, fontSize: 8, fontWeight: 700, color: '#484878',
           letterSpacing: '0.18em', textTransform: 'uppercase', whiteSpace: 'nowrap',
         }}>
-          M1 · 太空垃圾是什么
+          {pick('M1 · 太空垃圾是什么', 'M1 · WHAT IS SPACE DEBRIS')}
         </div>
       </div>
 
       {/* 左侧文字列 */}
-      <div style={{
-        position: 'absolute', left: '6%', top: '13%', width: '44%',
+      <div className={`m1-hero-copy${language === 'en' ? ' is-en' : ''}`} style={{
         display: 'flex', flexDirection: 'column',
       }}>
         {/* H1 第一行 */}
         <span className="sh-line1" style={{
           display: 'block', perspective: '600px',
-          fontFamily: ZH, fontSize: 'clamp(50px,7.2vw,78px)', fontWeight: 700,
+          fontFamily: ZH, fontSize: 'var(--m1-hero-title-size)', fontWeight: 700,
           color: '#ffffff', lineHeight: 1.08, marginBottom: 2,
         }}>
-          {charSpans('太空垃圾')}
+          {charSpans(pick('太空垃圾', 'SPACE DEBRIS'))}
         </span>
 
         {/* H1 第二行 */}
         <span className="sh-line2" style={{
           display: 'block', perspective: '600px',
-          fontFamily: ZH, fontSize: 'clamp(50px,7.2vw,78px)', fontWeight: 700,
+          fontFamily: ZH, fontSize: 'var(--m1-hero-title-size)', fontWeight: 700,
           color: '#ffffff', lineHeight: 1.08, marginBottom: 26,
         }}>
-          {charSpans('不是比喻，')}
+          {charSpans(pick('不是比喻，', 'NOT A METAPHOR.'))}
         </span>
 
         {/* 细线分割 */}
@@ -372,19 +409,21 @@ function SceneHero({ normX, normY }) {
         {/* H2 副标题 */}
         <span className="sh-sub" style={{
           display: 'block', perspective: '600px',
-          fontFamily: ZH, fontSize: 18, fontWeight: 700,
+          fontFamily: ZH, fontSize: 'var(--m1-hero-sub-size)', fontWeight: 700,
           color: '#ffffff', lineHeight: 1.6, marginBottom: 12,
         }}>
-          {charSpans('是真实存在的物理威胁。')}
+          {charSpans(pick('是真实存在的物理威胁。', 'IT IS A PHYSICAL THREAT.'))}
         </span>
 
         {/* 正文 */}
         <div className="sh-body" style={{
-          fontFamily: ZH, fontSize: 13,
+          fontFamily: ZH, fontSize: 'var(--m1-hero-body-size)',
           color: 'rgba(232,232,248,0.48)', lineHeight: 1.9, marginBottom: 36,
         }}>
-          自 1957 年第一颗卫星升空，人类已在轨道上累积了数以亿计的碎片。
-          它们以超音速运行，无法回收，无法清除，且持续增加。
+          {pick(
+            '自 1957 年第一颗卫星升空，人类已在轨道上累积了数以亿计的碎片。它们以超音速运行，无法回收，无法清除，且持续增加。',
+            'Since the first satellite launched in 1957, humanity has accumulated hundreds of millions of fragments in orbit. They move at extreme speed, cannot be recovered at scale, and continue to multiply.',
+          )}
         </div>
       </div>
 
@@ -400,7 +439,7 @@ function SceneHero({ normX, normY }) {
         position: 'absolute', top: '28%', right: '3%',
         fontFamily: MONO, fontSize: 8, color: 'rgba(107,127,255,0.18)', letterSpacing: '0.06em',
       }}>
-        ~1.3亿 FRAGMENTS
+        {language === 'en' ? '~130M FRAGMENTS' : '~1.3亿 FRAGMENTS'}
       </div>
 
       <div className="sh-deco" style={{
@@ -429,6 +468,7 @@ function SceneHero({ normX, normY }) {
 
 /* ── TierGroup (Scene 1) ── */
 function TierGroup({ tier, position, rawX, rawY, delay = 0, easing }) {
+  const { pick } = useI18n()
   const [near, setNear] = useState(false)
   const ref = useRef()
 
@@ -486,7 +526,7 @@ function TierGroup({ tier, position, rawX, rawY, delay = 0, easing }) {
       {/* Label + badge */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, paddingLeft: 17 }}>
         <span style={{ fontFamily: ZH, fontSize: 12, color: 'rgba(232,232,248,0.45)' }}>
-          {tier.label}
+          {pick(tier.label, tier.labelEn)}
         </span>
         <span style={{
           fontFamily: LEX, fontSize: 7, fontWeight: 700, color: tier.color,
@@ -506,7 +546,7 @@ function TierGroup({ tier, position, rawX, rawY, delay = 0, easing }) {
           lineHeight: 1.85, maxWidth: 270, paddingLeft: 17,
         }}
       >
-        {tier.desc}
+        {pick(tier.desc, tier.descEn)}
       </motion.div>
     </motion.div>
   )
@@ -514,6 +554,7 @@ function TierGroup({ tier, position, rawX, rawY, delay = 0, easing }) {
 
 /* ── Scene 1: SCALE ── */
 function SceneScale() {
+  const { pick } = useI18n()
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
 
@@ -523,7 +564,7 @@ function SceneScale() {
         fontFamily: LEX, fontSize: 8, fontWeight: 700,
         color: 'rgba(107,127,255,0.5)', letterSpacing: '0.18em', textTransform: 'uppercase',
       }}>
-        01 · SCALE / 规模
+        {pick('01 · SCALE / 规模', '01 · SCALE')}
       </div>
 
       {/* Left context block */}
@@ -534,7 +575,7 @@ function SceneScale() {
           fontFamily: ZH, fontSize: 'clamp(24px,2.8vw,38px)', fontWeight: 700,
           color: '#e8e8f8', lineHeight: 1.22, marginBottom: 20,
         }}>
-          轨道碎片不是假设，<br />是已成事实的威胁。
+          {pick('轨道碎片不是假设，是已成事实的威胁。', 'Orbital debris is not hypothetical. It is an established threat.')}
         </div>
         <div style={{
           height: 1, background: 'linear-gradient(to right, rgba(107,127,255,0.35), transparent)',
@@ -544,12 +585,13 @@ function SceneScale() {
           fontFamily: ZH, fontSize: 13, color: 'rgba(232,232,248,0.42)',
           lineHeight: 2.0, marginBottom: 16,
         }}>
-          速度让每次碰撞具有毁灭性，<br />
-          数量让规避几乎不可能，<br />
-          不可见性让预警成为奢望。
+          {pick(
+            '速度让每次碰撞具有毁灭性，数量让规避几乎不可能，不可见性让预警成为奢望。',
+            'Speed makes every collision destructive. Quantity makes avoidance increasingly difficult. Invisibility makes warning a luxury.',
+          )}
         </div>
         <div data-m1-reveal-delay="0.34" style={{ fontFamily: ZH, fontSize: 11, color: '#484878', lineHeight: 1.75 }}>
-          自 1957 年持续累积，目前尚无有效的批量清除方案。
+          {pick('自 1957 年持续累积，目前尚无有效的批量清除方案。', 'The debris population has grown since 1957, with no effective large-scale removal system yet available.')}
         </div>
       </div>
 
@@ -561,6 +603,7 @@ function SceneScale() {
 // Zero React state for hover — all DOM mutations via refs + CSS transitions only.
 // This eliminates re-renders on every mouse enter/leave (the main lag cause).
 function SceneSources() {
+  const { pick } = useI18n()
   const panelRefs     = useRef([null, null, null])
   const overlayRefs   = useRef([null, null, null])
   const descRefs      = useRef([null, null, null])
@@ -817,18 +860,18 @@ function SceneSources() {
           fontFamily: LEX, fontSize: 8, fontWeight: 700, color: 'rgba(107,127,255,0.5)',
           letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 14,
         }}>
-          03 · ORIGIN / 来源
+          {pick('03 · ORIGIN / 来源', '03 · ORIGIN')}
         </div>
         <div style={{
           fontFamily: ZH, fontSize: 'clamp(22px,3vw,38px)', fontWeight: 700,
           color: '#e8e8f8', lineHeight: 1.25, whiteSpace: 'nowrap',
         }}>
-          每次进入太空，都会留下些什么。
+          {pick('每次进入太空，都会留下些什么。', 'Every journey into space leaves something behind.')}
         </div>
         <div style={{
           fontFamily: ZH, fontSize: 12, color: '#484878', marginTop: 14, lineHeight: 1.75,
         }}>
-          失效卫星、碰撞碎片、操作性遗留——三种来源，持续积累。
+          {pick('失效卫星、碰撞碎片、操作性遗留——三种来源，持续积累。', 'Defunct satellites, collision fragments, and operational leftovers continue to accumulate.')}
         </div>
       </div>
 
@@ -954,14 +997,14 @@ function SceneSources() {
                   color: 'rgba(107,127,255,0.45)', letterSpacing: '0.1em',
                   textTransform: 'uppercase', marginBottom: 4,
                 }}>
-                  {m.k}
+                  {pick(m.k, m.kEn)}
                 </div>
                 <div style={{
                   fontFamily: MONO, fontSize: 11, fontWeight: 700,
                   color: m.color ?? 'rgba(232,232,248,0.72)',
                   letterSpacing: '0.04em',
                 }}>
-                  {m.v}
+                  {pick(m.v, m.vEn)}
                 </div>
               </div>
             ))}
@@ -973,7 +1016,7 @@ function SceneSources() {
               fontFamily: ZH, fontSize: 26, fontWeight: 700,
               color: '#e8e8f8', marginBottom: 12, lineHeight: 1.25,
             }}>
-              {src.title}
+              {pick(src.title, src.titleEn)}
             </div>
 
             {/* desc — CSS transition, no Framer Motion */}
@@ -986,7 +1029,7 @@ function SceneSources() {
                 transition: 'opacity 0.38s ease, transform 0.38s ease',
               }}
             >
-              {src.desc}
+              {pick(src.desc, src.descEn)}
             </div>
 
             {/* detail — staggered via transition-delay */}
@@ -1000,7 +1043,7 @@ function SceneSources() {
                 transition: 'opacity 0.38s 0.07s ease, transform 0.38s 0.07s ease',
               }}
             >
-              {src.detail}
+              {pick(src.detail, src.detailEn)}
             </div>
           </div>
         </div>
@@ -1028,6 +1071,7 @@ const RING_SEGS = (() => {
 
 
 function SceneCountries({ hovIdxRef }) {
+  const { pick } = useI18n()
   const detailRefs = useRef([null, null, null, null])
   const rowRefs    = useRef([null, null, null, null])
   const cNameRef   = useRef(null)
@@ -1076,19 +1120,19 @@ function SceneCountries({ hovIdxRef }) {
           color: 'rgba(107,127,255,0.5)', letterSpacing: '0.18em',
           textTransform: 'uppercase', marginBottom: 14, pointerEvents: 'none',
         }}>
-          02 · CONTRIBUTORS / 各国贡献
+          {pick('02 · CONTRIBUTORS / 各国贡献', '02 · CONTRIBUTORS')}
         </div>
         <div data-m1-reveal-delay="0.28" style={{
           fontFamily: ZH, fontSize: 'clamp(22px,2.4vw,34px)', fontWeight: 700,
           color: '#e8e8f8', lineHeight: 1.22, marginBottom: 8, pointerEvents: 'none',
         }}>
-          三国贡献了全球 96% 的碎片。
+          {pick('三国贡献了全球 96% 的碎片。', 'Three countries account for 96% of catalogued debris.')}
         </div>
         <div data-m1-reveal-delay="0.42" style={{
           fontFamily: ZH, fontSize: 13, color: '#b9b9d3',
           lineHeight: 1.75, maxWidth: 320, marginBottom: 36, pointerEvents: 'none',
         }}>
-          现行国际法律框架无法强制任何国家清理本国碎片。
+          {pick('现行国际法律框架无法强制任何国家清理本国碎片。', 'Current international law cannot compel a state to remove its own debris.')}
         </div>
 
         {/* Bar chart — all 4 rows share a common scale with vertical endpoint lines */}
@@ -1160,7 +1204,7 @@ function SceneCountries({ hovIdxRef }) {
                   opacity: 0, maxHeight: 0, overflow: 'hidden',
                   transition: 'opacity 0.3s ease, max-height 0.35s ease',
                 }}
-              >{seg.detail}</div>
+              >{pick(seg.detail, seg.detailEn)}</div>
             </div>
           ))}
         </div>
@@ -1170,7 +1214,7 @@ function SceneCountries({ hovIdxRef }) {
           marginTop: 14, fontFamily: LEX, fontSize: 7.5,
           color: 'rgba(107,127,255,0.28)', letterSpacing: '0.14em', textTransform: 'uppercase',
           pointerEvents: 'none',
-        }}>⊙ 悬停查看历史详情</div>
+        }}>⊙ {pick('悬停查看历史详情', 'HOVER FOR SOURCE DETAILS')}</div>
       </div>
       {/* Stats overlay — 直接用全宽容器，left 精确定位到地球圆心上方 */}
       <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
@@ -1281,6 +1325,7 @@ function drawSatelliteShape(ctx, type) {
 
 /* ── Scene 4: TREND — canvas particle accumulation ── */
 function SceneTrend() {
+  const { pick } = useI18n()
   const canvasRef      = useRef()
   const sceneRef       = useRef()
   const yearRef        = useRef(1960)
@@ -1523,16 +1568,16 @@ function SceneTrend() {
           fontFamily: LEX, fontSize: 8, fontWeight: 700,
           color: 'rgba(107,127,255,0.5)', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 10,
         }}>
-          04 · TIMELINE / 数量趋势
+          {pick('04 · TIMELINE / 数量趋势', '04 · TIMELINE')}
         </div>
         <div style={{
           fontFamily: ZH, fontSize: 'clamp(22px,2.8vw,34px)', fontWeight: 700,
           color: '#e8e8f8', lineHeight: 1.2, marginBottom: 8,
         }}>
-          轨道碎片的历史积累
+          {pick('轨道碎片的历史积累', 'The accumulation of orbital debris')}
         </div>
         <div style={{ fontFamily: ZH, fontSize: 12, color: '#484878', lineHeight: 1.75, maxWidth: 280 }}>
-          一旦触发凯斯勒效应，链式碰撞将无法逆转。
+          {pick('一旦触发凯斯勒效应，链式碰撞将无法逆转。', 'Once the Kessler cascade begins, collision growth may become irreversible.')}
         </div>
       </div>
 
@@ -1564,7 +1609,7 @@ function SceneTrend() {
           fontFamily: LEX, fontSize: 8, fontWeight: 700, color: '#6b7fff',
           letterSpacing: '0.14em', textTransform: 'uppercase', marginTop: 6,
         }}>
-          跟踪对象
+          {pick('跟踪对象', 'TRACKED OBJECTS')}
         </div>
 
         {/* Interaction hint — permanent, lives below the count label */}
@@ -1592,7 +1637,7 @@ function SceneTrend() {
             fontFamily: LEX, fontSize: 11, fontWeight: 600,
             color: 'rgba(140,160,255,0.8)', letterSpacing: '0.06em', whiteSpace: 'nowrap',
           }}>
-            横向移动鼠标，穿越历史时间轴
+            {pick('横向移动鼠标，穿越历史时间轴', 'MOVE HORIZONTALLY THROUGH THE TIMELINE')}
           </div>
         </div>
       </div>
@@ -1663,6 +1708,7 @@ function SceneTrend() {
 
 /* ── 章节过渡：滚动驱动文字切换 ── */
 function ChapterEndTransition({ onComplete }) {
+  const { language, pick } = useI18n()
   const containerRef = useRef()
   const line1Ref     = useRef()   // GSAP 完全控制，React 不渲染子节点
   const [phase, setPhase] = useState(0)
@@ -1670,9 +1716,9 @@ function ChapterEndTransition({ onComplete }) {
   const animatingRef = useRef(false)
 
   const PHASES = useMemo(() => ([
-    { tag: '01 · SPACE DEBRIS · 本章总结', tagColor: '#484878',              title1: '太空垃圾' },
-    { tag: '02 · HISTORY · 下一章节',       tagColor: 'rgba(129,146,255,0.78)', title1: '历史事件' },
-  ]), [])
+    { tag: pick('01 · SPACE DEBRIS · 本章总结', '01 · SPACE DEBRIS · SUMMARY'), tagColor: '#484878', title1: pick('太空垃圾', 'SPACE DEBRIS') },
+    { tag: pick('02 · HISTORY · 下一章节', '02 · HISTORY · NEXT'), tagColor: 'rgba(129,146,255,0.78)', title1: pick('历史事件', 'HISTORY') },
+  ]), [pick])
 
   // 填充 GSAP 控制的大字 DOM
   function populateLine1(el, text, startHidden) {
@@ -1758,10 +1804,10 @@ function ChapterEndTransition({ onComplete }) {
   const cur = PHASES[phase]
 
   const summaryFacts = [
-    { no: '01', value: '28,000', unit: 'km/h', label: '平均碰撞速度', note: '约为子弹速度的 10 倍' },
-    { no: '02', value: '~1.3亿', unit: '', label: '在轨碎片总量', note: '多数仍无法持续追踪' },
-    { no: '03', value: '36,500+', unit: '', label: '可追踪目标', note: '雷达持续编目与预警' },
-    { no: '04', value: '1957', unit: '', label: '污染起点', note: '人造卫星时代同步开始' },
+    { no: '01', value: '28,000', unit: 'km/h', label: pick('平均碰撞速度', 'Average collision speed'), note: pick('约为子弹速度的 10 倍', 'About ten times faster than a bullet') },
+    { no: '02', value: language === 'en' ? '~130M' : '~1.3亿', unit: '', label: pick('在轨碎片总量', 'Debris in orbit'), note: pick('多数仍无法持续追踪', 'Most cannot be continuously tracked') },
+    { no: '03', value: '36,500+', unit: '', label: pick('可追踪目标', 'Trackable objects'), note: pick('雷达持续编目与预警', 'Continuously catalogued by radar') },
+    { no: '04', value: '1957', unit: '', label: pick('污染起点', 'Beginning of orbital pollution'), note: pick('人造卫星时代同步开始', 'The year the satellite age began') },
   ]
 
   return (
@@ -1816,16 +1862,16 @@ function ChapterEndTransition({ onComplete }) {
               >
                 <div className="m1-summary-next-copy">
                   <small>UP NEXT / M3</small>
-                  <h3>重大历史事件</h3>
-                  <p>沿时间轴回看关键发射、碰撞与失效事件，理解轨道碎片如何一步步累积成今天的风险。</p>
+                  <h3>{pick('重大历史事件', 'Major historical events')}</h3>
+                  <p>{pick('沿时间轴回看关键发射、碰撞与失效事件，理解轨道碎片如何一步步累积成今天的风险。', 'Follow key launches, collisions, and failures to see how orbital debris became today’s systemic risk.')}</p>
                 </div>
-                <div className="m1-summary-next-meta" aria-label="下一章信息">
-                  <span><b>01</b> 时间脉络</span>
-                  <span><b>02</b> 关键事件</span>
-                  <span><b>03</b> 风险转折</span>
+                <div className="m1-summary-next-meta" aria-label={pick('下一章信息', 'Next chapter information')}>
+                  <span><b>01</b> {pick('时间脉络', 'Timeline')}</span>
+                  <span><b>02</b> {pick('关键事件', 'Key events')}</span>
+                  <span><b>03</b> {pick('风险转折', 'Risk shifts')}</span>
                 </div>
                 <button type="button" className="m1-summary-enter" onClick={() => onComplete({ autoScroll: false })}>
-                  <span>进入下一章</span>
+                  <span>{pick('进入下一章', 'Enter next chapter')}</span>
                   <b>HISTORY / M3</b>
                   <i aria-hidden="true" />
                 </button>

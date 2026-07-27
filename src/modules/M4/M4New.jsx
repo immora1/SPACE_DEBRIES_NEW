@@ -6,15 +6,18 @@ import { ArrowRight, CalendarDays, Eye, Satellite } from 'lucide-react'
 import gsap from 'gsap'
 import * as THREE from 'three'
 import useAppStore from '../../store/useAppStore'
+import useI18n from '../../i18n/useI18n'
 import {
   generateGameDecisionFeedback,
   generateGameReflection,
 } from '../../services/ai'
-import { calcInitialArmor, evaluateResult, pickEvents } from './gameData'
+import { calcInitialArmor, evaluateResult, localizeThreatEvent, pickEvents } from './gameData'
+import { commitOrbitDragProgress, shouldStartOrbitMission } from './orbitControl'
 import ReflectionPage from './ReflectionPage'
 
 const EARTH_GLB = '/earth%20globe%203d%20model.glb'
 const SATELLITE_GLB = '/simple_satellite_low_poly_free.glb'
+useGLTF.preload(SATELLITE_GLB)
 const EARTH_SCALE = 1
 const MIN_EARTH_SCALE = 1.6
 const EXPANDED_EARTH_SCALE = 3
@@ -157,38 +160,50 @@ const THREAT_LABELS = {
 const RECOVERY_STEPS = [
   {
     title: '任务结束',
+    titleEn: 'Mission complete',
     label: 'MISSION END',
     body: '卫星完成工作，进入退役状态。',
+    bodyEn: 'The satellite completes its work and enters retirement status.',
     img: '/任务结束.png',
   },
   {
     title: '关闭载荷',
+    titleEn: 'Payload shutdown',
     label: 'SYSTEM SHUTDOWN',
     body: '关闭相机、通信设备、科学载荷等主要功能。',
+    bodyEn: 'Cameras, communication systems, and science payloads are switched off.',
     img: '/关闭载荷.png',
   },
   {
     title: '钝化处理',
+    titleEn: 'Passivation',
     label: 'PASSIVATION',
     body: '释放剩余燃料、电池能量和高压气体，避免在轨爆炸。',
+    bodyEn: 'Residual propellant, battery energy, and pressurized gas are released to prevent an orbital explosion.',
     img: '/钝化处理.png',
   },
   {
     title: '降轨减速',
+    titleEn: 'Deorbit burn',
     label: 'DEORBIT BURN',
     body: '通过发动机点火或自然阻力降低轨道，逐渐靠近大气层。',
+    bodyEn: 'Engine burns or natural drag lower the orbit toward the atmosphere.',
     img: '/降轨减速.png',
   },
   {
     title: '再入烧蚀',
+    titleEn: 'Atmospheric re-entry',
     label: 'ATMOSPHERIC REENTRY',
     body: '卫星高速进入大气层，受到空气阻力和高温影响。',
+    bodyEn: 'The satellite enters the atmosphere at high speed and encounters drag and extreme heat.',
     img: '/再入烧蚀.png',
   },
   {
     title: '残骸处置',
+    titleEn: 'Breakup and impact',
     label: 'BREAKUP / IMPACT',
     body: '大部分结构在大气层中烧蚀，少量耐高温残骸可能落入海洋或地面。',
+    bodyEn: 'Most structures ablate; a small amount of heat-resistant debris may reach ocean or land.',
     img: '/残骸处置.png',
   },
 ]
@@ -1464,7 +1479,8 @@ const GAME_STYLES = `
     letter-spacing: -0.02em;
     line-height: 0.92;
     overflow: hidden;
-    overflow-wrap: anywhere;
+    overflow-wrap: normal;
+    word-break: keep-all;
   }
 
   .m4-material-card p {
@@ -1632,6 +1648,7 @@ const GAME_STYLES = `
 
 
 function StartGuide({ opacity, progress, onJumpToRecovery }) {
+  const { pick } = useI18n()
   const guideOpacity = opacity * Math.max(0, 1 - progress * 2.8)
 
   return (
@@ -1640,7 +1657,7 @@ function StartGuide({ opacity, progress, onJumpToRecovery }) {
 
       <aside
         className="m4-start-guide m4-start-guide-left"
-        aria-label="任务编号"
+        aria-label={pick('任务编号', 'Mission identifier')}
         style={{ opacity: guideOpacity }}
       >
         <div className="m4-guide-card-head">
@@ -1651,20 +1668,20 @@ function StartGuide({ opacity, progress, onJumpToRecovery }) {
         <div className="m4-guide-number">
           <strong>01</strong>
           <span className="m4-guide-number-copy">
-            <span>初始轨道</span>
+            <span>{pick('初始轨道', 'Initial orbit')}</span>
             <small>INITIAL ORBIT</small>
           </span>
         </div>
         <div className="m4-guide-rule" />
         <div className="m4-guide-orbit-data">
-          <span><small>轨道类型</small><b>LOW EARTH ORBIT</b></span>
-          <span><small>任务模式</small><b>DEBRIS RESPONSE</b></span>
+          <span><small>{pick('轨道类型', 'ORBIT TYPE')}</small><b>LOW EARTH ORBIT</b></span>
+          <span><small>{pick('任务模式', 'MISSION MODE')}</small><b>DEBRIS RESPONSE</b></span>
         </div>
       </aside>
 
       <aside
         className="m4-start-guide m4-start-guide-right"
-        aria-label="游戏介绍"
+        aria-label={pick('游戏介绍', 'Mission introduction')}
         style={{ opacity: guideOpacity }}
       >
         <div className="m4-guide-card-head">
@@ -1672,25 +1689,25 @@ function StartGuide({ opacity, progress, onJumpToRecovery }) {
           <span className="m4-guide-card-kicker">ORBITAL SURVIVAL</span>
           <span className="m4-guide-card-index">04</span>
         </div>
-        <h2 className="m4-guide-card-title">在碎片风暴中生存</h2>
-        <p className="m4-guide-card-copy">接管一颗受损卫星，在十二个月的近地轨道任务中躲避碎片。每一次判断都会消耗燃料或护甲，也会改变最终结局。</p>
+        <h2 className="m4-guide-card-title">{pick('在碎片风暴中生存', 'Survive the debris storm')}</h2>
+        <p className="m4-guide-card-copy">{pick('接管一颗受损卫星，在十二个月的近地轨道任务中躲避碎片。每一次判断都会消耗燃料或护甲，也会改变最终结局。', 'Take control of a damaged satellite through twelve months in low Earth orbit. Every decision consumes fuel or armor and changes the final outcome.')}</p>
         <div className="m4-guide-metrics">
           <span className="m4-guide-metric">
             <CalendarDays size={17} strokeWidth={1.4} aria-hidden="true" />
-            <span><small>任务周期</small><b>12 MONTHS</b></span>
+            <span><small>{pick('任务周期', 'DURATION')}</small><b>12 MONTHS</b></span>
           </span>
           <span className="m4-guide-metric">
             <Satellite size={17} strokeWidth={1.4} aria-hidden="true" />
-            <span><small>目标载具</small><b>01 SATELLITE</b></span>
+            <span><small>{pick('目标载具', 'VEHICLE')}</small><b>01 SATELLITE</b></span>
           </span>
         </div>
         <button
           type="button"
           className="m4-guide-jump-button"
           onClick={onJumpToRecovery}
-          aria-label="直接进入卫星回收页面"
+          aria-label={pick('直接进入卫星回收页面', 'Go directly to satellite recovery')}
         >
-          <span>进入回收演示</span>
+          <span>{pick('进入回收演示', 'Open recovery demo')}</span>
           <ArrowRight className="m4-guide-jump-icon" size={16} strokeWidth={1.6} aria-hidden="true" />
         </button>
       </aside>
@@ -1699,9 +1716,10 @@ function StartGuide({ opacity, progress, onJumpToRecovery }) {
 }
 
 function GameStatusHud({ month, fuel, armor, missionProgress }) {
+  const { pick } = useI18n()
   return (
     <section
-      aria-label="卫星生存任务状态"
+      aria-label={pick('卫星生存任务状态', 'Orbital survival mission status')}
       style={{
         position: 'absolute',
         top: 'clamp(36px, 6vh, 72px)',
@@ -1741,7 +1759,7 @@ function GameStatusHud({ month, fuel, armor, missionProgress }) {
           letterSpacing: '0.12em',
           color: 'rgba(232,232,248,0.76)',
         }}>
-          月</span>
+          {pick('月', 'MO')}</span>
       </div>
 
       <div style={{
@@ -1751,8 +1769,8 @@ function GameStatusHud({ month, fuel, armor, missionProgress }) {
       }} />
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
-        <StatusMetric label="燃料" english="FUEL" value={fuel} />
-        <StatusMetric label="鎶ょ敳" english="ARMOR" value={armor} />
+        <StatusMetric label={pick('燃料', 'FUEL')} english="FUEL" value={fuel} />
+        <StatusMetric label={pick('护甲', 'ARMOR')} english="ARMOR" value={armor} />
       </div>
 
       <div className="m4-mission-progress">
@@ -1860,13 +1878,14 @@ function StoryPanel({ month, story }) {
 }
 
 function RecoveryIntroPanel({ expanded, onBackToResult }) {
+  const { pick } = useI18n()
   return (
     <MotionAside
       className={`m4-recovery-panel${expanded ? '' : ' is-intro-only'}`}
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
-      aria-label="太空卫星回收"
+      aria-label={pick('太空卫星回收', 'Satellite recovery')}
     >
       <style>{GAME_STYLES}</style>
       <div className="m4-recovery-header">
@@ -1875,14 +1894,14 @@ function RecoveryIntroPanel({ expanded, onBackToResult }) {
           type="button"
           className="m4-recovery-back-button"
           onClick={onBackToResult}
-          title="返回游戏结算板块"
-          aria-label="返回游戏结算板块"
+          title={pick('返回游戏结算板块', 'Return to mission result')}
+          aria-label={pick('返回游戏结算板块', 'Return to mission result')}
         >
           <span className="m4-recovery-back-icon" aria-hidden="true">→</span>
-          <span>返回结算</span>
+          <span>{pick('返回结算', 'Back to result')}</span>
         </button>
       </div>
-      <h2>太空卫星回收</h2>
+      <h2>{pick('太空卫星回收', 'Satellite recovery')}</h2>
       {expanded && (
         <MotionDiv
           initial={{ opacity: 0, y: 10 }}
@@ -1892,8 +1911,10 @@ function RecoveryIntroPanel({ expanded, onBackToResult }) {
           <div className="m4-recovery-rule" />
           <p>
 
-            每一颗卫星都有生命尽头。任务结束后，它们面临两种命运：受控离轨，或等待轨道衰减。
-            无论哪种，再入大气层的过程都在地球上留下了痕迹。
+            {pick(
+              '每一颗卫星都有生命尽头。任务结束后，它们面临两种命运：受控离轨，或等待轨道衰减。无论哪种，再入大气层的过程都在地球上留下了痕迹。',
+              'Every satellite reaches the end of its life. After the mission it must either deorbit under control or wait for orbital decay. In both cases, atmospheric re-entry can leave traces on Earth.',
+            )}
 
           </p>
         </MotionDiv>
@@ -1903,6 +1924,7 @@ function RecoveryIntroPanel({ expanded, onBackToResult }) {
 }
 
 function RecoveryStepsPanel({ activeStepIndex, onActiveStepChange }) {
+  const { pick } = useI18n()
   const stepsRef = useRef()
 
   const updateActiveStep = useCallback(() => {
@@ -1966,7 +1988,7 @@ function RecoveryStepsPanel({ activeStepIndex, onActiveStepChange }) {
       initial={{ opacity: 0, x: 28 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.12 }}
-      aria-label="卫星回收步骤展示"
+      aria-label={pick('卫星回收步骤展示', 'Satellite recovery steps')}
       onScroll={updateActiveStep}
       onWheel={handleWheel}
     >
@@ -1986,8 +2008,8 @@ function RecoveryStepsPanel({ activeStepIndex, onActiveStepChange }) {
               <span>{step.label}</span>
               <span className="m4-recovery-step-index">{String(index + 1).padStart(2, '0')}</span>
             </div>
-            <h3>{step.title}</h3>
-            <p>{step.body}</p>
+            <h3>{pick(step.title, step.titleEn)}</h3>
+            <p>{pick(step.body, step.bodyEn)}</p>
           </div>
           <div className="m4-recovery-step-media" aria-hidden="true">
             <img src={step.img} alt="" />
@@ -2008,6 +2030,7 @@ function GamePanel({
   onContinue,
   onJumpToRecovery,
 }) {
+  const { pick } = useI18n()
   return (
     <aside className="m4-game-panel" aria-live="polite">
       <style>{GAME_STYLES}</style>
@@ -2020,10 +2043,10 @@ function GamePanel({
             className="m4-game-recovery-jump"
             onClick={onJumpToRecovery}
             disabled={loading}
-            aria-label="直接进入卫星回收页面"
+            aria-label={pick('直接进入卫星回收页面', 'Go directly to satellite recovery')}
           >
             <span aria-hidden="true">→</span>
-            <span>回收</span>
+            <span>{pick('回收', 'RECOVERY')}</span>
           </button>
         </div>
       </div>
@@ -2038,8 +2061,8 @@ function GamePanel({
             exit={{ opacity: 0 }}
           >
             <div className="m4-game-label">GROUND CONTROL · ANALYZING</div>
-            <h2>正在回传任务日志</h2>
-            <p>地面站正在比对轨道参数与历史案例。</p>
+            <h2>{pick('正在回传任务日志', 'Receiving mission log')}</h2>
+            <p>{pick('地面站正在比对轨道参数与历史案例。', 'Ground control is comparing orbital parameters with historical cases.')}</p>
           </MotionDiv>
         )}
 
@@ -2056,7 +2079,7 @@ function GamePanel({
             <h2>{event.title}</h2>
             <p>{event.description}</p>
             <div className="m4-game-reference">{event.realRef}</div>
-            <div className="m4-game-label">SELECT RESPONSE</div>
+            <div className="m4-game-label">{pick('选择应对方案', 'SELECT RESPONSE')}</div>
             <div className="m4-game-options">
               {event.options.map((option, index) => (
                 <button
@@ -2095,7 +2118,7 @@ function GamePanel({
               <DeltaTag label="MISSION" value={feedback.missionDelta} />
             </div>
             <button className="m4-game-continue" onClick={onContinue}>
-              {round + 1 >= TOTAL_ROUNDS ? 'VIEW MISSION RESULT' : 'CONTINUE TO NEXT MONTH'}
+              {round + 1 >= TOTAL_ROUNDS ? pick('查看任务结果', 'VIEW MISSION RESULT') : pick('进入下个月', 'CONTINUE TO NEXT MONTH')}
             </button>
           </MotionDiv>
         )}
@@ -2141,6 +2164,7 @@ function OrbitBackdrop({ opacity }) {
 }
 
 function OrbitControl({ progress, disabled, onProgressChange, onDragEnd }) {
+  const { pick } = useI18n()
   const controlRef = useRef()
   const activePointerRef = useRef(null)
   const angle = Math.PI - progress * Math.PI
@@ -2150,12 +2174,16 @@ function OrbitControl({ progress, disabled, onProgressChange, onDragEnd }) {
 
   const updateProgress = useCallback((clientX) => {
     const rect = controlRef.current?.getBoundingClientRect()
-    if (!rect) return
+    if (!rect || rect.width <= 0) return null
 
     const viewBoxX = ((clientX - rect.left) / rect.width) * ORBIT_VIEWBOX_SIZE
     const nextProgress = (viewBoxX - ORBIT_LEFT_X) / (ORBIT_RIGHT_X - ORBIT_LEFT_X)
-    onProgressChange(Math.max(0, Math.min(1, nextProgress)))
-  }, [onProgressChange])
+    const clampedProgress = Math.max(0, Math.min(1, nextProgress))
+    return commitOrbitDragProgress(clampedProgress, {
+      onProgressChange,
+      onComplete: onDragEnd,
+    })
+  }, [onDragEnd, onProgressChange])
 
   const handlePointerDown = useCallback((event) => {
     if (disabled || activePointerRef.current !== null) return
@@ -2175,12 +2203,12 @@ function OrbitControl({ progress, disabled, onProgressChange, onDragEnd }) {
 
   const handlePointerUp = useCallback((event) => {
     if (activePointerRef.current !== event.pointerId) return
+    updateProgress(event.clientX)
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId)
     }
     activePointerRef.current = null
-    onDragEnd()
-  }, [onDragEnd])
+  }, [updateProgress])
 
   const handleKeyDown = useCallback((event) => {
     if (disabled) return
@@ -2194,8 +2222,7 @@ function OrbitControl({ progress, disabled, onProgressChange, onDragEnd }) {
 
     event.preventDefault()
     onProgressChange(nextProgress)
-    if (nextProgress >= 0.98) onDragEnd()
-  }, [disabled, onDragEnd, onProgressChange, progress])
+  }, [disabled, onProgressChange, progress])
 
   return (
     <div
@@ -2228,7 +2255,7 @@ function OrbitControl({ progress, disabled, onProgressChange, onDragEnd }) {
         onKeyDown={handleKeyDown}
         role="slider"
         tabIndex={disabled ? -1 : 0}
-        aria-label="向右拖动轨道节点开始任务"
+        aria-label={pick('向右拖动轨道节点开始任务', 'Drag the orbit handle right to start the mission')}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.round(progress * 100)}
@@ -2259,7 +2286,7 @@ function OrbitControl({ progress, disabled, onProgressChange, onDragEnd }) {
 
       {!disabled && (
         <div className="m4-orbit-static-hint">
-          <span>按住节点向右拖动</span>
+          <span>{pick('按住节点向右拖动', 'DRAG THE HANDLE TO THE RIGHT')}</span>
           <small>DRAG TO START</small>
         </div>
       )}
@@ -3042,6 +3069,7 @@ function getMaterialResidueCards(materials) {
 }
 
 function BreakupMaterialBoard({ recoveryStep, materials, anchor }) {
+  const { language, pick } = useI18n()
   const cards = useMemo(() => getMaterialResidueCards(materials), [materials])
   const isBreakup = recoveryStep === RECOVERY_ANIMATION_STEP.BREAKUP
 
@@ -3050,7 +3078,7 @@ function BreakupMaterialBoard({ recoveryStep, materials, anchor }) {
   return (
     <aside
       className="m4-material-board"
-      aria-label="再入后遗留材料"
+      aria-label={pick('再入后遗留材料', 'Materials remaining after re-entry')}
     >
       <style>{GAME_STYLES}</style>
       <div
@@ -3112,11 +3140,11 @@ function BreakupMaterialBoard({ recoveryStep, materials, anchor }) {
             >
               <div className="m4-material-callout-meta">{card.labelEn} · {card.number} / {card.risk}</div>
               <h4>
-                <strong>{card.countLabel}</strong>
-                <span>{card.label}</span>
+                <strong>{language === 'en' ? `${card.itemCount} TYPES` : card.countLabel}</strong>
+                <span>{pick(card.label, card.labelEn)}</span>
               </h4>
-              <p>{card.summary}</p>
-              <div className="m4-material-card-note">{card.materialDetail} · {card.note}</div>
+              <p>{pick(card.summary, 'Representative remnants from the selected materials after breakup and atmospheric heating.')}</p>
+              <div className="m4-material-card-note">{pick(`${card.materialDetail} · ${card.note}`, 'M2 MATERIAL PROFILE · RE-ENTRY RESIDUE')}</div>
             </article>
           ))}
         </div>
@@ -3842,13 +3870,15 @@ function EarthScene({
         />
       </group>
       {showPersonalOrbit && (
-        <PersonalSatelliteOrbit
-          altitudeKm={satellite?.altitudeKm}
-          inclinationDeg={satellite?.inclination}
-          earthRadius={earthMetrics.radius}
-          recoveryStep={recoveryStep}
-          focusRef={satelliteFocusRef}
-        />
+        <Suspense fallback={null}>
+          <PersonalSatelliteOrbit
+            altitudeKm={satellite?.altitudeKm}
+            inclinationDeg={satellite?.inclination}
+            earthRadius={earthMetrics.radius}
+            recoveryStep={recoveryStep}
+            focusRef={satelliteFocusRef}
+          />
+        </Suspense>
       )}
       {showPersonalOrbit && (
         <OrbitalDebrisCloud
@@ -4091,6 +4121,7 @@ function EarthOrbitControls({ proxy, recoveryStep, satelliteFocusRef }) {
 }
 
 export default function M4New({ onComplete = () => {} }) {
+  const { language, pick } = useI18n()
   const {
     satellite,
     user,
@@ -4134,9 +4165,15 @@ export default function M4New({ onComplete = () => {} }) {
   const [materialBoardAnchor, setMaterialBoardAnchor] = useState(null)
   const initialStory = storyChapters?.m3
     || storyChapters?.opening
-    || ((satellite?.name || '卫星') + '进入近地轨道。监测系统开始记录每一次微小偏移。')
+    || pick(
+      `${satellite?.name || '卫星'}进入近地轨道。监测系统开始记录每一次微小偏移。`,
+      `${satellite?.name || 'The satellite'} enters low Earth orbit. The monitoring system begins recording every small deviation.`,
+    )
   const [storyThread, setStoryThread] = useState([initialStory])
-  const currentEvent = events[round] || null
+  const currentEvent = useMemo(
+    () => localizeThreatEvent(events[round] || null, language),
+    [events, language, round],
+  )
   const currentMonth = GAME_MONTHS[round] || GAME_MONTHS[GAME_MONTHS.length - 1]
   const latestStory = storyThread[storyThread.length - 1]
   const recoveryStep = phase === GAME_PHASE.RECOVERY && recoveryStepsVisible
@@ -4222,15 +4259,13 @@ export default function M4New({ onComplete = () => {} }) {
       })
     } catch {
       generatedReflection = {
-        knowledgePoints: [
-          '每一次轨道规避都会消耗有限燃料。',
-          '小尺寸碎片仍可能造成不可逆损伤。',
-          '失控卫星会继续增加近地轨道风险。',
-        ],
+        knowledgePoints: language === 'en'
+          ? ['Every avoidance maneuver consumes limited fuel.', 'Small debris can still cause irreversible damage.', 'An uncontrolled satellite adds further risk to low Earth orbit.']
+          : ['每一次轨道规避都会消耗有限燃料。', '小尺寸碎片仍可能造成不可逆损伤。', '失控卫星会继续增加近地轨道风险。'],
         satFate: isSuccess
-          ? '卫星完成任务并保留了离轨能力。'
-          : '卫星失去控制，成为新的轨道碎片来源。',
-        debrisDescription: material + '碎片，来源于受损卫星，残留于近地轨道。',
+          ? pick('卫星完成任务并保留了离轨能力。', 'The satellite completes its mission and retains deorbit capability.')
+          : pick('卫星失去控制，成为新的轨道碎片来源。', 'The satellite loses control and becomes a new source of orbital debris.'),
+        debrisDescription: pick(`${material}碎片，来源于受损卫星，残留于近地轨道。`, `${material} fragments from the damaged satellite remain in low Earth orbit.`),
       }
     }
 
@@ -4238,7 +4273,9 @@ export default function M4New({ onComplete = () => {} }) {
       ...generatedReflection,
       storyEnding: generatedReflection.storyEnding
         || finalStory
-        || (isSuccess ? '那件重要的事仍按原来的方向推进。' : '那件重要的事出现了无法忽略的偏移。'),
+        || (isSuccess
+          ? pick('那件重要的事仍按原来的方向推进。', 'That important event continues along its original path.')
+          : pick('那件重要的事出现了无法忽略的偏移。', 'That important event shifts in a way that can no longer be ignored.')),
     }
 
     setGameResult({
@@ -4262,6 +4299,8 @@ export default function M4New({ onComplete = () => {} }) {
     setStoryChapter,
     storyOutline,
     user,
+    language,
+    pick,
   ])
 
   const handleChoose = useCallback(async (option) => {
@@ -4301,8 +4340,8 @@ export default function M4New({ onComplete = () => {} }) {
       aiResult = {
         feedback: option.techNote,
         storyUpdate: option.outcome === 'correct'
-          ? ((satellite?.name || '卫星') + '完成机动，轨道数据重新稳定。平行时空中的关键节点暂时没有偏离。')
-          : ((satellite?.name || '卫星') + '的遥测信号出现新的波动。平行时空中的一个细节随之改变。'),
+          ? pick(`${satellite?.name || '卫星'}完成机动，轨道数据重新稳定。平行时空中的关键节点暂时没有偏离。`, `${satellite?.name || 'The satellite'} completes the maneuver and its orbit stabilizes. The key point in the parallel timeline remains intact.`)
+          : pick(`${satellite?.name || '卫星'}的遥测信号出现新的波动。平行时空中的一个细节随之改变。`, `${satellite?.name || 'The satellite'} reports a new telemetry fluctuation. A detail in the parallel timeline changes with it.`),
       }
     }
 
@@ -4322,10 +4361,10 @@ export default function M4New({ onComplete = () => {} }) {
     setFeedback({
       ...option,
       title: option.outcome === 'correct'
-        ? '机动执行完成'
+        ? pick('机动执行完成', 'Maneuver complete')
         : option.outcome === 'partial'
-          ? '风险仍未完全解除'
-          : '轨道状态继续恶化',
+          ? pick('风险仍未完全解除', 'Risk remains')
+          : pick('轨道状态继续恶化', 'Orbit continues to degrade'),
       aiLog: aiResult.feedback || option.techNote,
       color: feedbackColor,
       nextDecisions,
@@ -4344,6 +4383,7 @@ export default function M4New({ onComplete = () => {} }) {
     storyOutline,
     storyThread,
     user,
+    pick,
   ])
 
   const handleContinue = useCallback(async () => {
@@ -4388,14 +4428,12 @@ export default function M4New({ onComplete = () => {} }) {
     if (!reflection) {
       setLocalResult('success')
       setReflection({
-        knowledgePoints: [
-          '退役卫星通常需要经过关机、钝化、降轨、再入和残骸处置等阶段。',
-          '钝化会释放剩余燃料、电池能量和高压气体，降低在轨爆炸风险。',
-          '再入过程中大部分结构会烧蚀解体，少量耐高温残骸可能继续下落。',
-        ],
-        satFate: '演示模式已跳过十二个月任务，直接进入退役卫星回收流程。',
-        storyEnding: (satellite?.name || '卫星') + '结束任务演示，地面站切换到回收与再入处置视角。',
-        debrisDescription: material + '残骸演示样本，用于展示再入烧蚀后的碎片命运。',
+        knowledgePoints: language === 'en'
+          ? ['Retired satellites pass through shutdown, passivation, deorbit, re-entry, and debris handling.', 'Passivation releases propellant, battery energy, and pressurized gas to reduce explosion risk.', 'Most structures ablate during re-entry while a small amount of heat-resistant debris may continue downward.']
+          : ['退役卫星通常需要经过关机、钝化、降轨、再入和残骸处置等阶段。', '钝化会释放剩余燃料、电池能量和高压气体，降低在轨爆炸风险。', '再入过程中大部分结构会烧蚀解体，少量耐高温残骸可能继续下落。'],
+        satFate: pick('演示模式已跳过十二个月任务，直接进入退役卫星回收流程。', 'Demo mode skips the twelve-month mission and enters the retired-satellite recovery process.'),
+        storyEnding: pick(`${satellite?.name || '卫星'}结束任务演示，地面站切换到回收与再入处置视角。`, `${satellite?.name || 'The satellite'} ends the mission demo as ground control switches to recovery and re-entry handling.`),
+        debrisDescription: pick(`${material}残骸演示样本，用于展示再入烧蚀后的碎片命运。`, `${material} debris sample used to demonstrate fragment behavior after re-entry ablation.`),
       })
     }
 
@@ -4419,6 +4457,8 @@ export default function M4New({ onComplete = () => {} }) {
     reflection,
     satellite?.name,
     unlockNextStageWithoutScroll,
+    language,
+    pick,
   ])
 
   const handleModuleWheel = useCallback((event) => {
@@ -4442,8 +4482,8 @@ export default function M4New({ onComplete = () => {} }) {
     setOrbitProgress(progress)
   }, [])
 
-  const handleDragEnd = useCallback(() => {
-    if (progressRef.current < 0.98 || started.current) return
+  const handleDragEnd = useCallback((finalProgress = progressRef.current) => {
+    if (!shouldStartOrbitMission(finalProgress) || started.current) return
     started.current = true
     setOrbitLocked(true)
     handleProgressChange(1)
@@ -4462,6 +4502,11 @@ export default function M4New({ onComplete = () => {} }) {
       },
     })
   }, [handleProgressChange])
+
+  useEffect(() => {
+    if (orbitLocked || !orbitVisible) return
+    handleDragEnd(orbitProgress)
+  }, [handleDragEnd, orbitLocked, orbitProgress, orbitVisible])
 
   return (
     <div

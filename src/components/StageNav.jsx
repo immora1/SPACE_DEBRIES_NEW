@@ -1,16 +1,17 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import useAppStore from '../store/useAppStore'
+import useI18n from '../i18n/useI18n'
 import './StageNav.css'
 
 const STAGES = [
-  { id: 'm1', code: 'M1', label: '太空垃圾' },
-  { id: 'm3', code: 'M3', label: '历史事件' },
-  { id: 'm2', code: 'M2', label: '轨道环境' },
-  { id: 'm4', code: 'M4', label: '生存任务' },
-  { id: 'law', code: 'M5', label: '法律边界' },
-  { id: 'm6', code: 'M6', label: '清理方法' },
-  { id: 'm7', code: 'M7', label: '科普总结' },
+  { id: 'm1', code: 'M1', labelKey: 'nav.m1' },
+  { id: 'm2', code: 'M2', labelKey: 'nav.m2' },
+  { id: 'm3', code: 'M3', labelKey: 'nav.m3' },
+  { id: 'm4', code: 'M4', labelKey: 'nav.m4' },
+  { id: 'm5', code: 'M5', labelKey: 'nav.m5' },
+  { id: 'm6', code: 'M6', labelKey: 'nav.m6' },
+  { id: 'm7', code: 'M7', labelKey: 'nav.m7' },
 ]
 
 const EMPTY_GEOMETRY = { width: 0, height: 0, nodes: [] }
@@ -68,6 +69,7 @@ function createNavigationPath(geometry, emphasizedIndex) {
 }
 
 function StageNav({ completedModules, availableModules = [], onStageClick }) {
+  const { language, setLanguage, t } = useI18n()
   const completedSet = useMemo(() => new Set(completedModules), [completedModules])
   const availableSet = useMemo(() => new Set(availableModules), [availableModules])
   const [activeStage, setActiveStage] = useState(STAGES[0].id)
@@ -84,6 +86,10 @@ function StageNav({ completedModules, availableModules = [], onStageClick }) {
   useEffect(() => {
     setCurrentModule(activeStage)
   }, [activeStage, setCurrentModule])
+
+  useEffect(() => {
+    document.documentElement.lang = language === 'en' ? 'en' : 'zh-CN'
+  }, [language])
 
   useEffect(() => {
     const header = document.querySelector('[data-site-header]')
@@ -224,7 +230,7 @@ function StageNav({ completedModules, availableModules = [], onStageClick }) {
         <button
           type="button"
           className="stage-nav__brand"
-          aria-label="返回首页"
+          aria-label={t('nav.home')}
           onClick={() => handleStageClick('m1')}
         >
           <svg className="stage-nav__logo" viewBox="0 0 36 36" aria-hidden="true" focusable="false">
@@ -235,9 +241,10 @@ function StageNav({ completedModules, availableModules = [], onStageClick }) {
           <span className="stage-nav__brand-text"><span>RE·SET</span><i aria-hidden="true">｜</i><b>SPACE DEBRIS</b></span>
         </button>
 
-        <nav className="stage-nav__navigation" aria-label="页面阶段导航">
-          <div className="stage-nav__scroller">
-            <div ref={capsulesRef} className="stage-nav__capsules">
+        <div className="stage-nav__tools">
+          <nav className="stage-nav__navigation" aria-label={t('nav.stages')}>
+            <div className="stage-nav__scroller">
+              <div ref={capsulesRef} className="stage-nav__capsules">
               <svg
                 className="stage-nav__shape"
                 viewBox={`0 0 ${geometry.width || 1} ${geometry.height || 1}`}
@@ -252,7 +259,7 @@ function StageNav({ completedModules, availableModules = [], onStageClick }) {
                 />
               </svg>
 
-              <div className="stage-nav__items">
+                <div className="stage-nav__items">
                 {STAGES.map((stage, index) => {
                   const isCompleted = completedSet.has(stage.id)
                   const isAvailable = availableSet.has(stage.id)
@@ -277,11 +284,11 @@ function StageNav({ completedModules, availableModules = [], onStageClick }) {
                       onFocus={() => setPreviewStage(stage.id)}
                       onBlur={() => setPreviewStage(null)}
                       onClick={() => handleStageClick(stage.id)}
-                      title={stage.label}
+                      title={t(stage.labelKey)}
                     >
                       <span className="stage-nav__item-copy">
                         <span className="stage-nav__code">{stage.code}</span>
-                        <span className="stage-nav__label">{stage.label}</span>
+                        <span className="stage-nav__label">{t(stage.labelKey)}</span>
                       </span>
                       <span className="stage-nav__active-dots" aria-hidden="true">
                         <i /><i /><i />
@@ -289,10 +296,22 @@ function StageNav({ completedModules, availableModules = [], onStageClick }) {
                     </button>
                   )
                 })}
+                </div>
               </div>
             </div>
-          </div>
-        </nav>
+          </nav>
+
+          <button
+            type="button"
+            className="stage-nav__language"
+            aria-label={language === 'zh' ? t('language.switchToEn') : t('language.switchToZh')}
+            onClick={() => setLanguage(language === 'zh' ? 'en' : 'zh')}
+          >
+            <span className={language === 'zh' ? 'is-active' : ''}>{t('language.zh')}</span>
+            <i aria-hidden="true" />
+            <span className={language === 'en' ? 'is-active' : ''}>{t('language.en')}</span>
+          </button>
+        </div>
       </div>
     </header>
   )

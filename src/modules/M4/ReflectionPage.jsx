@@ -1,3 +1,5 @@
+import useI18n from '../../i18n/useI18n'
+
 const RESULT_STYLES = `
   .m4-result-overlay {
     position: absolute;
@@ -267,22 +269,23 @@ const RESULT_STYLES = `
 `
 
 export default function ReflectionPage({ reflection, gameResult, missionStats, onComplete }) {
+  const { pick } = useI18n()
   if (!reflection) return null
 
   const isSuccess = gameResult === 'success'
   const resultColor = isSuccess ? '#16835d' : '#b13b32'
-  const resultLabel = isSuccess ? '任务完成' : '卫星失联'
+  const resultLabel = isSuccess ? pick('任务完成', 'Mission complete') : pick('卫星失联', 'Satellite lost')
   const resultCode = isSuccess ? 'NOMINAL EXIT' : 'LOSS OF CONTROL'
   const resultDesc = isSuccess
-    ? '卫星完成预定任务并保留离轨能力。任务数据已归档，可以进入下一阶段。'
-    : '卫星失去控制并成为新的轨道碎片来源。任务数据已归档，可以进入下一阶段。'
+    ? pick('卫星完成预定任务并保留离轨能力。任务数据已归档，可以进入下一阶段。', 'The satellite completes its mission and retains deorbit capability. Mission data is archived and the next stage is ready.')
+    : pick('卫星失去控制并成为新的轨道碎片来源。任务数据已归档，可以进入下一阶段。', 'The satellite loses control and becomes a new debris source. Mission data is archived and the next stage is ready.')
 
   return (
     <div className="m4-result-overlay">
       <style>{RESULT_STYLES}</style>
       <section
         className="m4-result-card"
-        aria-label="卫星生存任务结算"
+        aria-label={pick('卫星生存任务结算', 'Orbital survival mission result')}
         style={{ '--result-color': resultColor }}
       >
         <header className="m4-result-header">
@@ -297,7 +300,7 @@ export default function ReflectionPage({ reflection, gameResult, missionStats, o
             <p>{resultDesc}</p>
           </div>
 
-          <div className="m4-result-telemetry" aria-label="最终任务数据">
+          <div className="m4-result-telemetry" aria-label={pick('最终任务数据', 'Final mission telemetry')}>
             <Metric label="ARMOR" value={missionStats?.armor} />
             <Metric label="FUEL" value={missionStats?.fuel} />
             <Metric label="MISSION" value={missionStats?.missionProgress} />
@@ -306,17 +309,17 @@ export default function ReflectionPage({ reflection, gameResult, missionStats, o
 
         <div className="m4-result-body">
           <div className="m4-result-column">
-            <ResultBlock label="SATELLITE FATE · 卫星命运">
+            <ResultBlock label={pick('SATELLITE FATE · 卫星命运', 'SATELLITE FATE')}>
               <p className="m4-result-copy">{reflection.satFate}</p>
             </ResultBlock>
 
-            <ResultBlock label="PARALLEL TIMELINE · 平行时空结局">
+            <ResultBlock label={pick('PARALLEL TIMELINE · 平行时空结局', 'PARALLEL TIMELINE')}>
               <div className="m4-result-story">{reflection.storyEnding}</div>
             </ResultBlock>
           </div>
 
           <div className="m4-result-column">
-            <ResultBlock label="KNOWLEDGE LOG · 本次学到">
+            <ResultBlock label={pick('KNOWLEDGE LOG · 本次学到', 'KNOWLEDGE LOG')}>
               <ul className="m4-result-knowledge">
                 {(reflection.knowledgePoints || []).map((point, index) => (
                   <li key={`${index}-${point}`}>
@@ -328,7 +331,7 @@ export default function ReflectionPage({ reflection, gameResult, missionStats, o
             </ResultBlock>
 
             {reflection.debrisDescription && (
-              <ResultBlock label="DEBRIS OUTPUT · 产生碎片">
+              <ResultBlock label={pick('DEBRIS OUTPUT · 产生碎片', 'DEBRIS OUTPUT')}>
                 <div className="m4-result-debris">{reflection.debrisDescription}</div>
               </ResultBlock>
             )}
@@ -341,7 +344,7 @@ export default function ReflectionPage({ reflection, gameResult, missionStats, o
             <div className="m4-result-label">SATELLITE RECOVERY · REENTRY</div>
           </div>
           <button className="m4-result-continue" onClick={onComplete}>
-            进入太空卫星回收 →
+            {pick('进入太空卫星回收', 'Enter satellite recovery')} →
           </button>
         </footer>
       </section>

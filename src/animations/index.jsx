@@ -46,22 +46,33 @@ export function AnimateChars({
   start: _start = 'top 88%',
 }) {
   const [ref, visible] = useRevealOnce()
-  const chars = useMemo(() => String(text || '').split(''), [text])
+  const words = useMemo(() => {
+    let characterIndex = 0
+    return String(text || '').trim().split(/\s+/).filter(Boolean).map((word) => ({
+      word,
+      chars: [...word].map((char) => ({ char, index: characterIndex++ })),
+    }))
+  }, [text])
 
   return (
     <Tag ref={ref} className={className} style={{ perspective: '500px', ...style }}>
-      {chars.map((char, index) => (
-        <span
-          key={`${char}-${index}`}
-          style={transitionStyle(
-            visible,
-            delay + index * stagger,
-            0.7,
-            'translate3d(0,28px,0) rotateX(-45deg)',
-            { display: 'inline-block' },
-          )}
-        >
-          {char === ' ' ? '\u00a0' : char}
+      {words.map(({ word, chars }, wordIndex) => (
+        <span key={`${word}-${wordIndex}`} style={{ display: 'inline-block', whiteSpace: 'nowrap' }}>
+          {chars.map(({ char, index }) => (
+            <span
+              key={`${char}-${index}`}
+              style={transitionStyle(
+                visible,
+                delay + index * stagger,
+                0.7,
+                'translate3d(0,28px,0) rotateX(-45deg)',
+                { display: 'inline-block' },
+              )}
+            >
+              {char}
+            </span>
+          ))}
+          {wordIndex < words.length - 1 ? '\u00a0' : null}
         </span>
       ))}
     </Tag>

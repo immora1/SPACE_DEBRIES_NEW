@@ -52,6 +52,13 @@
     overflow-x: hidden;
   }
 
+  html[lang='en'] body {
+    overflow-wrap: normal;
+    word-break: normal;
+    word-spacing: 0.06em;
+    hyphens: none;
+  }
+
   #root { min-height: 100svh; }
 
   ::selection { background: rgba(107, 127, 255, 0.28); color: #e8e8f8; }

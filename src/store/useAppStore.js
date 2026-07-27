@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 const initialState = {
+  language: 'zh',
   user: { name: '', city: '', importantEvent: '' },
   satellite: null,
   materials: { frame: null, solar: null, insulation: null, propulsion: null },
@@ -23,6 +24,7 @@ const initialState = {
 }
 
 const persistKeys = [
+  'language',
   'user',
   'satellite',
   'materials',
@@ -42,6 +44,7 @@ const useAppStore = create(
     (set, get) => ({
       ...initialState,
 
+      setLanguage: (language) => set({ language: language === 'en' ? 'en' : 'zh' }),
       setUser: (user) => set({ user }),
       setSatellite: (satellite) => set({ satellite }),
       setMaterialPart: (key, value) => set((state) => ({
@@ -83,7 +86,7 @@ const useAppStore = create(
           : [...state.completedModules, id],
       })),
       markModuleComplete: (id) => get().completeModule(id),
-      reset: () => set(initialState),
+      reset: () => set((state) => ({ ...initialState, language: state.language })),
     }),
     {
       name: 'space-debris-state',

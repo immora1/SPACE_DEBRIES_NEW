@@ -795,6 +795,11 @@
   will-change: opacity, filter, transform;
 }
 
+.m8-blur-word {
+  display: inline-block;
+  white-space: nowrap;
+}
+
 .m8-standard-panel:hover .m8-blur-text,
 .m8-standard-tabs:focus-within .m8-standard-panel.is-active .m8-blur-text {
   max-height: 90px;

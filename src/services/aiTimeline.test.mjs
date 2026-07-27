@@ -21,7 +21,7 @@ test('formats every field in a structured AI response', () => {
 test('creates a normalized event with stage and story influence', () => {
   const event = createAIOutputEvent({
     type: 'mission-story',
-    stageId: 'm2',
+    stageId: 'm3',
     title: '任务路线生成',
     choice: '选择主动离轨任务',
   }, {
@@ -32,7 +32,7 @@ test('creates a normalized event with stage and story influence', () => {
   })
 
   assert.equal(event.id, 'event-1')
-  assert.equal(event.stageCode, 'M2')
+  assert.equal(event.stageCode, 'M3')
   assert.equal(event.choice, '选择主动离轨任务')
   assert.equal(event.impact, '卫星开始为离轨预留燃料。')
   assert.match(event.content, /故事内容/)

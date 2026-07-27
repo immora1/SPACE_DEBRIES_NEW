@@ -1,30 +1,32 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Clock3, GitBranch, MousePointer2, Sparkles } from 'lucide-react'
 import useAppStore from '../store/useAppStore'
+import useI18n from '../i18n/useI18n'
 import {
   getStoryPhase,
   getTimelineTickScale,
 } from '../services/aiTimeline'
 import './AIStoryRail.css'
 
-const timeFormatter = new Intl.DateTimeFormat('zh-CN', {
-  hour: '2-digit',
-  minute: '2-digit',
-  second: '2-digit',
-})
-
-function formatEventTime(createdAt) {
-  return createdAt ? timeFormatter.format(new Date(createdAt)) : '历史记录'
-}
-
 export default function AIStoryRail() {
+  const { language, pick } = useI18n()
   const aiTimeline = useAppStore((state) => state.aiTimeline)
   const currentModule = useAppStore((state) => state.currentModule)
   const storySessionReady = useAppStore((state) => state.storySessionReady)
   const entries = aiTimeline
   const phase = useMemo(
-    () => getStoryPhase(entries, currentModule),
-    [currentModule, entries],
+    () => getStoryPhase(entries, currentModule, language),
+    [currentModule, entries, language],
+  )
+  const timeFormatter = useMemo(() => new Intl.DateTimeFormat(language === 'en' ? 'en-US' : 'zh-CN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }), [language])
+  const formatEventTime = (createdAt) => (
+    createdAt
+      ? timeFormatter.format(new Date(createdAt))
+      : pick('历史记录', 'Archive')
   )
 
   const viewportRef = useRef(null)
@@ -81,7 +83,7 @@ export default function AIStoryRail() {
   if (!storySessionReady) return null
 
   return (
-    <div className="ai-story-hud" aria-label="AI 个性化故事记录">
+    <div className="ai-story-hud" aria-label={pick('AI 个性化故事记录', 'AI personalized story log')}>
       <aside className="ai-story-phase" aria-live="polite">
         <div className="ai-story-phase__eyebrow">
           <GitBranch size={13} strokeWidth={1.7} />
@@ -111,15 +113,15 @@ export default function AIStoryRail() {
           </header>
           <h3>{hoveredEntry.title}</h3>
           <section>
-            <div><Sparkles size={13} strokeWidth={1.7} /><b>AI 输出</b></div>
+            <div><Sparkles size={13} strokeWidth={1.7} /><b>{pick('AI 输出', 'AI output')}</b></div>
             <p className="ai-story-popover__output">{hoveredEntry.content}</p>
           </section>
           <section>
-            <div><MousePointer2 size={13} strokeWidth={1.7} /><b>用户选择</b></div>
+            <div><MousePointer2 size={13} strokeWidth={1.7} /><b>{pick('用户选择', 'User choice')}</b></div>
             <p>{hoveredEntry.choice}</p>
           </section>
           <section>
-            <div><GitBranch size={13} strokeWidth={1.7} /><b>故事影响</b></div>
+            <div><GitBranch size={13} strokeWidth={1.7} /><b>{pick('故事影响', 'Story impact')}</b></div>
             <p>{hoveredEntry.impact}</p>
           </section>
         </article>

@@ -3,22 +3,23 @@ import useAppStore from './store/useAppStore'
 import ModuleWrapper from './components/ModuleWrapper'
 import StageNav from './components/StageNav'
 import AIStoryRail from './components/AIStoryRail'
+import useI18n from './i18n/useI18n'
 
 const M1 = lazy(() => import('./modules/M1'))
 const M2 = lazy(() => import('./modules/M2'))
 const M3 = lazy(() => import('./modules/M3'))
 const M4 = lazy(() => import('./modules/M4/M4New'))
-const LegalTreaties = lazy(() => import('./modules/LegalTreaties'))
+const M5 = lazy(() => import('./modules/M5'))
 const M6 = lazy(() => import('./modules/M6'))
 const M7 = lazy(() => import('./modules/M7'))
 const M8 = lazy(() => import('./modules/M8'))
 
 const MODULES = [
   { id: 'm1', Component: M1, connector: null },
-  { id: 'm3', Component: M3, connector: null },
   { id: 'm2', Component: M2, connector: null },
+  { id: 'm3', Component: M3, connector: null },
   { id: 'm4', Component: M4, connector: null },
-  { id: 'law', Component: LegalTreaties, connector: null },
+  { id: 'm5', Component: M5, connector: null },
   { id: 'm6', Component: M6, connector: null },
   { id: 'm7', Component: M7 },
 ]
@@ -76,6 +77,7 @@ const MemoDeferredModule = memo(DeferredModule)
 function OptionalModuleCard({ Component, isVisible, onDecision }) {
   const [expanded, setExpanded] = useState(false)
   const setCurrentModule = useAppStore((state) => state.setCurrentModule)
+  const { pick } = useI18n()
 
   if (!isVisible) return null
 
@@ -97,10 +99,13 @@ function OptionalModuleCard({ Component, isVisible, onDecision }) {
                 MODULE 08 / FIELD OBSERVATION
               </div>
               <div className="optional-module-title">
-                是否进入观测教学？
+                {pick('是否进入观测教学？', 'Enter observation training?')}
               </div>
               <div className="optional-module-description">
-                学会区分太空垃圾再入、流星与卫星，并提交你的目击报告。
+                {pick(
+                  '学会区分太空垃圾再入、流星与卫星，并提交你的目击报告。',
+                  'Learn to distinguish debris re-entry, meteors, and satellites, then submit your sighting report.',
+                )}
               </div>
             </div>
           </div>
@@ -115,7 +120,7 @@ function OptionalModuleCard({ Component, isVisible, onDecision }) {
                 setCurrentModule('m8')
               }}
             >
-              进入教学
+              {pick('进入教学', 'Start training')}
             </button>
           </div>
         </div>
@@ -133,7 +138,7 @@ function OptionalModuleCard({ Component, isVisible, onDecision }) {
                 setCurrentModule('m7')
               }}
             >
-              收起
+              {pick('收起', 'Collapse')}
             </button>
           </div>
           <Suspense fallback={<ModuleLoader />}>

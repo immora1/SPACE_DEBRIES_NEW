@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import useAppStore from '../../store/useAppStore'
+import useI18n from '../../i18n/useI18n'
 import './index.css'
 
 const METHODS = [
@@ -96,8 +97,71 @@ const METHODS = [
   },
 ]
 
+const METHOD_EN = {
+  laser: {
+    status: 'RESEARCH', mode: 'NON-CONTACT', target: '1-10 CM FRAGMENTS', action: 'SMALL ORBIT CHANGE',
+    object: 'Dense groups of small fragments that are too numerous or too small to capture individually, including panel, insulation, and collision debris.',
+    reason: 'Close approach is risky for small, fast targets. A laser can apply a remote impulse that gradually lowers or shifts their orbit.',
+    principle: 'Short pulses heat the surface; the ablation plume creates a small recoil that changes the fragment orbit.',
+    limit: 'Requires extremely accurate tracking and pointing, with safeguards for active spacecraft.',
+  },
+  arm: {
+    status: 'MISSION DEVELOPMENT', mode: 'RIGID CONTACT', target: 'SATELLITES / ROCKET BODIES', action: 'CAPTURE AND DEORBIT',
+    object: 'Large retired satellites, upper stages, and uncontrolled platforms that still retain an intact structure.',
+    reason: 'Large objects can create thousands of fragments in a collision. A robotic arm establishes a rigid connection before controlled removal.',
+    principle: 'A servicing spacecraft estimates target tumble, closes in, secures the object with multiple arms, and tows it away.',
+    limit: 'Approach and contact are difficult when the target has no interface and is tumbling.',
+  },
+  net: {
+    status: 'IN-ORBIT DEMO', mode: 'FLEXIBLE CONTACT', target: 'IRREGULAR MEDIUM OBJECTS', action: 'ENVELOPING CAPTURE',
+    object: 'Irregular medium-size debris without a standard docking interface but still large enough to envelop.',
+    reason: 'A flexible net can control damaged, protruding, or tumbling objects without precise rigid docking.',
+    principle: 'A high-strength net deploys around the target and closes before the combined system is controlled by tethers.',
+    limit: 'Deployment and towing must avoid entanglement; a net often offers only one capture attempt.',
+  },
+  harpoon: {
+    status: 'IN-ORBIT DEMO', mode: 'PENETRATING CONTACT', target: 'HARD LARGE STRUCTURES', action: 'ANCHOR AND TOW',
+    object: 'Hard structures able to withstand an anchor impact, such as tanks, adapters, or thick structural panels.',
+    reason: 'A harpoon can create a towing point quickly when no grasping interface is available.',
+    principle: 'A high-speed anchor penetrates the shell, locks with barbs, and transfers control or deorbit force through a tether.',
+    limit: 'Impact can fragment aged structures if material condition is judged incorrectly.',
+  },
+  tether: {
+    status: 'ONGOING VALIDATION', mode: 'PROPELLANT-FREE', target: 'END-OF-LIFE SPACECRAFT', action: 'CONTINUOUS DECELERATION',
+    object: 'LEO spacecraft that can still deploy a device, or future missions equipped with an end-of-life module.',
+    reason: 'It reduces orbital energy gradually without propellant and is well suited to planned retirement.',
+    principle: 'A conductive tether exchanges current with the ionosphere and cuts Earth\'s magnetic field to create Lorentz drag.',
+    limit: 'Long-tether deployment is complex and works best while the spacecraft remains controllable.',
+  },
+  sail: {
+    status: 'DEPLOYED TECHNOLOGY', mode: 'PASSIVE DEVICE', target: 'SMALL LEO SATELLITES', action: 'INCREASE DRAG',
+    object: 'Small LEO satellites and CubeSats that can still trigger deployment near mission completion.',
+    reason: 'The residual atmosphere in LEO creates more drag on a deployed sail, accelerating natural decay and re-entry.',
+    principle: 'A large lightweight membrane increases area-to-mass ratio so the upper atmosphere removes orbital energy faster.',
+    limit: 'It is a preventive disposal device and cannot retrieve fragments already detached from a spacecraft.',
+  },
+}
+
+function localizeMethod(method, language) {
+  if (language !== 'en') return method
+  return { ...method, title: method.titleEn, ...METHOD_EN[method.id] }
+}
+
+function localizeTarget(target, language, index) {
+  if (language !== 'en') return target
+  const copy = {
+    laser: { type: 'Fragment cloud', name: 'Small scattered debris cluster', motion: 'High-speed dispersion', diagnosis: 'Numerous small objects make individual contact capture impractical. A non-contact method can change many orbits with small impulses.' },
+    arm: { type: 'Intact large object', name: 'Retired spacecraft or upper stage', motion: 'Slow tumble', diagnosis: 'Mass is concentrated in an intact body. The target must be stabilized, secured, and guided through controlled disposal.' },
+    sail: { type: 'Preventive disposal', name: 'Controllable end-of-life satellite', size: 'Small LEO spacecraft', motion: 'Stable orbit', diagnosis: 'The object has not yet become free debris. A simple end-of-life device is more efficient than later retrieval.' },
+  }[target.ideal]
+  return {
+    ...target,
+    ...copy,
+    source: `TARGET ${String(index + 1).padStart(2, '0')} · GENERATED FROM CURRENT MISSION`,
+  }
+}
+
 const METHOD_MAP = Object.fromEntries(METHODS.map((method) => [method.id, method]))
-const DRAG_METHODS = METHODS.filter((method) => ['laser', 'arm', 'sail'].includes(method.id))
 const CLEANUP_FLOW_TEXT = METHODS
   .map((method) => `${method.title} · ${method.action}`)
   .join('  ·  ')
@@ -186,7 +250,12 @@ function buildTargets({ gameResult, materials, debrisGenerated, satellite }) {
   ])
 }
 
-function buildAssessment(target, method, correct) {
+function buildAssessment(target, method, correct, language = 'zh') {
+  if (language === 'en') {
+    if (correct) return `${method.title} matches the target scale, motion, and contact conditions. ${method.principle}`
+    const idealMethod = localizeMethod(METHOD_MAP[target.ideal], language)
+    return `${method.title} is not suitable for this target. A ${idealMethod.action.toLowerCase()} approach is a better match: ${idealMethod.title}.`
+  }
   if (correct) return `${method.title}与目标尺度、运动状态和接触条件匹配。${method.principle}`
   const ideal = METHOD_MAP[target.ideal]
   return `${method.title}不适合当前目标：${method.limit} 这里更需要“${ideal.action}”，优先考虑${ideal.title}。`
@@ -216,6 +285,7 @@ const ACTIVE_METHOD_CARD_X = -118
 const COLLAPSED_METHOD_SPREAD = 0.66
 
 function MethodCard({ method, index, activeMethodId, cardSpacing, middle, onActivate }) {
+  const { pick } = useI18n()
   const isActive = activeMethodId === method.id
   const hasActive = Boolean(activeMethodId)
   const offsetX = (index - middle) * cardSpacing
@@ -244,7 +314,7 @@ function MethodCard({ method, index, activeMethodId, cardSpacing, middle, onActi
       tabIndex={0}
       className={`m6-method-card ${isActive ? 'is-active' : ''} ${hasActive ? 'has-active' : ''}`}
       aria-pressed={isActive}
-      aria-label={`${method.title}，查看清理方式说明`}
+      aria-label={pick(`${method.title}，查看清理方式说明`, `${method.title}, view cleanup method details`)}
       onClick={(event) => {
         event.stopPropagation()
         onActivate(isActive ? null : method.id)
@@ -281,10 +351,13 @@ function MethodCard({ method, index, activeMethodId, cardSpacing, middle, onActi
 }
 
 function MethodObservatory() {
+  const { language, pick } = useI18n()
   const [activeMethodId, setActiveMethodId] = useState(null)
   const [cardSpacing, setCardSpacing] = useState(136)
+  const methods = METHODS.map((method) => localizeMethod(method, language))
+  const methodMap = Object.fromEntries(methods.map((method) => [method.id, method]))
   const middle = (METHODS.length - 1) / 2
-  const activeMethod = activeMethodId ? METHOD_MAP[activeMethodId] : null
+  const activeMethod = activeMethodId ? methodMap[activeMethodId] : null
 
   useEffect(() => {
     if (!activeMethodId) return undefined
@@ -316,7 +389,7 @@ function MethodObservatory() {
   }, [])
 
   return (
-    <section className="m6-observatory" aria-label="清理方式卡片">
+    <section className="m6-observatory" aria-label={pick('清理方式卡片', 'Cleanup method cards')}>
       <div className={`m6-method-stack ${activeMethodId ? 'has-active-card' : ''}`} onClick={() => setActiveMethodId(null)}>
         <AnimatePresence>
           {activeMethod && (
@@ -332,14 +405,14 @@ function MethodObservatory() {
               <span>{activeMethod.titleEn}</span>
               <h3>{activeMethod.title}</h3>
               <dl>
-                <div><dt>适用情况</dt><dd>{activeMethod.reason}</dd></div>
-                <div><dt>主要垃圾类型</dt><dd>{activeMethod.object}</dd></div>
-                <div><dt>处理边界</dt><dd>{activeMethod.limit}</dd></div>
+                <div><dt>{pick('适用情况', 'WHY USE IT')}</dt><dd>{activeMethod.reason}</dd></div>
+                <div><dt>{pick('主要垃圾类型', 'TARGET DEBRIS')}</dt><dd>{activeMethod.object}</dd></div>
+                <div><dt>{pick('处理边界', 'LIMITS')}</dt><dd>{activeMethod.limit}</dd></div>
               </dl>
             </motion.aside>
           )}
         </AnimatePresence>
-        {METHODS.map((method, index) => (
+        {methods.map((method, index) => (
           <MethodCard
             key={method.id}
             method={method}
@@ -356,6 +429,10 @@ function MethodObservatory() {
 }
 
 function DragMatchLab({ targets, onComplete }) {
+  const { language, pick } = useI18n()
+  const methods = METHODS.map((method) => localizeMethod(method, language))
+  const methodMap = Object.fromEntries(methods.map((method) => [method.id, method]))
+  const dragMethods = methods.filter((method) => ['laser', 'arm', 'sail'].includes(method.id))
   const [selectedMethodId, setSelectedMethodId] = useState(null)
   const [draggingMethodId, setDraggingMethodId] = useState(null)
   const [dragOverId, setDragOverId] = useState(null)
@@ -365,16 +442,16 @@ function DragMatchLab({ targets, onComplete }) {
   const resolvedCount = targets.filter((target) => results[target.id]?.correct).length
   const allResolved = resolvedCount === targets.length
   const efficiency = attempts ? Math.round((resolvedCount / attempts) * 100) : 0
-  const selectedMethod = selectedMethodId ? METHOD_MAP[selectedMethodId] : null
+  const selectedMethod = selectedMethodId ? methodMap[selectedMethodId] : null
   const lockedMethodIds = new Set(Object.values(results).filter((result) => result.correct).map((result) => result.methodId))
 
   function matchTarget(targetId, methodId) {
     const target = targets.find((item) => item.id === targetId)
-    const method = METHOD_MAP[methodId]
+    const method = methodMap[methodId]
     if (!target || !method || results[targetId]?.correct || lockedMethodIds.has(methodId)) return
     const correct = target.ideal === methodId
     setAttempts((current) => current + 1)
-    setResults((current) => ({ ...current, [targetId]: { correct, methodId, message: buildAssessment(target, method, correct) } }))
+    setResults((current) => ({ ...current, [targetId]: { correct, methodId, message: buildAssessment(target, method, correct, language) } }))
     setSelectedMethodId(null)
     setDraggingMethodId(null)
     setDragOverId(null)
@@ -410,27 +487,28 @@ function DragMatchLab({ targets, onComplete }) {
         <span>03 / QUIZ</span>
         <div>
           <h3 id="m6-simulator-title">
-            <span>清理方式</span>
-            <span>小测试</span>
+            <span>{pick('清理方式', 'CLEANUP')}</span>
+            {' '}
+            <span>{pick('小测试', 'MATCHING LAB')}</span>
           </h3>
-          <p>先看上方清理方式卡片，再判断随机目标的类型与尺寸，把对应清理卡拖入目标卡兜。</p>
+          <p>{pick('先看上方清理方式卡片，再判断随机目标的类型与尺寸，把对应清理卡拖入目标卡兜。', 'Review the cleanup methods, inspect each generated target, then drag or select the best method for it.')}</p>
         </div>
       </div>
 
       <div className={['m6-pocket-lab', selectedMethod ? 'is-selecting' : '', draggingMethodId ? 'is-dragging' : ''].join(' ')}>
         <div className="m6-pocket-status" aria-live="polite">
-          <span>目标生成 / 3 个随机轨道物体</span>
-          <b>{resolvedCount} / {targets.length} 已归档</b>
+          <span>{pick('目标生成 / 3 个随机轨道物体', 'TARGET SET / 3 ORBITAL OBJECTS')}</span>
+          <b>{resolvedCount} / {targets.length} {pick('已归档', 'RESOLVED')}</b>
         </div>
 
         <div className="m6-pocket-stage">
-          <aside className="m6-cleanup-deck" aria-label="可拖动清理方式卡片">
+          <aside className="m6-cleanup-deck" aria-label={pick('可拖动清理方式卡片', 'Draggable cleanup method cards')}>
             <div className="m6-deck-label">
-              <span>清理方式</span>
-              <small>{draggingMethodId ? '拖动中：' + METHOD_MAP[draggingMethodId].title : selectedMethod ? '已选择：' + selectedMethod.title : '拖拽或点击选择'}</small>
+              <span>{pick('清理方式', 'CLEANUP METHODS')}</span>
+              <small>{draggingMethodId ? `${pick('拖动中', 'DRAGGING')}: ${methodMap[draggingMethodId].title}` : selectedMethod ? `${pick('已选择', 'SELECTED')}: ${selectedMethod.title}` : pick('拖拽或点击选择', 'DRAG OR CLICK TO SELECT')}</small>
             </div>
             <div className="m6-cleanup-card-list">
-              {DRAG_METHODS.map((method, index) => {
+              {dragMethods.map((method, index) => {
                 const selected = selectedMethodId === method.id
                 const locked = lockedMethodIds.has(method.id)
                 return (
@@ -441,7 +519,7 @@ function DragMatchLab({ targets, onComplete }) {
                     draggable={!locked}
                     disabled={locked}
                     aria-pressed={selected}
-                    aria-label={locked ? method.title + '，已完成匹配' : method.title + '，拖动到目标卡兜'}
+                    aria-label={locked ? `${method.title}, ${pick('已完成匹配', 'matched')}` : `${method.title}, ${pick('拖动到目标卡兜', 'drag to a target')}`}
                     onClick={() => setSelectedMethodId((current) => current === method.id ? null : method.id)}
                     onDragStart={(event) => startDrag(event, method.id)}
                     onDragEnd={endDrag}
@@ -463,10 +541,10 @@ function DragMatchLab({ targets, onComplete }) {
             </div>
           </aside>
 
-          <div className="m6-pocket-rack" aria-label="目标卡兜">
+          <div className="m6-pocket-rack" aria-label={pick('目标卡兜', 'Target pockets')}>
             {targets.map((target, index) => {
               const result = results[target.id]
-              const method = result ? METHOD_MAP[result.methodId] : null
+              const method = result ? methodMap[result.methodId] : null
               const isOver = dragOverId === target.id
               const ready = Boolean(selectedMethodId && !result?.correct)
               return (
@@ -475,7 +553,7 @@ function DragMatchLab({ targets, onComplete }) {
                   className={['m6-card-pocket', isOver ? 'is-over' : '', ready ? 'is-ready' : '', result?.correct ? 'is-correct' : '', result && !result.correct ? 'is-wrong' : ''].join(' ')}
                   role="button"
                   tabIndex={result?.correct ? -1 : 0}
-                  aria-label={target.type + '，' + target.name + (ready ? '，点击投放所选技术' : '')}
+                  aria-label={`${target.type}, ${target.name}${ready ? `, ${pick('点击投放所选技术', 'click to apply the selected method')}` : ''}`}
                   onClick={() => selectedMethodId && matchTarget(target.id, selectedMethodId)}
                   onKeyDown={(event) => targetKeyDown(event, target.id)}
                   onDragEnter={(event) => { event.preventDefault(); if (!result?.correct) setDragOverId(target.id) }}
@@ -511,7 +589,7 @@ function DragMatchLab({ targets, onComplete }) {
                             <img src={method.image} alt="" loading="lazy" decoding="async" draggable="false" />
                             <span>
                               <b>{method.title}</b>
-                              <small>{result?.correct ? '已入袋 / 匹配完成' : '已入袋 / 需要重试'}</small>
+                              <small>{result?.correct ? pick('已入袋 / 匹配完成', 'INSERTED / MATCHED') : pick('已入袋 / 需要重试', 'INSERTED / RETRY')}</small>
                             </span>
                           </motion.div>
                         )}
@@ -523,7 +601,7 @@ function DragMatchLab({ targets, onComplete }) {
                       <span><b>MOTION</b>{target.motion}</span>
                     </div>
                     <div className="m6-pocket-slot">
-                      <span>{result?.correct ? '匹配完成' : result ? '方式不合适' : isOver ? '松开装入卡兜' : '等待清理卡'}</span>
+                      <span>{result?.correct ? pick('匹配完成', 'MATCHED') : result ? pick('方式不合适', 'NOT SUITABLE') : isOver ? pick('松开装入卡兜', 'DROP TO APPLY') : pick('等待清理卡', 'AWAITING METHOD')}</span>
                       <small>{result && !result.correct ? result.message : target.source}</small>
                     </div>
                   </div>
@@ -535,22 +613,39 @@ function DragMatchLab({ targets, onComplete }) {
       </div>
 
       <div className={['m6-match-completion', allResolved ? 'is-ready' : ''].join(' ')}>
-        <div><span>完成度</span><strong>{resolvedCount}/{targets.length}</strong></div>
-        <div><span>匹配效率</span><strong>{efficiency}%</strong></div>
-        <p>{allResolved ? '目标与清理方式已全部对应。' : '完成三个卡兜匹配后进入下一章节。'}</p>
-        <button type="button" disabled={!allResolved} onClick={() => onComplete(efficiency)}>继续下一章</button>
+        <div><span>{pick('完成度', 'COMPLETION')}</span><strong>{resolvedCount}/{targets.length}</strong></div>
+        <div><span>{pick('匹配效率', 'EFFICIENCY')}</span><strong>{efficiency}%</strong></div>
+        <p>{allResolved ? pick('目标与清理方式已全部对应。', 'Every target now has a suitable cleanup method.') : pick('完成三个卡兜匹配后进入下一章节。', 'Resolve all three targets to continue.')}</p>
+        <button type="button" disabled={!allResolved} onClick={() => onComplete(efficiency)}>{pick('继续下一章', 'Continue')}</button>
       </div>
     </section>
   )
 }
 
 export default function M6({ onComplete }) {
+  const { language, pick } = useI18n()
   const { user, satellite, materials, gameResult, debrisGenerated, setStoryChapter } = useAppStore()
-  const targets = useMemo(() => buildTargets({ gameResult, materials, debrisGenerated, satellite }), [debrisGenerated, gameResult, materials, satellite])
+  const rawTargets = useMemo(() => buildTargets({ gameResult, materials, debrisGenerated, satellite }), [debrisGenerated, gameResult, materials, satellite])
+  const targets = useMemo(
+    () => rawTargets.map((target, index) => localizeTarget(target, language, index)),
+    [language, rawTargets],
+  )
+  const cleanupFlowText = METHODS
+    .map((method) => {
+      const localized = localizeMethod(method, language)
+      return `${localized.title} · ${localized.action}`
+    })
+    .join('  ·  ')
+  const cleanupFlowMarquee = language === 'en'
+    ? `${cleanupFlowText}  ·  ${cleanupFlowText}  ·  `
+    : CLEANUP_FLOW_MARQUEE_TEXT
 
   function finishModule(efficiency) {
-    const satelliteName = satellite?.name || '任务卫星'
-    const epilogue = `${user?.name || '任务指挥员'}为${satelliteName}完成了三类清理决策，决策效率为 ${efficiency}%。真正有效的轨道治理，从来不是寻找一种万能技术，而是让目标、时机与处置方法准确对应。`
+    const satelliteName = satellite?.name || pick('任务卫星', 'mission satellite')
+    const epilogue = pick(
+      `${user?.name || '任务指挥员'}为${satelliteName}完成了三类清理决策，决策效率为 ${efficiency}%。真正有效的轨道治理，从来不是寻找一种万能技术，而是让目标、时机与处置方法准确对应。`,
+      `${user?.name || 'The mission operator'} completed three cleanup decisions for ${satelliteName} with ${efficiency}% efficiency. Effective orbital governance depends on matching the target, timing, and disposal method rather than relying on one universal technology.`,
+    )
     setStoryChapter('m6', epilogue)
     onComplete()
   }
@@ -572,7 +667,7 @@ export default function M6({ onComplete }) {
             <path id={`m6-cleanup-flow-path-${line.id}`} d={line.d} fill="none" />
             <text className="m6-cleanup-flow-text">
               <textPath href={`#m6-cleanup-flow-path-${line.id}`} startOffset={line.offset}>
-                {CLEANUP_FLOW_MARQUEE_TEXT}
+                {cleanupFlowMarquee}
               </textPath>
             </text>
           </svg>
@@ -582,17 +677,18 @@ export default function M6({ onComplete }) {
         <div className="m6-hero-copy">
           <span>MODULE 06 / ORBITAL CLEANUP</span>
           <h2>
-            <span>清理不是</span>
-            <span>捡起垃圾</span>
+            <span>{pick('清理不是', 'CLEANUP IS NOT')}</span>
+            {' '}
+            <span>{pick('捡起垃圾', 'SIMPLY PICKING IT UP')}</span>
           </h2>
           <div className="m6-hero-rule" aria-hidden="true" />
-          <p>每一种目标，都需要不同的接近方式、接触条件和离轨路径。先读懂目标，再决定如何行动。</p>
+          <p>{pick('每一种目标，都需要不同的接近方式、接触条件和离轨路径。先读懂目标，再决定如何行动。', 'Every target requires a different approach, contact condition, and disposal path. Read the object before choosing the action.')}</p>
         </div>
         <MethodObservatory />
       </header>
       <DragMatchLab targets={targets} onComplete={finishModule} />
       <footer className="m6-sources">
-        <span>资料依据</span>
+        <span>{pick('资料依据', 'SOURCES')}</span>
         <a href="https://sdup.esoc.esa.int/discosweb/statistics/" target="_blank" rel="noreferrer">ESA Space Environment Statistics</a>
         <a href="https://www.esa.int/Space_Safety/ClearSpace-1" target="_blank" rel="noreferrer">ESA ClearSpace-1</a>
         <a href="https://www.nasa.gov/smallsat-institute/sst-soa/deorbit-systems/" target="_blank" rel="noreferrer">NASA Deorbit Systems</a>

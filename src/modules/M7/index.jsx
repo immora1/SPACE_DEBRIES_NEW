@@ -2,6 +2,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import gsap from 'gsap'
 import useAppStore from '../../store/useAppStore'
+import useI18n from '../../i18n/useI18n'
 import { generateAnswerExplanation, generateVideoQuestion } from '../../services/ai'
 import './index.css'
 
@@ -97,6 +98,28 @@ const RESOURCES = [
   },
 ]
 
+const VIDEO_EN = {
+  pollution: ['Orbital pollution: how space became a junkyard', 'ESA Space Safety explains debris sources, collision risk, and the zero-debris goal.', ['Defunct satellites, rocket stages, and collision fragments all contribute to orbital pollution.', 'Hypervelocity debris threatens communication, navigation, and Earth-observation services.', 'Zero-debris design must cover the full mission lifecycle.']],
+  risk: ['Why space debris is more dangerous than it looks', 'Understand an increasingly crowded low Earth orbit through speed, population, and cascading collisions.', ['Centimeter-scale debris can cause catastrophic damage at high relative velocity.', 'Untracked small fragments create major blind spots in risk assessment.', 'Crowded orbits increase maneuver and operating costs.']],
+  history: ['How orbital debris accumulated', 'An ESA animation traces how human-made objects gradually surrounded Earth throughout the space age.', ['Every launch leaves payloads, rocket bodies, or mission-related objects.', 'Explosions and collisions turn a few large objects into many small fragments.', 'Today\'s orbital environment is the result of decades of accumulated activity.']],
+  removal: ['e.Deorbit: actively removing a dead satellite', 'A mission concept for robotic capture, stabilization, and guided re-entry.', ['Removal requires autonomous rendezvous, recognition, and attitude synchronization.', 'Uncooperative targets lack standard interfaces and are harder to capture than normal docking targets.', 'Removing large defunct objects first can reduce future debris growth.']],
+  safety: ['Protecting a world that depends on satellites', 'ESA shows how debris and space weather affect infrastructure and how operators respond.', ['Orbital safety supports communication, weather, navigation, and disaster response.', 'Monitoring, warning, and avoidance are the most mature current controls.', 'Space sustainability requires data sharing and common standards.']],
+  reentry: ['Cluster\'s final dance: a controlled re-entry', 'ESA adjusted the orbit in advance so retired satellites could end their missions away from populated regions.', ['End-of-life orbit design determines how a satellite leaves space.', 'Targeted re-entry narrows possible debris footprints and reduces ground risk.', 'Designing for disposal is more efficient than searching for cleanup options later.']],
+}
+
+const RESOURCE_EN = {
+  'NASA Orbital Debris Program': 'NASA\'s official orbital-debris office, with quarterly reports, standards, and measurement resources.',
+  'ESA Space Debris Office': 'ESA\'s debris office publishes annual environment reports and visual material.',
+  'Stuff in Space': 'A live 3D orbital map of satellites, rocket bodies, and debris objects.',
+  'LeoLabs Platform': 'A commercial LEO radar-tracking platform for conjunction warnings and orbital-awareness data.',
+}
+
+function localizeVideo(video, language) {
+  if (language !== 'en') return video
+  const translation = VIDEO_EN[video.id]
+  return translation ? { ...video, title: translation[0], desc: translation[1], focus: translation[2] } : video
+}
+
 function getRecommendation({ gameResult, materials }) {
   const result = typeof gameResult === 'string' ? gameResult : gameResult?.result
   if (result === 'failure') return 'risk'
@@ -120,6 +143,7 @@ function LoadingDots() {
 }
 
 export default function M7({ teachingEntry }) {
+  const { language, pick } = useI18n()
   const { user, satellite, materials, gameResult, setStoryChapter } = useAppStore()
   const recommendedId = useMemo(() => getRecommendation({ gameResult, materials }), [gameResult, materials])
   const [activeId, setActiveId] = useState(recommendedId)
@@ -135,7 +159,7 @@ export default function M7({ teachingEntry }) {
   const trackRef = useRef(null)
 
   const activeIndex = Math.max(0, VIDEOS.findIndex((video) => video.id === activeId))
-  const activeVideo = VIDEOS[activeIndex] || VIDEOS[0]
+  const activeVideo = localizeVideo(VIDEOS[activeIndex] || VIDEOS[0], language)
   const visitedCount = Object.keys(visited).length
 
   useLayoutEffect(() => {
@@ -309,10 +333,10 @@ export default function M7({ teachingEntry }) {
         satellite: satellite || { name: 'UNKNOWN', altitudeKm: '未知' },
         user: user || { name: '用户', city: '' },
       })
-      setQuestion(res.question || '结合你的卫星 ' + (satellite?.name || '') + '，哪种碎片风险最值得关注？')
+      setQuestion(res.question || pick(`结合你的卫星 ${satellite?.name || ''}，哪种碎片风险最值得关注？`, `For ${satellite?.name || 'your satellite'}, which debris risk deserves the most attention?`))
       setQuestionState('done')
     } catch {
-      setQuestion('结合你的卫星 ' + (satellite?.name || '') + '，哪种碎片风险最值得关注？')
+      setQuestion(pick(`结合你的卫星 ${satellite?.name || ''}，哪种碎片风险最值得关注？`, `For ${satellite?.name || 'your satellite'}, which debris risk deserves the most attention?`))
       setQuestionState('error')
     }
   }
@@ -331,7 +355,7 @@ export default function M7({ teachingEntry }) {
       setExplanation(res.explanation || '')
       setExplanationState('done')
     } catch {
-      setExplanation('你的回答已经把视频内容和前面模块联系起来了。继续补充碎片来源、轨道高度与清理成本之间的关系，会让判断更完整。')
+      setExplanation(pick('你的回答已经把视频内容和前面模块联系起来了。继续补充碎片来源、轨道高度与清理成本之间的关系，会让判断更完整。', 'Your answer connects the archive with earlier modules. Add the relationship between debris source, orbital altitude, and cleanup cost to make the judgment more complete.'))
       setExplanationState('error')
     }
   }
@@ -341,8 +365,8 @@ export default function M7({ teachingEntry }) {
       <header className="m7-header">
         <span>MODULE 07 / FIELD ARCHIVE</span>
         <div>
-          <h2>从真实资料，重新理解轨道环境。</h2>
-          <p>沿着六个视角浏览，提取关键判断，再前往原始视频或权威数据源。</p>
+          <h2>{pick('从真实资料，重新理解轨道环境。', 'Rebuild your view of orbit from real sources.')}</h2>
+          <p>{pick('沿着六个视角浏览，提取关键判断，再前往原始视频或权威数据源。', 'Explore six perspectives, extract the key judgments, then continue to the original videos and authoritative data.')}</p>
         </div>
       </header>
 
@@ -350,12 +374,12 @@ export default function M7({ teachingEntry }) {
         className="m7-viewer"
         tabIndex="0"
         onKeyDown={handleViewerKeyDown}
-        aria-label="视频资料浏览器，使用左右方向键切换"
+        aria-label={pick('视频资料浏览器，使用左右方向键切换', 'Video archive viewer; use the left and right arrow keys to navigate')}
       >
         <div className="m7-viewer-bar">
           <div>
             <span>01 / VIDEO OBSERVATORY</span>
-            <small>{visitedCount} / {VIDEOS.length} 已访问</small>
+            <small>{visitedCount} / {VIDEOS.length} {pick('已访问', 'VISITED')}</small>
           </div>
           <div className="m7-viewer-progress" aria-hidden="true">
             {VIDEOS.map((video) => <i key={video.id} className={video.id === activeId ? 'is-active' : ''} />)}
@@ -369,16 +393,16 @@ export default function M7({ teachingEntry }) {
             <div className="m7-media-meta m7-reveal">
               <span>{activeVideo.tag}</span>
               <span>{activeVideo.duration}</span>
-              {activeVideo.id === recommendedId && <span>为你推荐</span>}
-              {visited[activeVideo.id] && <span>已访问</span>}
+              {activeVideo.id === recommendedId && <span>{pick('为你推荐', 'RECOMMENDED')}</span>}
+              {visited[activeVideo.id] && <span>{pick('已访问', 'VISITED')}</span>}
             </div>
             <button
               className="m7-watch-button m7-reveal"
               type="button"
               onClick={() => openVideo(activeVideo)}
-              aria-label={'打开视频：' + activeVideo.title}
+              aria-label={`${pick('打开视频', 'Open video')}: ${activeVideo.title}`}
             >
-              <span>观看原片</span><i aria-hidden="true">↗</i>
+              <span>{pick('观看原片', 'WATCH SOURCE')}</span><i aria-hidden="true">↗</i>
             </button>
           </div>
 
@@ -402,9 +426,10 @@ export default function M7({ teachingEntry }) {
           </div>
         </article>
 
-        <nav className="m7-video-track" aria-label="选择视频视角">
+        <nav className="m7-video-track" aria-label={pick('选择视频视角', 'Choose a video perspective')}>
           <div ref={trackRef} className="m7-video-track-inner">
-            {[...VIDEOS, ...VIDEOS].map((video, index) => {
+            {[...VIDEOS, ...VIDEOS].map((sourceVideo, index) => {
+              const video = localizeVideo(sourceVideo, language)
               const active = video.id === activeId
               const duplicate = index >= VIDEOS.length
               return (
@@ -432,8 +457,8 @@ export default function M7({ teachingEntry }) {
       <section className="m7-resources" aria-labelledby="m7-resource-title">
         <div className="m7-section-title">
           <span>02 / VERIFIED SOURCES</span>
-          <h3 id="m7-resource-title">继续查证。</h3>
-          <p>从机构报告、轨道地图和商业追踪平台进入原始数据。</p>
+          <h3 id="m7-resource-title">{pick('继续查证。', 'Verify further.')}</h3>
+          <p>{pick('从机构报告、轨道地图和商业追踪平台进入原始数据。', 'Continue into institutional reports, orbital maps, and commercial tracking platforms.')}</p>
         </div>
         <div className="m7-resource-list">
           {RESOURCES.map((resource, index) => (
@@ -448,7 +473,7 @@ export default function M7({ teachingEntry }) {
               transition={{ duration: 0.28, delay: index * 0.04, ease: EASE }}
             >
               <span>{resource.tag}</span>
-              <div><b>{resource.title}</b><p>{resource.desc}</p></div>
+              <div><b>{resource.title}</b><p>{pick(resource.desc, RESOURCE_EN[resource.title])}</p></div>
               <i aria-hidden="true">↗</i>
             </motion.a>
           ))}
@@ -459,10 +484,10 @@ export default function M7({ teachingEntry }) {
         <div className="m7-inquiry-head">
           <div>
             <span>03 / PERSONAL INQUIRY</span>
-            <h3 id="m7-inquiry-title">把资料与你的卫星联系起来。</h3>
+            <h3 id="m7-inquiry-title">{pick('把资料与你的卫星联系起来。', 'Connect the archive to your satellite.')}</h3>
           </div>
           <button type="button" onClick={() => setAiOpen((current) => !current)}>
-            {aiOpen ? '收起' : '开始回答'}
+            {aiOpen ? pick('收起', 'COLLAPSE') : pick('开始回答', 'START')}
           </button>
         </div>
 
@@ -479,39 +504,39 @@ export default function M7({ teachingEntry }) {
                 <div className="m7-question-action">
                   <span>AI QUESTION</span>
                   <button type="button" onClick={handleGenerateQuestion} disabled={questionState === 'loading'}>
-                    {questionState === 'loading' ? <>生成中<LoadingDots /></> : question ? '重新生成' : '生成问题'}
+                    {questionState === 'loading' ? <>{pick('生成中', 'GENERATING')}<LoadingDots /></> : question ? pick('重新生成', 'REGENERATE') : pick('生成问题', 'GENERATE QUESTION')}
                   </button>
                 </div>
                 <AnimatePresence mode="wait">
                   {questionState === 'loading' ? (
                     <motion.p key="loading" className="m7-question-placeholder" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                      正在读取你的任务记录<LoadingDots />
+                      {pick('正在读取你的任务记录', 'Reading your mission record')}<LoadingDots />
                     </motion.p>
                   ) : (
                     <motion.p key={question || 'empty'} className={question ? 'm7-question' : 'm7-question-placeholder'} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                      {question || '生成一个与你的卫星、轨道和前序选择有关的问题。'}
+                      {question || pick('生成一个与你的卫星、轨道和前序选择有关的问题。', 'Generate a question connected to your satellite, orbit, and earlier choices.')}
                     </motion.p>
                   )}
                 </AnimatePresence>
               </div>
 
               <div className="m7-answer-column">
-                <label htmlFor="m7-answer">你的判断</label>
+                <label htmlFor="m7-answer">{pick('你的判断', 'YOUR JUDGMENT')}</label>
                 <textarea
                   id="m7-answer"
                   value={answer}
                   onChange={(event) => setAnswer(event.target.value)}
                   onBlur={() => answer.trim() && setStoryChapter('m7', answer.trim())}
-                  placeholder="写下你的判断与依据..."
+                  placeholder={pick('写下你的判断与依据...', 'Write your judgment and evidence...')}
                   disabled={!question}
                 />
                 <button type="button" onClick={handleExplain} disabled={!question || !answer.trim() || explanationState === 'loading'}>
-                  {explanationState === 'loading' ? <>分析中<LoadingDots /></> : '补充分析'}
+                  {explanationState === 'loading' ? <>{pick('分析中', 'ANALYZING')}<LoadingDots /></> : pick('补充分析', 'ADD ANALYSIS')}
                 </button>
                 <AnimatePresence>
                   {(explanationState === 'loading' || explanation) && (
                     <motion.div className="m7-explanation" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
-                      {explanationState === 'loading' ? <p>正在分析你的回答<LoadingDots /></p> : <p>{explanation}</p>}
+                      {explanationState === 'loading' ? <p>{pick('正在分析你的回答', 'Analyzing your answer')}<LoadingDots /></p> : <p>{explanation}</p>}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -522,7 +547,7 @@ export default function M7({ teachingEntry }) {
       </section>
 
       <footer className="m7-footer">
-        <div><span>ARCHIVE COMPLETE</span><p>资料链接可随时重新访问。</p></div>
+        <div><span>ARCHIVE COMPLETE</span><p>{pick('资料链接可随时重新访问。', 'Source links remain available for later review.')}</p></div>
       </footer>
       {teachingEntry}
     </section>

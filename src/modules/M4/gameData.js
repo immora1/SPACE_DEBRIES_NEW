@@ -107,6 +107,92 @@ export const THREAT_EVENTS = [
   },
 ]
 
+const THREAT_EVENT_EN = {
+  debris_close: {
+    title: 'Close debris conjunction',
+    description: 'A tracked fragment will cross the safety envelope within hours, with collision probability above the mission threshold.',
+    realRef: 'Reference: the Iridium 33 and Cosmos 2251 collision showed how a high-speed LEO conjunction can rapidly create a debris cloud.',
+    options: {
+      avoidance_burn: ['Perform avoidance burn', 'Spend fuel to reduce collision probability.', 'A maneuver is standard practice for a high-confidence conjunction warning.'],
+      wait_tracking: ['Wait for another orbit solution', 'Save fuel, but narrow the response window.', 'Waiting can reduce false alarms, but it also compresses the remaining maneuver window.'],
+      hold_course: ['Hold current orbit', 'Use no resources and accept the direct risk.', 'Shielding cannot fully offset a high-speed fragment; holding course increases mission risk.'],
+    },
+  },
+  solar_flare: {
+    title: 'Solar storm warning',
+    description: 'Strong solar activity will raise radiation exposure and disturb the upper atmosphere, degrading communications and orbit prediction.',
+    realRef: 'Reference: the 2003 solar storms caused anomalies on multiple satellites and increased drag in low Earth orbit.',
+    options: {
+      safe_mode: ['Enter safe mode', 'Pause the payload to protect power and attitude control.', 'Safe mode sacrifices observation time but greatly reduces single-event upset risk.'],
+      raise_orbit: ['Raise the orbit slightly', 'Offset the expected increase in atmospheric drag.', 'An orbit raise helps, but it cannot replace electronic-system protection.'],
+      continue_payload: ['Continue full payload operation', 'Maximize short-term data at the highest hardware risk.', 'Full-load operation during strong radiation increases payload and storage anomaly risk.'],
+    },
+  },
+  orbital_decay: {
+    title: 'Accelerating orbital decay',
+    description: 'Perigee continues to fall and the satellite may enter an uncontrolled re-entry trajectory ahead of schedule.',
+    realRef: 'Reference: LEO missions use reboost maneuvers to maintain altitude and must reserve fuel for end-of-life disposal.',
+    options: {
+      planned_reboost: ['Execute planned reboost', 'Spend a controlled amount of fuel to maintain orbit.', 'A planned reboost is more stable than a late emergency burn.'],
+      lower_for_disposal: ['Transfer toward disposal', 'Reduce mission return but clarify end-of-life handling.', 'Moving toward disposal near mission end can reduce long-term orbital residue.'],
+      ignore_decay: ['Ignore the altitude loss', 'Save fuel and wait for natural variation.', 'Ignoring decay postpones the problem until control margins are smaller.'],
+    },
+  },
+  cascade_fragment: {
+    title: 'Expanding debris cloud',
+    description: 'Fragments from a historical collision are crossing nearby orbital planes and triggering repeated conjunction warnings.',
+    realRef: 'Reference: the Fengyun-1C event created long-lived fragments and remains a major example of cascading risk.',
+    options: {
+      plane_bias: ['Bias the orbital plane', 'Use one larger maneuver to avoid the dense region.', 'Changing orbital geometry can reduce several conjunction risks at once.'],
+      timed_burns: ['Use two timed burns', 'Reduce the peak fuel demand of a single maneuver.', 'Staged burns are gentler but require continuous precise tracking.'],
+      shield_only: ['Rely on shielding only', 'Keep the orbit unchanged.', 'Shielding cannot cover the full risk from centimeter-scale hypervelocity debris.'],
+    },
+  },
+  fuel_leak: {
+    title: 'Propulsion-system leak',
+    description: 'Telemetry shows propellant pressure falling slowly while attitude-control margin begins to shrink.',
+    realRef: 'Reference: propulsion faults directly affect avoidance, reboost, and end-of-life disposal capability.',
+    options: {
+      isolate_valve: ['Isolate the suspected valve', 'Pause some maneuvers and preserve the remaining fuel.', 'Isolation followed by a revised maneuver budget can preserve disposal capability.'],
+      emergency_burn: ['Perform an emergency transfer', 'Gain altitude at a high fuel cost.', 'An emergency burn may solve altitude loss but weaken later avoidance capability.'],
+      keep_schedule: ['Continue the original plan', 'Avoid interruption while risk accumulates.', 'Continuing with a faulty propulsion system makes the next warning harder to manage.'],
+    },
+  },
+  end_of_life: {
+    title: 'End-of-life disposal window',
+    description: 'The satellite remains controllable, but fuel is sufficient for only one critical maneuver: extend the mission or begin disposal.',
+    realRef: 'Reference: international mitigation guidance calls for leaving protected orbital regions promptly after mission completion.',
+    options: {
+      controlled_disposal: ['Perform controlled deorbit', 'End the mission and reduce long-term risk.', 'Controlled deorbit removes risk from the orbital environment and is the responsible end-of-life choice.'],
+      graveyard_plan: ['Enter a graveyard orbit', 'Useful for high-orbit missions, with limited value in LEO.', 'A graveyard orbit must match altitude; LEO missions are usually better served by deorbiting.'],
+      extend_mission: ['Extend operations', 'Gain short-term value but lose disposal margin.', 'Mission extension must not consume the last disposal capability or the satellite becomes a persistent debris source.'],
+    },
+  },
+}
+
+export function localizeThreatEvent(event, language = 'zh') {
+  if (!event || language !== 'en') return event
+  const translation = THREAT_EVENT_EN[event.id]
+  if (!translation) return event
+
+  return {
+    ...event,
+    title: translation.title,
+    description: translation.description,
+    realRef: translation.realRef,
+    options: event.options.map((item) => {
+      const optionTranslation = translation.options[item.id]
+      if (!optionTranslation) return item
+      return {
+        ...item,
+        label: optionTranslation[0],
+        subtext: optionTranslation[1],
+        techNote: optionTranslation[2],
+      }
+    }),
+  }
+}
+
 function normalizeText(value) {
   if (!value) return ''
   if (typeof value === 'string') return value

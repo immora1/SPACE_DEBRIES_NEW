@@ -1,0 +1,873 @@
+{
+  "文档标题": "太空垃圾坠落地球相关事件数据库",
+  "生成日期": "2026-07-17",
+  "语言": "zh-CN",
+  "研究范围说明": [
+    "收录公开资料可核实的重大失控再入、核污染、人员接触、财产损失和大范围残骸散落事件。",
+    "收录联合国和平利用外层空间办公室（UNOOSA）各国发现并报告的空间物体目录中的相关事件，并将同一次坠落产生的多块残骸合并计算。",
+    "补充尚未进入联合国目录但已有政府机构或权威媒体公开报道的近期事件。",
+    "不逐一列入常规受控坠毁的货运飞船、正常掉落在预定海域或发射场范围内的火箭级段。"
+  ],
+  "字段说明": {
+    "事件编号": "数据库中的顺序编号",
+    "类别": "事件所属分组",
+    "事件名称": "事件的正式或常用名称",
+    "一句话事件介绍": "对事件的简要概括",
+    "事件详述": "事件时间、经过、残骸特征与后续处置",
+    "影响范围": "地理范围、人员、财产、环境或航空运行影响",
+    "来源": "来源名称与可访问网络链接数组"
+  },
+  "事件总数": 60,
+  "事件": [
+    {
+      "事件编号": 1,
+      "类别": "重大、高影响及典型事件",
+      "事件名称": "Transit 5BN-3／SNAP-9A核电源坠毁事件",
+      "一句话事件介绍": "1964年，一颗美国导航卫星发射失败，其核电源在大气层中烧毁并释放钚-238。",
+      "事件详述": "1964年4月，美国Transit 5BN-3卫星未能进入预定轨道，搭载的SNAP-9A放射性同位素热电机在再入过程中解体，其钚燃料以微粒形式进入高层大气并向全球扩散。该事件没有形成单一地面撞击区，但造成了全球尺度的放射性沉降，也促使后来航天核电源改为能够承受再入、尽可能保持燃料封装完整的设计。",
+      "影响范围": "全球大气放射性污染；航天核安全设计转折点。",
+      "来源": [
+        {
+          "来源名称": "NASA Radioisotope Power Systems Safety",
+          "网络链接": "https://science.nasa.gov/planetary-science/programs/radioisotope-power-systems/safety/"
+        }
+      ]
+    },
+    {
+      "事件编号": 2,
+      "类别": "重大、高影响及典型事件",
+      "事件名称": "Cosmos 954加拿大核污染事件",
+      "一句话事件介绍": "1978年，一颗携带核反应堆的苏联侦察卫星在加拿大北部解体，形成大面积放射性污染区。",
+      "事件详述": "1978年1月24日，宇宙954号失控进入大气层，含放射性物质的碎片散落在加拿大西北地区。加拿大政府认定搜索与污染调查范围约为12.4万平方公里，随后与美国开展“晨光行动”（Operation Morning Light），搜索持续到1978年10月。联合国记录称，加拿大发现约4000个颗粒及多块放射性残骸，但最终回收的核燃料仅占估计总量的一小部分。该事件后来成为《空间物体所造成损害的国际责任公约》实践中最重要的国家索赔案例之一。",
+      "影响范围": "加拿大西北地区约12.4万平方公里；放射性污染；国际索赔与跨国应急行动。",
+      "来源": [
+        {
+          "来源名称": "Government of Canada - Cosmos 954",
+          "网络链接": "https://www.canada.ca/en/health-canada/services/health-risks-safety/radiation/radiological-nuclear-emergencies/previous-incidents-accidents/cosmos-954.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 3,
+      "类别": "重大、高影响及典型事件",
+      "事件名称": "Skylab失控再入事件",
+      "一句话事件介绍": "1979年，美国首个空间站“天空实验室”失控再入，大量残骸散落在西澳大利亚。",
+      "事件详述": "1979年7月11日，Skylab无法实施受控离轨，在印度洋上空开始解体，部分残骸落入西澳大利亚埃斯佩兰斯、巴拉多尼亚及周边荒野。UNOOSA接到的澳大利亚报告确认，已发现残骸的区域约长500公里、宽30公里。虽然没有人员伤亡，但大量金属结构、氧气瓶和设备落地，使其成为最具公众知名度的太空垃圾坠落事件之一，也促使大型航天器退役规划受到更多重视。",
+      "影响范围": "西澳大利亚约500公里长、30公里宽的残骸带；无人员伤亡。",
+      "来源": [
+        {
+          "来源名称": "NASA - 45 Years Ago: Skylab Reenters Earth’s Atmosphere",
+          "网络链接": "https://www.nasa.gov/history/45-years-ago-skylab-reenters-earths-atmosphere/"
+        }
+      ]
+    },
+    {
+      "事件编号": 4,
+      "类别": "重大、高影响及典型事件",
+      "事件名称": "Cosmos 1402核动力卫星再入事件",
+      "一句话事件介绍": "1983年，一颗苏联核动力侦察卫星分裂后失控坠落，引发多国核应急准备。",
+      "事件详述": "宇宙1402号的反应堆未能被推入预定废弃轨道，卫星分裂为多个部分。主体于1983年1月坠入印度洋，核反应堆部分则于2月7日在南大西洋上空再入并解体。由于坠落位置在最后阶段仍存在很大不确定性，美国、加拿大及多个欧洲国家启动或准备放射性搜寻队伍。后续科学研究在平流层样本中检测到了与该反应堆再入相符的铀成分，说明燃料至少有一部分以微粒形式进入大气。",
+      "影响范围": "印度洋、南大西洋及全球大气监测范围；跨国核应急。",
+      "来源": [
+        {
+          "来源名称": "PubMed - Atmospheric uranium associated with Cosmos 1402",
+          "网络链接": "https://pubmed.ncbi.nlm.nih.gov/17809615/"
+        }
+      ]
+    },
+    {
+      "事件编号": 5,
+      "类别": "重大、高影响及典型事件",
+      "事件名称": "Salyut 7／Cosmos 1686失控再入事件",
+      "一句话事件介绍": "1991年，苏联礼炮7号空间站组合体在南美上空解体，残骸散落于阿根廷多省。",
+      "事件详述": "1991年2月7日，礼炮7号空间站与宇宙1686号货运舱组成的大型组合体失控再入。阿根廷向联合国报告，在拉潘帕省、圣菲省、恩特雷里奥斯省等区域发现球形金属体、板状结构等多块残骸。由于散落区跨越多个行政区域，事件再次显示大型空间站失控再入可能产生数百公里尺度的残骸带；没有可信的人员伤亡报告。",
+      "影响范围": "阿根廷拉潘帕省、圣菲省、恩特雷里奥斯省等区域；跨省残骸散落。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 6,
+      "类别": "重大、高影响及典型事件",
+      "事件名称": "1997年美国女性被Delta II残骸击中事件",
+      "一句话事件介绍": "美国女性洛蒂·威廉姆斯被一块轻质火箭残骸擦中，被认为是首个有可靠记录的人体遭太空垃圾直接击中的案例。",
+      "事件详述": "1997年1月22日，洛蒂·威廉姆斯在俄克拉何马州塔尔萨附近散步时，一块约12.7厘米的纤维材料落下并擦中其肩部，她没有受伤。该物体被认为来自一枚1996年发射的Delta II火箭。同一次再入还在俄克拉何马州和得克萨斯州形成残骸带，其中一个约250公斤的金属燃料箱落在得州一座农舍附近。",
+      "影响范围": "美国俄克拉何马州与得克萨斯州；人体直接接触和大型残骸落地；无伤亡。",
+      "来源": [
+        {
+          "来源名称": "Guinness World Records - First person hit by space junk",
+          "网络链接": "https://www.guinnessworldrecords.com/world-records/114727-first-person-hit-by-space-junk"
+        }
+      ]
+    },
+    {
+      "事件编号": 7,
+      "类别": "重大、高影响及典型事件",
+      "事件名称": "Mir空间站受控离轨事件",
+      "一句话事件介绍": "2001年，俄罗斯成功控制重达约134吨的和平号空间站坠入南太平洋。",
+      "事件详述": "2001年3月23日，俄罗斯利用Progress M1-5货运飞船发动机实施多次制动，使和平号在南太平洋无人区上空解体。部分大型碎片最终落入距新西兰以东约数千公里的海域，没有造成人员或财产损失。该事件不是失控事故，但它证明大型空间站可以通过主动离轨把风险限制在低人口密度海区，也成为后来航天器受控退役的重要参照。",
+      "影响范围": "南太平洋无人海域；无人员和财产损失。",
+      "来源": [
+        {
+          "来源名称": "NASA - 20 Years Ago: Space Station Mir Reenters Earth’s Atmosphere",
+          "网络链接": "https://www.nasa.gov/history/20-years-ago-space-station-mir-reenters-earths-atmosphere/"
+        }
+      ]
+    },
+    {
+      "事件编号": 8,
+      "类别": "重大、高影响及典型事件",
+      "事件名称": "UARS失控再入事件",
+      "一句话事件介绍": "2011年，一颗约5.7吨的NASA卫星失控再入，残骸最终被判断落入太平洋。",
+      "事件详述": "UARS于2011年9月24日进入大气层。NASA模型曾预测约两打部件可能经受住再入高温，但事后轨迹分析认为所有幸存残骸均落入太平洋，没有收到人员伤亡或财产损失报告。再入前，由于最终坠落位置只能提前数小时逐步缩小，事件引起了全球范围的风险预警与媒体关注。",
+      "影响范围": "太平洋海域及全球再入预警范围；无已知损害。",
+      "来源": [
+        {
+          "来源名称": "NASA Technical Reports Server - UARS Reentry",
+          "网络链接": "https://ntrs.nasa.gov/citations/20120001824"
+        }
+      ]
+    },
+    {
+      "事件编号": 9,
+      "类别": "重大、高影响及典型事件",
+      "事件名称": "ROSAT失控再入事件",
+      "一句话事件介绍": "2011年，含有大量玻璃和耐热陶瓷的ROSAT卫星在孟加拉湾上空再入。",
+      "事件详述": "约2.4吨的ROSAT于2011年10月23日在孟加拉湾上空进入大气层。德国航天机构根据国际监测数据确认了再入区域，但无法确定是否有残骸真正抵达海面。由于卫星的镜面、陶瓷和耐高温部件烧蚀能力较弱，事前曾担忧会有较大质量的残骸幸存；最终没有收到损害报告。",
+      "影响范围": "孟加拉湾；无已知人员或财产损害。",
+      "来源": [
+        {
+          "来源名称": "Chandra X-ray Observatory Blog - ROSAT Reentry",
+          "网络链接": "https://chandra.harvard.edu/blog/node/322"
+        }
+      ]
+    },
+    {
+      "事件编号": 10,
+      "类别": "重大、高影响及典型事件",
+      "事件名称": "Phobos-Grunt探测器失控再入事件",
+      "一句话事件介绍": "2012年，未能脱离地球轨道的俄罗斯火星探测器在南太平洋附近失控坠落。",
+      "事件详述": "福布斯—土壤探测器2011年发射后推进系统失效，被困在近地轨道，并于2012年1月15日再入。ESA和美国监测数据显示，其最后轨迹位于南美洲西侧的南太平洋区域。探测器携带大量推进剂，因此在再入前曾引发化学污染担忧；没有发现残骸或损害记录。",
+      "影响范围": "南太平洋海域；潜在推进剂污染风险；无已知损害。",
+      "来源": [
+        {
+          "来源名称": "ESA - Phobos-Grunt Reentry",
+          "网络链接": "https://www.esa.int/Space_Safety/Space_Debris/Space_debris_experts_confirm_estimate_for_Phobos_Grunt_reentry"
+        }
+      ]
+    },
+    {
+      "事件编号": 11,
+      "类别": "重大、高影响及典型事件",
+      "事件名称": "GOCE自然衰减再入事件",
+      "一句话事件介绍": "2013年，欧洲航天局GOCE卫星在福克兰群岛附近的南大西洋上空解体。",
+      "事件详述": "约1100公斤的GOCE于2013年11月11日再入。ESA估计约四分之一质量可能经受住再入过程，最终轨迹位于南大西洋、接近福克兰群岛的海域。没有收到人员、船舶或财产损害报告。该事件也展示了低轨卫星在燃料耗尽后依靠自然轨道衰减退役的局限。",
+      "影响范围": "南大西洋和福克兰群岛附近海域；无已知损害。",
+      "来源": [
+        {
+          "来源名称": "ESA - GOCE Reentry into Atmosphere",
+          "网络链接": "https://www.esa.int/Applications/Observing_the_Earth/FutureEO/GOCE/Reentry_into_atmosphere"
+        }
+      ]
+    },
+    {
+      "事件编号": 12,
+      "类别": "重大、高影响及典型事件",
+      "事件名称": "天宫一号失控再入事件",
+      "一句话事件介绍": "2018年，中国首个目标飞行器天宫一号失去控制后，在南太平洋上空再入。",
+      "事件详述": "天宫一号在停止运行后无法实施精确受控离轨，于2018年4月2日在南太平洋中部上空再入并大部分烧毁。再入前，其潜在轨迹覆盖南北纬约43度之间的广大区域，因此多个国家持续跟踪；最终没有收到地面损害报告。该事件使大型航天器必须保留可靠离轨能力成为国际讨论重点。",
+      "影响范围": "南太平洋及南北纬约43度之间的全球潜在落区；无已知损害。",
+      "来源": [
+        {
+          "来源名称": "ESA Rocket Science Blog - Tiangong-1 Reentry Updates",
+          "网络链接": "https://blogs.esa.int/rocketscience/2018/03/26/tiangong-1-reentry-updates/comment-page-1/"
+        }
+      ]
+    },
+    {
+      "事件编号": 13,
+      "类别": "重大、高影响及典型事件",
+      "事件名称": "2020年长征五号B一级火箭科特迪瓦落地事件",
+      "一句话事件介绍": "长征五号B火箭核心级失控再入，部分大型结构被报告落在科特迪瓦村庄附近。",
+      "事件详述": "2020年5月11日，长征五号B首飞核心级在西非上空解体。科特迪瓦多地随后发现长条形金属物和管状部件，并报告建筑物受损，但没有确认人员伤亡。这是近几十年最大型的火箭级段非受控再入事件之一，也引发了对大型核心级直接进入轨道、却缺少受控离轨能力的批评。",
+      "影响范围": "科特迪瓦多个村庄和建筑物；存在财产损失；无确认伤亡。",
+      "来源": [
+        {
+          "来源名称": "ESA Reentry Portal - Long March 5B Reentry",
+          "网络链接": "https://reentry.esoc.esa.int/home/blog/long-march-5b-reentry"
+        }
+      ]
+    },
+    {
+      "事件编号": 14,
+      "类别": "重大、高影响及典型事件",
+      "事件名称": "2021年长征五号B核心级失控再入事件",
+      "一句话事件介绍": "搭载天和核心舱的火箭核心级失控再入，最终落入马尔代夫附近印度洋。",
+      "事件详述": "2021年5月9日，长征五号B火箭核心级进入大气层，中国方面公布的落区位于印度洋，接近马尔代夫。由于预测窗口覆盖全球大部分有人居住纬度，事件引起美国、欧洲和亚洲多国监测；最终没有发现人员伤亡或财产损失。",
+      "影响范围": "马尔代夫附近印度洋及全球潜在落区；无已知损害。",
+      "来源": [
+        {
+          "来源名称": "Reuters - Long March 5B lands in Indian Ocean",
+          "网络链接": "https://www.reuters.com/lifestyle/science/china-says-remnants-long-march-rocket-landed-indian-ocean-2021-05-09/"
+        }
+      ]
+    },
+    {
+      "事件编号": 15,
+      "类别": "重大、高影响及典型事件",
+      "事件名称": "问天实验舱长征五号B核心级再入事件",
+      "一句话事件介绍": "火箭主体坠入印度洋，但印度尼西亚和马来西亚后来发现疑似幸存残骸。",
+      "事件详述": "2022年7月30日，搭载问天实验舱的长征五号B核心级非受控再入。主体轨迹指向印度洋，但马来西亚砂拉越和印度尼西亚部分地区报告发现大型金属残骸，其中一些位于村庄和居民活动区域附近。没有确认人员伤亡，但事件表明最终轨迹落海并不等于全部碎片都落海。",
+      "影响范围": "印度洋、马来西亚砂拉越和印度尼西亚部分地区；村庄附近残骸。",
+      "来源": [
+        {
+          "来源名称": "Reuters - Long March 5B reentry, July 2022",
+          "网络链接": "https://www.reuters.com/lifestyle/science/chinese-rocket-falls-earth-nasa-says-beijing-did-not-share-information-2022-07-30/"
+        }
+      ]
+    },
+    {
+      "事件编号": 16,
+      "类别": "重大、高影响及典型事件",
+      "事件名称": "梦天实验舱长征五号B核心级再入事件",
+      "一句话事件介绍": "又一枚长征五号B核心级非受控再入，主要残骸落入南太平洋。",
+      "事件详述": "2022年11月4日，搭载梦天实验舱的火箭核心级在南太平洋中部上空再入。部分国家曾短暂关闭或限制相关空域，以规避不可预测的残骸风险。没有收到地面伤亡或财产损失报告。",
+      "影响范围": "南太平洋；部分国家空域和航空运行受到短暂影响。",
+      "来源": [
+        {
+          "来源名称": "Reuters - Long March 5B reentry, November 2022",
+          "网络链接": "https://www.reuters.com/business/aerospace-defense/remnants-chinas-long-march-5b-rocket-re-enter-atmosphere-2022-11-04/"
+        }
+      ]
+    },
+    {
+      "事件编号": 17,
+      "类别": "重大、高影响及典型事件",
+      "事件名称": "Crew-1 Dragon Trunk澳大利亚坠落事件",
+      "一句话事件介绍": "2022年，三块来自SpaceX载人龙飞船非加压服务舱的残骸落在澳大利亚农场区域。",
+      "事件详述": "澳大利亚在新南威尔士州金德拜恩附近发现三块大型残骸，质量分别约为20公斤、35公斤和100公斤，最长一块超过3米。澳大利亚航天局确认其来自2020年Crew-1任务的Dragon飞船服务舱。残骸落在牧场和偏远土地，没有人员伤亡，但距离农业设施和居民活动区较近。",
+      "影响范围": "澳大利亚新南威尔士州农牧区；大型商业载人航天器残骸；无伤亡。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 18,
+      "类别": "重大、高影响及典型事件",
+      "事件名称": "2023年Green Head海滩印度火箭残骸事件",
+      "一句话事件介绍": "一个大型圆柱形火箭部件漂到西澳大利亚海滩，引发警戒和国际识别调查。",
+      "事件详述": "2023年7月，一个约两米高的圆柱形物体出现在西澳Green Head海滩。当地警方最初建立警戒区，排除爆炸物风险；澳大利亚航天局随后认定其很可能是印度运载火箭使用的压力容器或级段结构。该物体可能先落入印度洋，再随海流漂至岸边，没有造成伤亡。",
+      "影响范围": "西澳大利亚Green Head海滩；公共安全封锁和危险品排查。",
+      "来源": [
+        {
+          "来源名称": "Australian Space Agency - Discovery of space debris in Australia",
+          "网络链接": "https://www.space.gov.au/discovery-of-space-debris-in-australia"
+        }
+      ]
+    },
+    {
+      "事件编号": 19,
+      "类别": "重大、高影响及典型事件",
+      "事件名称": "2024年ISS电池残骸撞击住宅事件",
+      "一句话事件介绍": "一块来自国际空间站废旧电池托盘的金属部件穿透了美国佛罗里达州一户住宅。",
+      "事件详述": "2024年3月8日，一块约0.7公斤的铬镍铁合金支撑结构穿过佛罗里达州那不勒斯一栋住宅的屋顶和楼层。NASA确认，该物体来自2021年由国际空间站机械臂释放的废旧电池托盘；整个托盘重约5800磅，原先预计会在再入时完全烧毁。屋内人员未受伤，但房屋受损，事件成为商业保险、国家责任和航天器再入模型可靠性的典型案例。",
+      "影响范围": "美国佛罗里达州那不勒斯住宅；明确财产损失；无人员伤亡。",
+      "来源": [
+        {
+          "来源名称": "NASA - Analysis of Recovered Space Object",
+          "网络链接": "https://www.nasa.gov/blogs/spacestation/2024/04/15/nasa-completes-analysis-of-recovered-space-object/"
+        }
+      ]
+    },
+    {
+      "事件编号": 20,
+      "类别": "重大、高影响及典型事件",
+      "事件名称": "Axiom-3 Dragon Trunk加拿大坠落事件",
+      "一句话事件介绍": "2024年，加拿大萨斯喀彻温省发现来自SpaceX Axiom-3任务的航天器服务舱残骸。",
+      "事件详述": "加拿大在2024年4月至5月间于萨斯喀彻温省Ituna附近发现空间物体，随后正式向联合国报告，并将其识别为2024年1月发射的SpaceX Axiom Mission 3飞船服务舱部件。发现地点属于低人口密度农业区，没有正式伤亡记录。该事件与澳大利亚Crew-1残骸说明，Dragon服务舱中的耐热压力容器和结构件可能无法完全烧蚀。",
+      "影响范围": "加拿大萨斯喀彻温省农业区；无正式伤亡记录。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 21,
+      "类别": "重大、高影响及典型事件",
+      "事件名称": "ERS-2自然再入事件",
+      "一句话事件介绍": "2024年，欧洲大型遥感卫星ERS-2在北太平洋上空自然再入。",
+      "事件详述": "ERS-2于2024年2月21日在北太平洋上空进入大气层。ESA此前已通过降低轨道缩短其在轨滞留时间，但卫星没有主动推进能力，因此最后阶段仍属于非受控再入。没有收到财产损失报告。ESA同时指出，大型人造物再入时仍可能有部分质量经受住烧蚀，但全球已有事件中确认伤害极少。",
+      "影响范围": "北太平洋；无已知财产损失。",
+      "来源": [
+        {
+          "来源名称": "ESA - ERS-2 Reenters Earth’s Atmosphere",
+          "网络链接": "https://www.esa.int/Space_Safety/Space_Debris/ERS-2_reenters_Earth_s_atmosphere_over_Pacific_Ocean"
+        }
+      ]
+    },
+    {
+      "事件编号": 22,
+      "类别": "重大、高影响及典型事件",
+      "事件名称": "Mukuku Village大型金属环坠落事件",
+      "一句话事件介绍": "2024年底，一个直径约2.5米、质量约500公斤的金属环从天空落入肯尼亚村庄。",
+      "事件详述": "2024年12月30日，金属环坠落在肯尼亚Makueni郡Mukuku村附近。肯尼亚航天局初步认定其外形符合运载火箭级间分离环，并将其封锁、回收和检测。没有人员伤亡，但如此巨大的物体落入居民区附近具有明显致命潜力。后续公开调查尚未最终确认具体发射任务，因此不宜把它确定归属于某个国家或某枚火箭。",
+      "影响范围": "肯尼亚Makueni郡Mukuku村附近；约500公斤大型残骸；无伤亡。",
+      "来源": [
+        {
+          "来源名称": "Kenya Space Agency - Official Statement",
+          "网络链接": "https://ksa.go.ke/assets/files/OFFICIAL-STATEMENT-MUKUKUVILLAGE.pdf"
+        }
+      ]
+    },
+    {
+      "事件编号": 23,
+      "类别": "重大、高影响及典型事件",
+      "事件名称": "Starship Flight 7加勒比海残骸事件",
+      "一句话事件介绍": "2025年1月，星舰上级在飞行中解体，大量碎片落入特克斯和凯科斯群岛及周边海域。",
+      "事件详述": "2025年1月16日，SpaceX星舰第七次试飞的上级飞船失联并解体。英国以特克斯和凯科斯群岛管理方身份向联合国报告发现多块相关残骸。其影响范围包括岛屿海岸、浅海和民用航空航路；没有官方确认的人员伤亡，但事件导致部分航班改变航线。该事件属于试飞事故残骸，严格来说并非长期在轨垃圾，但属于人造空间物体返回地球的典型边界案例。",
+      "影响范围": "特克斯和凯科斯群岛、加勒比海及相关航空航路。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 24,
+      "类别": "重大、高影响及典型事件",
+      "事件名称": "New Glenn整流罩阿巴科岛发现事件",
+      "一句话事件介绍": "2025年2月，约145公斤的New Glenn火箭整流罩碎片在巴哈马阿巴科岛附近被发现。",
+      "事件详述": "巴哈马在阿巴科岛周边发现多块碳纤维和金属结构，总质量约320磅。UNOOSA记录将其识别为Blue Origin New Glenn火箭首次发射的载荷整流罩。整流罩通常在上升阶段被抛弃，并非长期轨道残骸，但其漂流和上岸会影响海岸环境、船舶活动及公众安全。",
+      "影响范围": "巴哈马阿巴科岛附近海岸与海域；海岸环境和船舶活动。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 25,
+      "类别": "重大、高影响及典型事件",
+      "事件名称": "Starship Flight 8巴哈马残骸事件",
+      "一句话事件介绍": "2025年3月，星舰试飞解体后，约180公斤隔热瓦和金属残骸散落在巴哈马南部岛屿。",
+      "事件详述": "巴哈马在Ragged Island、Crooked Island和Acklins附近发现不锈钢、二氧化硅隔热材料等碎片，总计约400磅。联合国记录确认其来自2025年3月6日的SpaceX星舰第八次试飞。事件影响多个岛屿和近海区域，但未报告人员伤亡。",
+      "影响范围": "巴哈马Ragged Island、Crooked Island、Acklins及近海；多岛屿散落。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 26,
+      "类别": "重大、高影响及典型事件",
+      "事件名称": "2025年巴哈马Atlas V残骸发现事件",
+      "一句话事件介绍": "巴哈马在Cat Island和Eleuthera岛附近发现大型Atlas V火箭整流罩及飞行硬件。",
+      "事件详述": "联合国记录了两组大型碳复合材料：一组位于Cat Island，尺寸约13.5英尺×5.5英尺；另一组位于Eleuthera岛Lover’s Beach附近。二者被识别为ULA Atlas V运载火箭硬件或载荷整流罩。主要影响是海岸障碍、材料污染和残骸归属处理，没有正式伤亡记录。",
+      "影响范围": "巴哈马Cat Island、Eleuthera岛及旅游海滩区域。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 27,
+      "类别": "重大、高影响及典型事件",
+      "事件名称": "2025年Falcon 9上面级波兰坠落事件",
+      "一句话事件介绍": "一枚SpaceX Falcon 9上面级在欧洲上空再入解体，多块残骸落入波兹南周边城镇。",
+      "事件详述": "2025年2月19日，Falcon 9上面级在中欧上空形成明亮火球并碎裂。波兰随后在Komorniki、Wiry、Śliwno、Szamotuły等多个地点发现残骸，后续搜索范围扩展到波兹南周边至少九处。波兰向UNOOSA表示，有合理依据认为美国是发射责任方。2026年发表的观测研究利用43台流星相机和雷达重建了约30条碎片轨迹，确认这是一次大范围上面级再入解体事件。",
+      "影响范围": "波兰波兹南周边多个城镇、私人土地和航空预警范围。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 28,
+      "类别": "重大、高影响及典型事件",
+      "事件名称": "Kosmos 482金星着陆器再入事件",
+      "一句话事件介绍": "在近地轨道滞留53年后，苏联金星着陆器于2025年失控重返地球。",
+      "事件详述": "Kosmos 482于1972年发射，但未能离开地球轨道。其钛制着陆舱原本被设计为承受金星高温和高压，因此被认为比普通卫星更可能完整幸存。它于2025年5月10日再入，监测结果倾向于其落入印度洋，但精确撞击点没有得到独立确认，也没有收到损害报告。",
+      "影响范围": "印度洋潜在撞击区；高强度着陆器可能完整幸存；无已知损害。",
+      "来源": [
+        {
+          "来源名称": "Associated Press - Kosmos 482 reentry",
+          "网络链接": "https://apnews.com/article/93871c98ca9c09a67219e238ed3e2eaa"
+        }
+      ]
+    },
+    {
+      "事件编号": 29,
+      "类别": "重大、高影响及典型事件",
+      "事件名称": "2026年Forrest Beach火箭压力容器发现事件",
+      "一句话事件介绍": "六个疑似火箭高压容器漂至昆士兰海滩，引发封锁、危险品处置和国际溯源调查。",
+      "事件详述": "2026年7月，澳大利亚昆士兰州Forrest Beach及附近海岸陆续发现六个球形金属物。澳大利亚航天局判断其外形符合火箭使用的复合材料包覆压力容器，很可能来自近期再入的外国火箭体。当地设立约50米警戒区，由消防、警方和危险品人员回收。物体未造成伤亡，来源截至2026年7月17日仍未最终公开确认。",
+      "影响范围": "澳大利亚昆士兰州Forrest Beach及附近海岸；海滩封锁和危险品处置。",
+      "来源": [
+        {
+          "来源名称": "The Guardian - Queensland space balls",
+          "网络链接": "https://www.theguardian.com/australia-news/2026/jul/06/mysterious-space-balls-queensland-beaches-origin-source-australia"
+        },
+        {
+          "来源名称": "The Guardian - Forrest Beach follow-up",
+          "网络链接": "https://www.theguardian.com/australia-news/2026/jul/11/how-space-balls-launched-a-sleepy-queensland-beach-town-into-the-global-spotlight-at-warp-speed"
+        }
+      ]
+    },
+    {
+      "事件编号": 30,
+      "类别": "UNOOSA正式记录的其他落地或漂岸事件",
+      "事件名称": "冲永良部岛疑似中国航天器通风管事件",
+      "一句话事件介绍": "带有中国国旗图案和“通风管”中文字样的部件在日本鹿儿岛县被发现。",
+      "事件详述": "2023年4月27日发现，未公布质量和具体发射任务；未报告损害。",
+      "影响范围": "日本鹿儿岛县冲永良部岛；无已知损害。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 31,
+      "类别": "UNOOSA正式记录的其他落地或漂岸事件",
+      "事件名称": "Atlas V Centaur上面级高压氦气瓶发现事件",
+      "一句话事件介绍": "一个约50公斤的复合材料包覆氦气瓶在澳大利亚维多利亚州被发现。",
+      "事件详述": "物体于2021年发现、2022年报告，来自2019年发射的Atlas V火箭Centaur上面级；未报告伤亡。",
+      "影响范围": "澳大利亚维多利亚州Yambuk；无伤亡。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 32,
+      "类别": "UNOOSA正式记录的其他落地或漂岸事件",
+      "事件名称": "竹富町中国载人航天标记面板事件",
+      "一句话事件介绍": "一块约4米×2.2米、带“中国载人航天”中文字样的大型结构被发现。",
+      "事件详述": "发现于日本冲绳县竹富町，来源任务未在联合国记录中进一步明确；无损害报告。",
+      "影响范围": "日本冲绳县竹富町；无已知损害。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 33,
+      "类别": "UNOOSA正式记录的其他落地或漂岸事件",
+      "事件名称": "Vega火箭整流罩坠落墨西哥事件",
+      "一句话事件介绍": "五块重约60—100公斤的大型整流罩结构在墨西哥金塔纳罗奥州被发现。",
+      "事件详述": "残骸带有“GALILEO SAT 13-1”等标记，被识别为法国实施的Vega发射任务部件；无人员伤亡记录。",
+      "影响范围": "墨西哥金塔纳罗奥州；多块大型整流罩残骸。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 34,
+      "类别": "UNOOSA正式记录的其他落地或漂岸事件",
+      "事件名称": "长征三号B钛储箱坠落巴拉圭事件",
+      "一句话事件介绍": "一个约6.8公斤的钛合金储箱落入巴拉圭Canindeyú地区。",
+      "事件详述": "被确认来自中国2017年12月发射的长征三号B火箭；未报告损害。",
+      "影响范围": "巴拉圭Canindeyú地区；无已知损害。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 35,
+      "类别": "UNOOSA正式记录的其他落地或漂岸事件",
+      "事件名称": "秘鲁2017-086D残骸群事件",
+      "一句话事件介绍": "四个大型储箱和一块金属部件散落在秘鲁多个社区。",
+      "事件详述": "残骸分布于Ninaruyo、Isla Huata、Catacora和San José附近，储箱质量约16.7—40.65公斤；没有人员伤亡记录。",
+      "影响范围": "秘鲁多个社区；多点残骸散落。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 36,
+      "类别": "UNOOSA正式记录的其他落地或漂岸事件",
+      "事件名称": "长征七号部件坠落美国事件",
+      "一句话事件介绍": "美国在犹他州附近报告发现两块中国长征七号发射残骸。",
+      "事件详述": "被识别为2016年6月25日长征七号发射任务的部件，具体尺寸和损害未公布。",
+      "影响范围": "美国犹他州附近；影响信息有限。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 37,
+      "类别": "UNOOSA正式记录的其他落地或漂岸事件",
+      "事件名称": "Falcon 9残骸坠落东爪哇群岛事件",
+      "一句话事件介绍": "四个大型压力容器和一块电子面板落在印度尼西亚岛屿及附近水域。",
+      "事件详述": "残骸分布于Giliraja、Giligenting和附近海域，被确认来自2016年8月发射的Falcon 9；未报告人员伤亡。",
+      "影响范围": "印度尼西亚东爪哇岛屿及附近水域。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 38,
+      "类别": "UNOOSA正式记录的其他落地或漂岸事件",
+      "事件名称": "Falcon 9大型复合材料面板漂至英国事件",
+      "一句话事件介绍": "一块约4米×7米的弧形结构漂到锡利群岛之间。",
+      "事件详述": "面板带有美国国旗和英文标记，被确认来自2014年Falcon 9发射任务；主要影响为海上航行与海岸处置。",
+      "影响范围": "英国锡利群岛及附近海域。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 39,
+      "类别": "UNOOSA正式记录的其他落地或漂岸事件",
+      "事件名称": "Ariane整流罩漂至巴西事件",
+      "一句话事件介绍": "一块约4米×3米的整流罩结构在巴西帕拉州河流中被发现。",
+      "事件详述": "内部铭牌使其被识别为Ariane火箭载荷整流罩；未报告损害。",
+      "影响范围": "巴西帕拉州河流区域；无已知损害。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 40,
+      "类别": "UNOOSA正式记录的其他落地或漂岸事件",
+      "事件名称": "Ariane整流罩漂至Dry Tortugas国家公园事件",
+      "一句话事件介绍": "一块约100公斤的大型整流罩在美国佛罗里达州国家公园被发现。",
+      "事件详述": "结构约4.8米×4米，经内部铭牌识别为Ariane火箭部件；没有伤亡。",
+      "影响范围": "美国佛罗里达州Dry Tortugas国家公园。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 41,
+      "类别": "UNOOSA正式记录的其他落地或漂岸事件",
+      "事件名称": "Atlas V整流罩漂至百慕大事件",
+      "一句话事件介绍": "一块约2.1米×1.8米的蜂窝复合材料整流罩在百慕大海滩发现。",
+      "事件详述": "被确认来自美国2012年5月实施的Atlas V发射；未报告损害。",
+      "影响范围": "百慕大海滩；无已知损害。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 42,
+      "类别": "UNOOSA正式记录的其他落地或漂岸事件",
+      "事件名称": "Delta 7925／STAR-48部件坠落乌拉圭事件",
+      "一句话事件介绍": "一块固体火箭上面级部件在乌拉圭Artigas地区被发现。",
+      "事件详述": "序列号确认其来自美国2003年发射的Delta 7925火箭STAR-48发动机；无损害报告。",
+      "影响范围": "乌拉圭Artigas地区；无已知损害。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 43,
+      "类别": "UNOOSA正式记录的其他落地或漂岸事件",
+      "事件名称": "种子岛疑似韩国运载火箭部件事件",
+      "一句话事件介绍": "一个约1.7米长的圆柱体在日本种子岛被发现。",
+      "事件详述": "日本认为它可能来自韩国使用的运载火箭，但联合国记录未给出最终确认；无伤亡。",
+      "影响范围": "日本种子岛；来源尚未最终确认。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 44,
+      "类别": "UNOOSA正式记录的其他落地或漂岸事件",
+      "事件名称": "昆士兰偏远地区球形压力容器事件",
+      "一句话事件介绍": "一个约17公斤的碳纤维球形容器在澳大利亚内陆被发现。",
+      "事件详述": "其结构符合航天高压容器特征，但责任国和发射任务未被确认。",
+      "影响范围": "澳大利亚昆士兰州偏远地区；来源未知。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 45,
+      "类别": "UNOOSA正式记录的其他落地或漂岸事件",
+      "事件名称": "Delta II圆柱形部件坠落阿根廷事件",
+      "一句话事件介绍": "一块约40公斤的火箭结构落在阿根廷Corrientes省。",
+      "事件详述": "被确认来自1993年发射的Delta II火箭；无人员伤亡记录。",
+      "影响范围": "阿根廷Corrientes省；无伤亡。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 46,
+      "类别": "UNOOSA正式记录的其他落地或漂岸事件",
+      "事件名称": "STAR-48发动机罩坠落利雅得附近事件",
+      "一句话事件介绍": "约70公斤的金属圆柱体落在距利雅得约240公里的公路附近。",
+      "事件详述": "序列号确认其为STAR-48固体发动机外壳；残骸距主要公路约1公里，没有伤亡。",
+      "影响范围": "沙特阿拉伯利雅得附近公路区域。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 47,
+      "类别": "UNOOSA正式记录的其他落地或漂岸事件",
+      "事件名称": "Delta II二级火箭残骸坠落南非事件",
+      "一句话事件介绍": "三块重约30公斤、33公斤和260公斤的火箭部件落在南非西开普省。",
+      "事件详述": "残骸分别在Robertson、Worcester和Durbanville发现，被确认来自1996年发射的Delta II二级；没有人员伤亡记录。",
+      "影响范围": "南非西开普省多个地点；最大残骸约260公斤。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 48,
+      "类别": "UNOOSA正式记录的其他落地或漂岸事件",
+      "事件名称": "Corpus Christi疑似Ariane火箭鼻锥事件",
+      "一句话事件介绍": "一个锥形航天结构在得克萨斯州海岸地区被发现。",
+      "事件详述": "根据内部铭牌和结构判断可能来自Ariane火箭，但没有确定具体任务。",
+      "影响范围": "美国得克萨斯州Corpus Christi附近；来源未完全确认。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 49,
+      "类别": "UNOOSA正式记录的其他落地或漂岸事件",
+      "事件名称": "与论岛疑似美国运载火箭部件事件",
+      "一句话事件介绍": "一个长约6米的圆柱形结构在日本鹿儿岛县被发现。",
+      "事件详述": "日本判断其可能来自美国运载火箭，具体型号和任务未确认。",
+      "影响范围": "日本鹿儿岛县与论岛；来源未确认。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 50,
+      "类别": "UNOOSA正式记录的其他落地或漂岸事件",
+      "事件名称": "美国境内疑似苏联空间物体事件",
+      "一句话事件介绍": "美国向联合国报告发现一块被认为来自苏联的空间物体。",
+      "事件详述": "公开目录保留的信息有限，没有记录人员伤亡或污染。",
+      "影响范围": "美国境内；详细地点和影响信息有限。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 51,
+      "类别": "UNOOSA正式记录的其他落地或漂岸事件",
+      "事件名称": "加拿大1979年疑似苏联残骸事件",
+      "一句话事件介绍": "加拿大在宇宙954号事件后又报告了一块疑似苏联航天残骸。",
+      "事件详述": "该物体没有被列为Cosmos 954放射性残骸，具体任务及影响未确定。",
+      "影响范围": "加拿大境内；来源和影响未确定。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 52,
+      "类别": "UNOOSA正式记录的其他落地或漂岸事件",
+      "事件名称": "西德不明锥形空间物体事件",
+      "一句话事件介绍": "一个疑似航天器锥形部件在当时的西德被发现。",
+      "事件详述": "来源国家和具体任务均未被识别，没有损害报告。",
+      "影响范围": "当时的西德境内；来源未知。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 53,
+      "类别": "UNOOSA正式记录的其他落地或漂岸事件",
+      "事件名称": "俄亥俄州不明球形空间物体事件",
+      "一句话事件介绍": "一个疑似火箭压力容器的金属球在美国俄亥俄州被发现。",
+      "事件详述": "责任国、发射时间和任务均未确定；未报告损害。",
+      "影响范围": "美国俄亥俄州；来源未知。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 54,
+      "类别": "UNOOSA正式记录的其他落地或漂岸事件",
+      "事件名称": "Atlas-Centaur火箭残骸坠落加拿大事件",
+      "一句话事件介绍": "加拿大回收并报告了一块美国Atlas-Centaur运载火箭残骸。",
+      "事件详述": "残骸被正式识别并记录，但没有造成已知人员或财产损失。",
+      "影响范围": "加拿大境内；无已知损害。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 55,
+      "类别": "UNOOSA正式记录的其他落地或漂岸事件",
+      "事件名称": "新西兰钛合金压力球发现事件",
+      "一句话事件介绍": "多枚疑似航天器压力容器的钛合金球体在新西兰被发现。",
+      "事件详述": "这些物体具有典型火箭储气球结构，但来源国家和任务未最终确认。",
+      "影响范围": "新西兰境内；多枚压力球；来源未知。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 56,
+      "类别": "UNOOSA正式记录的其他落地或漂岸事件",
+      "事件名称": "美国中西部疑似苏联空间物体散落事件",
+      "一句话事件介绍": "美国报告在中西部发现多块可能来自苏联航天器的金属残骸。",
+      "事件详述": "具体发射任务未确定，没有污染或人员伤亡记录。",
+      "影响范围": "美国中西部；多块残骸；无已知伤亡。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 57,
+      "类别": "UNOOSA正式记录的其他落地或漂岸事件",
+      "事件名称": "南非不明空间物体事件",
+      "一句话事件介绍": "南非发现并向联合国报告一块无法确定来源的航天残骸。",
+      "事件详述": "公开资料未能识别责任国，也没有损害报告。",
+      "影响范围": "南非境内；来源未知。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 58,
+      "类别": "UNOOSA正式记录的其他落地或漂岸事件",
+      "事件名称": "瑞典不明航天残骸发现事件",
+      "一句话事件介绍": "瑞典发现一件疑似人造空间物体，但来源未能确定。",
+      "事件详述": "属于联合国早期空间物体回收记录，没有已知人员或环境影响。",
+      "影响范围": "瑞典境内；无已知影响。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 59,
+      "类别": "UNOOSA正式记录的其他落地或漂岸事件",
+      "事件名称": "阿拉斯加疑似苏联压力球事件",
+      "一句话事件介绍": "一个疑似苏联火箭压力容器的球形物体在阿拉斯加被发现。",
+      "事件详述": "具体卫星或火箭任务没有得到最终确认；无损害报告。",
+      "影响范围": "美国阿拉斯加；来源未确认。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    },
+    {
+      "事件编号": 60,
+      "类别": "UNOOSA正式记录的其他落地或漂岸事件",
+      "事件名称": "尼泊尔早期航天残骸发现事件",
+      "一句话事件介绍": "尼泊尔发现多件被认为来自航天活动的金属物体。",
+      "事件详述": "这是UNOOSA现有公开发现目录中最早的一批记录之一，来源国家和发射任务未确定，没有人员伤亡记录。",
+      "影响范围": "尼泊尔境内；无已知伤亡。",
+      "来源": [
+        {
+          "来源名称": "UNOOSA - Space objects discovered by Member States",
+          "网络链接": "https://www.unoosa.org/oosa/en/treatyimplementation/arra-art-v/unlfd.html"
+        }
+      ]
+    }
+  ],
+  "补充结论": [
+    "高影响事件主要包括核污染型、大型航天器失控型、人员或财产接触型，以及高频商业航天残骸型。",
+    "最容易经受再入并完整落地的部件通常包括钛合金或钢制高压储箱、复合材料包覆压力容器、固体火箭发动机壳体、级间分离环、耐热发动机结构和大型碳纤维整流罩。",
+    "航天器主体轨迹落海并不意味着全部碎片都会落海，残骸散布带可能延伸至邻近陆地区域。",
+    "截至本文件生成日期，没有被可靠证实的在轨航天残骸再入致死案例，但已有人员直接接触和住宅受损案例。"
+  ]
+}

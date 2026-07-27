@@ -1609,7 +1609,8 @@
   font-size:clamp(19px, 1.28vw, 25px);
   line-height:1.2;
   letter-spacing:-0.03em;
-  overflow-wrap:anywhere;
+  overflow-wrap:normal;
+  word-break:keep-all;
   text-wrap:balance;
 }
 
