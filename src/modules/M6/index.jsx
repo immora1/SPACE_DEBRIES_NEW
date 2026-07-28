@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import useAppStore from '../../store/useAppStore'
 import useI18n from '../../i18n/useI18n'
+import { submitCleanupPairStoryAction } from '../../services/ai'
 import './index.css'
 
 const METHODS = [
@@ -261,6 +262,26 @@ function buildAssessment(target, method, correct, language = 'zh') {
   return `${method.title}不适合当前目标：${method.limit} 这里更需要“${ideal.action}”，优先考虑${ideal.title}。`
 }
 
+const BACKEND_METHOD_TO_UI_METHOD = {
+  LASER_ABLATION: 'laser',
+  ROBOTIC_ARM_CAPTURE: 'arm',
+  DRAG_SAIL: 'sail',
+}
+
+function buildRestoredResults(targets, resolvedMatches, language) {
+  return Object.fromEntries((resolvedMatches || []).flatMap((match) => {
+    const methodId = BACKEND_METHOD_TO_UI_METHOD[match.method_id]
+    const target = targets.find((item) => item.ideal === methodId)
+    const method = methodId ? localizeMethod(METHOD_MAP[methodId], language) : null
+    if (!target || !method) return []
+    return [[target.id, {
+      correct: true,
+      methodId,
+      message: buildAssessment(target, method, true, language),
+    }]]
+  }))
+}
+
 const METHOD_CARD_TRANSITION = {
   type: 'tween',
   duration: 0.52,
@@ -428,7 +449,12 @@ function MethodObservatory() {
   )
 }
 
-function DragMatchLab({ targets, onComplete }) {
+function DragMatchLab({
+  targets,
+  resolvedMatches,
+  onComplete,
+  onStoryMatch,
+}) {
   const { language, pick } = useI18n()
   const methods = METHODS.map((method) => localizeMethod(method, language))
   const methodMap = Object.fromEntries(methods.map((method) => [method.id, method]))
@@ -436,8 +462,16 @@ function DragMatchLab({ targets, onComplete }) {
   const [selectedMethodId, setSelectedMethodId] = useState(null)
   const [draggingMethodId, setDraggingMethodId] = useState(null)
   const [dragOverId, setDragOverId] = useState(null)
-  const [results, setResults] = useState({})
-  const [attempts, setAttempts] = useState(0)
+  const [results, setResults] = useState(
+    () => buildRestoredResults(targets, resolvedMatches, language),
+  )
+  const [attempts, setAttempts] = useState(
+    () => Object.keys(buildRestoredResults(targets, resolvedMatches, language)).length,
+  )
+  const [pendingTargetId, setPendingTargetId] = useState(null)
+  const [requestError, setRequestError] = useState('')
+  const [storyBeat, setStoryBeat] = useState('')
+  const [latestStorySnapshot, setLatestStorySnapshot] = useState(null)
 
   const resolvedCount = targets.filter((target) => results[target.id]?.correct).length
   const allResolved = resolvedCount === targets.length
@@ -445,16 +479,59 @@ function DragMatchLab({ targets, onComplete }) {
   const selectedMethod = selectedMethodId ? methodMap[selectedMethodId] : null
   const lockedMethodIds = new Set(Object.values(results).filter((result) => result.correct).map((result) => result.methodId))
 
-  function matchTarget(targetId, methodId) {
+  useEffect(() => {
+    const restored = buildRestoredResults(targets, resolvedMatches, language)
+    const restoredCount = Object.keys(restored).length
+    if (!restoredCount) return
+    setResults((current) => ({ ...restored, ...current }))
+    setAttempts((current) => Math.max(current, restoredCount))
+  }, [language, resolvedMatches, targets])
+
+  async function matchTarget(targetId, methodId) {
     const target = targets.find((item) => item.id === targetId)
     const method = methodMap[methodId]
-    if (!target || !method || results[targetId]?.correct || lockedMethodIds.has(methodId)) return
+    if (
+      pendingTargetId
+      || !target
+      || !method
+      || results[targetId]?.correct
+      || lockedMethodIds.has(methodId)
+    ) return
     const correct = target.ideal === methodId
+
+    if (correct) {
+      setPendingTargetId(targetId)
+      setRequestError('')
+      setStoryBeat('')
+      setDraggingMethodId(null)
+      setDragOverId(null)
+      try {
+        const storySnapshot = await onStoryMatch({
+          idealMethodId: target.ideal,
+          uiTargetId: target.id,
+        })
+        setLatestStorySnapshot(storySnapshot)
+        setStoryBeat(
+          storySnapshot.current_stage?.display_content?.story_text
+          || storySnapshot.current_stage?.stage_summary
+          || '',
+        )
+      } catch (error) {
+        setRequestError(
+          error?.message
+          || pick('故事推进失败，配对尚未提交。请重试。', 'Story generation failed, so the match was not committed. Please retry.'),
+        )
+        setPendingTargetId(null)
+        return
+      }
+    }
+
     setAttempts((current) => current + 1)
     setResults((current) => ({ ...current, [targetId]: { correct, methodId, message: buildAssessment(target, method, correct, language) } }))
     setSelectedMethodId(null)
     setDraggingMethodId(null)
     setDragOverId(null)
+    setPendingTargetId(null)
   }
 
   function startDrag(event, methodId) {
@@ -472,13 +549,13 @@ function DragMatchLab({ targets, onComplete }) {
 
   function drop(event, targetId) {
     event.preventDefault()
-    matchTarget(targetId, event.dataTransfer.getData('text/plain'))
+    void matchTarget(targetId, event.dataTransfer.getData('text/plain'))
   }
 
   function targetKeyDown(event, targetId) {
     if (!selectedMethodId || (event.key !== 'Enter' && event.key !== ' ')) return
     event.preventDefault()
-    matchTarget(targetId, selectedMethodId)
+    void matchTarget(targetId, selectedMethodId)
   }
 
   return (
@@ -495,11 +572,20 @@ function DragMatchLab({ targets, onComplete }) {
         </div>
       </div>
 
-      <div className={['m6-pocket-lab', selectedMethod ? 'is-selecting' : '', draggingMethodId ? 'is-dragging' : ''].join(' ')}>
+      <div
+        className={['m6-pocket-lab', selectedMethod ? 'is-selecting' : '', draggingMethodId ? 'is-dragging' : ''].join(' ')}
+        aria-busy={Boolean(pendingTargetId)}
+      >
         <div className="m6-pocket-status" aria-live="polite">
           <span>{pick('目标生成 / 3 个随机轨道物体', 'TARGET SET / 3 ORBITAL OBJECTS')}</span>
           <b>{resolvedCount} / {targets.length} {pick('已归档', 'RESOLVED')}</b>
         </div>
+        {(requestError || storyBeat) && (
+          <div className={requestError ? 'm6-story-message is-error' : 'm6-story-message'}>
+            <span>{requestError ? 'STORY ERROR' : 'STORY UPDATE'}</span>
+            <p>{requestError || storyBeat}</p>
+          </div>
+        )}
 
         <div className="m6-pocket-stage">
           <aside className="m6-cleanup-deck" aria-label={pick('可拖动清理方式卡片', 'Draggable cleanup method cards')}>
@@ -511,13 +597,14 @@ function DragMatchLab({ targets, onComplete }) {
               {dragMethods.map((method, index) => {
                 const selected = selectedMethodId === method.id
                 const locked = lockedMethodIds.has(method.id)
+                const unavailable = locked || Boolean(pendingTargetId)
                 return (
                   <motion.button
                     key={method.id}
                     type="button"
                     className={['m6-cleanup-option', selected ? 'is-selected' : '', locked ? 'is-locked' : ''].join(' ')}
-                    draggable={!locked}
-                    disabled={locked}
+                    draggable={!unavailable}
+                    disabled={unavailable}
                     aria-pressed={selected}
                     aria-label={locked ? `${method.title}, ${pick('已完成匹配', 'matched')}` : `${method.title}, ${pick('拖动到目标卡兜', 'drag to a target')}`}
                     onClick={() => setSelectedMethodId((current) => current === method.id ? null : method.id)}
@@ -547,14 +634,15 @@ function DragMatchLab({ targets, onComplete }) {
               const method = result ? methodMap[result.methodId] : null
               const isOver = dragOverId === target.id
               const ready = Boolean(selectedMethodId && !result?.correct)
+              const pending = pendingTargetId === target.id
               return (
                 <motion.div
                   key={target.id}
-                  className={['m6-card-pocket', isOver ? 'is-over' : '', ready ? 'is-ready' : '', result?.correct ? 'is-correct' : '', result && !result.correct ? 'is-wrong' : ''].join(' ')}
+                  className={['m6-card-pocket', isOver ? 'is-over' : '', ready ? 'is-ready' : '', pending ? 'is-pending' : '', result?.correct ? 'is-correct' : '', result && !result.correct ? 'is-wrong' : ''].join(' ')}
                   role="button"
                   tabIndex={result?.correct ? -1 : 0}
                   aria-label={`${target.type}, ${target.name}${ready ? `, ${pick('点击投放所选技术', 'click to apply the selected method')}` : ''}`}
-                  onClick={() => selectedMethodId && matchTarget(target.id, selectedMethodId)}
+                  onClick={() => selectedMethodId && void matchTarget(target.id, selectedMethodId)}
                   onKeyDown={(event) => targetKeyDown(event, target.id)}
                   onDragEnter={(event) => { event.preventDefault(); if (!result?.correct) setDragOverId(target.id) }}
                   onDragOver={(event) => event.preventDefault()}
@@ -601,8 +689,8 @@ function DragMatchLab({ targets, onComplete }) {
                       <span><b>MOTION</b>{target.motion}</span>
                     </div>
                     <div className="m6-pocket-slot">
-                      <span>{result?.correct ? pick('匹配完成', 'MATCHED') : result ? pick('方式不合适', 'NOT SUITABLE') : isOver ? pick('松开装入卡兜', 'DROP TO APPLY') : pick('等待清理卡', 'AWAITING METHOD')}</span>
-                      <small>{result && !result.correct ? result.message : target.source}</small>
+                      <span>{pending ? pick('正在生成故事节点', 'GENERATING STORY BEAT') : result?.correct ? pick('匹配完成', 'MATCHED') : result ? pick('方式不合适', 'NOT SUITABLE') : isOver ? pick('松开装入卡兜', 'DROP TO APPLY') : pick('等待清理卡', 'AWAITING METHOD')}</span>
+                      <small>{pending ? pick('AI 成功后才会锁定本次配对。', 'This match is committed only after the AI response succeeds.') : result && !result.correct ? result.message : target.source}</small>
                     </div>
                   </div>
                 </motion.div>
@@ -616,7 +704,13 @@ function DragMatchLab({ targets, onComplete }) {
         <div><span>{pick('完成度', 'COMPLETION')}</span><strong>{resolvedCount}/{targets.length}</strong></div>
         <div><span>{pick('匹配效率', 'EFFICIENCY')}</span><strong>{efficiency}%</strong></div>
         <p>{allResolved ? pick('目标与清理方式已全部对应。', 'Every target now has a suitable cleanup method.') : pick('完成三个卡兜匹配后进入下一章节。', 'Resolve all three targets to continue.')}</p>
-        <button type="button" disabled={!allResolved} onClick={() => onComplete(efficiency)}>{pick('继续下一章', 'Continue')}</button>
+        <button
+          type="button"
+          disabled={!allResolved || Boolean(pendingTargetId)}
+          onClick={() => onComplete(efficiency, latestStorySnapshot)}
+        >
+          {pick('继续下一章', 'Continue')}
+        </button>
       </div>
     </section>
   )
@@ -625,6 +719,10 @@ function DragMatchLab({ targets, onComplete }) {
 export default function M6({ onComplete }) {
   const { language, pick } = useI18n()
   const { user, satellite, materials, gameResult, debrisGenerated, setStoryChapter } = useAppStore()
+  const resolvedCleanupMatches = useAppStore(
+    (state) => state.publicGameState?.cleanup_test?.matches,
+  )
+  const restoredFinalStory = useAppStore((state) => state.finalStory)
   const rawTargets = useMemo(() => buildTargets({ gameResult, materials, debrisGenerated, satellite }), [debrisGenerated, gameResult, materials, satellite])
   const targets = useMemo(
     () => rawTargets.map((target, index) => localizeTarget(target, language, index)),
@@ -640,13 +738,17 @@ export default function M6({ onComplete }) {
     ? `${cleanupFlowText}  ·  ${cleanupFlowText}  ·  `
     : CLEANUP_FLOW_MARQUEE_TEXT
 
-  function finishModule(efficiency) {
+  function finishModule(efficiency, storySnapshot) {
     const satelliteName = satellite?.name || pick('任务卫星', 'mission satellite')
-    const epilogue = pick(
+    const fallbackEpilogue = pick(
       `${user?.name || '任务指挥员'}为${satelliteName}完成了三类清理决策，决策效率为 ${efficiency}%。真正有效的轨道治理，从来不是寻找一种万能技术，而是让目标、时机与处置方法准确对应。`,
       `${user?.name || 'The mission operator'} completed three cleanup decisions for ${satelliteName} with ${efficiency}% efficiency. Effective orbital governance depends on matching the target, timing, and disposal method rather than relying on one universal technology.`,
     )
-    setStoryChapter('m6', epilogue)
+    const finalStory = storySnapshot?.final_story_if_completed || restoredFinalStory
+    const ending = finalStory?.ending?.story_text || fallbackEpilogue
+    const knowledgeReveal = finalStory?.knowledge_reveal?.story_text || ''
+    setStoryChapter('m6', ending)
+    if (knowledgeReveal) setStoryChapter('knowledgeReveal', knowledgeReveal)
     onComplete()
   }
 
@@ -686,7 +788,12 @@ export default function M6({ onComplete }) {
         </div>
         <MethodObservatory />
       </header>
-      <DragMatchLab targets={targets} onComplete={finishModule} />
+      <DragMatchLab
+        targets={targets}
+        resolvedMatches={resolvedCleanupMatches || []}
+        onComplete={finishModule}
+        onStoryMatch={submitCleanupPairStoryAction}
+      />
       <footer className="m6-sources">
         <span>{pick('资料依据', 'SOURCES')}</span>
         <a href="https://sdup.esoc.esa.int/discosweb/statistics/" target="_blank" rel="noreferrer">ESA Space Environment Statistics</a>

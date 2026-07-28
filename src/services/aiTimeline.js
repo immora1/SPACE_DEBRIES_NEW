@@ -108,6 +108,53 @@ export function createAIOutputEvent(meta, result, options = {}) {
   }
 }
 
+const STORY_TASK_TITLES = {
+  STORY_OUTLINE: { zh: '故事坐标', en: 'Story coordinates' },
+  STORY_OPENING: { zh: '故事开场', en: 'Opening scene' },
+  STORY_CONTINUE: { zh: '故事推进', en: 'Story continuation' },
+  STORY_BRANCH: { zh: '关键分支', en: 'Story branch' },
+  STORY_ENDING: { zh: '故事结局', en: 'Story ending' },
+  KNOWLEDGE_REVEAL: { zh: '知识揭示', en: 'Knowledge reveal' },
+}
+
+const PRODUCT_MODULE_TO_STAGE = {
+  M2_IDENTITY: 'm3',
+  M2_MATERIALS: 'm3',
+  M2_MISSION: 'm3',
+  M4_ORBITAL_EVENTS: 'm4',
+  M5_CLEANUP: 'm6',
+}
+
+export function publicStoryStageToEvent(stage, language = 'zh') {
+  if (!stage) return null
+  const inputAction = stage.input_action || {}
+  const stageId = PRODUCT_MODULE_TO_STAGE[inputAction.module]
+    || (stage.task_type === 'KNOWLEDGE_REVEAL' || stage.task_type === 'STORY_ENDING' ? 'm6' : 'm3')
+  const stageMeta = AI_STORY_STAGES[stageId] || AI_STORY_STAGES.m3
+  const storyText = stage.display_content?.story_text || ''
+  const title = text(STORY_TASK_TITLES[stage.task_type], language) || stage.task_type
+
+  return {
+    id: stage.stage_id,
+    type: stage.task_type.toLowerCase(),
+    stageId,
+    stageCode: stageMeta.code,
+    stageLabel: text(stageMeta.label, language),
+    title,
+    choice: inputAction.label || (language === 'en' ? 'Story session created' : '建立故事会话'),
+    impact: stage.stage_summary || storyText,
+    content: storyText,
+    createdAt: stage.created_at_ms,
+  }
+}
+
+export function publicStoryTimelineToEvents(timeline, language = 'zh') {
+  return (timeline || [])
+    .map((stage) => publicStoryStageToEvent(stage, language))
+    .filter(Boolean)
+    .sort((a, b) => a.createdAt - b.createdAt)
+}
+
 export function getStoryPhase(entries, currentModule = 'm1', language = 'zh') {
   const latest = entries.at(-1)
   const stageId = currentModule || latest?.stageId || 'm1'

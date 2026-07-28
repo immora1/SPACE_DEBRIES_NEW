@@ -855,6 +855,39 @@
   font-weight:400;
 }
 
+.m6-story-message {
+  display:grid;
+  grid-template-columns:auto minmax(0, 1fr);
+  gap:16px;
+  align-items:start;
+  padding:14px 26px;
+  border-bottom:1px solid rgba(167, 177, 214, 0.12);
+  background:rgba(91, 108, 174, 0.08);
+  color:rgba(232, 232, 248, 0.72);
+}
+
+.m6-story-message span {
+  color:rgba(188, 202, 255, 0.72);
+  font-family:Space Mono,monospace;
+  font-size:8px;
+  letter-spacing:0.12em;
+}
+
+.m6-story-message p {
+  margin:0;
+  font-size:11px;
+  line-height:1.7;
+}
+
+.m6-story-message.is-error {
+  border-color:rgba(239, 113, 109, 0.24);
+  background:rgba(150, 42, 38, 0.10);
+}
+
+.m6-story-message.is-error span {
+  color:rgba(255, 153, 148, 0.86);
+}
+
 .m6-pocket-stage {
   display:grid;
   grid-template-columns:minmax(260px, 0.34fr) minmax(0, 1fr);
@@ -1800,6 +1833,17 @@
 
 .m6-card-pocket.is-wrong .m6-pocket-shell {
   border-color:rgba(239, 113, 109, 0.70);
+}
+
+.m6-card-pocket.is-pending .m6-pocket-shell {
+  border-color:rgba(188, 202, 255, 0.72);
+  box-shadow:0 0 0 1px rgba(188, 202, 255, 0.14), 0 30px 66px rgba(0, 0, 0, 0.34);
+  animation:m6-story-pending 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes m6-story-pending {
+  from { opacity:0.72; }
+  to { opacity:1; }
 }
 
 .m6-pocket-feedback {

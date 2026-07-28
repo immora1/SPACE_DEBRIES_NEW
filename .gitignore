@@ -15,6 +15,7 @@ dist
 dist-ssr
 .tmp-build-check/
 .tmp-*/
+.wrangler/
 ._*
 *.local
 package-lock.json

@@ -2,6 +2,234 @@ import useAppStore from '../store/useAppStore'
 import { createAIOutputEvent } from './aiTimeline'
 
 let aiEventSequence = 0
+const STORY_SESSION_STORAGE_KEY = 'space-debris-story-session'
+
+export const STORY_ACTION = Object.freeze({
+  MATERIALS_COMMIT: 'MATERIALS_COMMIT',
+  MISSION_SELECT: 'MISSION_SELECT',
+  ORBITAL_EVENT_RESOLVE: 'ORBITAL_EVENT_RESOLVE',
+  CLEANUP_PAIR_SUBMIT: 'CLEANUP_PAIR_SUBMIT',
+})
+
+const CLEANUP_PAIR_IDS = Object.freeze({
+  laser: {
+    targetId: 'A31_MICRO_DEBRIS',
+    methodId: 'LASER_ABLATION',
+  },
+  arm: {
+    targetId: 'B27_RING_STRUCTURE',
+    methodId: 'ROBOTIC_ARM_CAPTURE',
+  },
+  sail: {
+    targetId: 'C22_END_OF_LIFE_PLATFORM',
+    methodId: 'DRAG_SAIL',
+  },
+})
+
+export class StoryAPIError extends Error {
+  constructor(code, message, status, details) {
+    super(message)
+    this.name = 'StoryAPIError'
+    this.code = code
+    this.status = status
+    this.details = details
+  }
+}
+
+function getStoredStorySession() {
+  if (typeof window === 'undefined') return null
+  try {
+    return JSON.parse(window.sessionStorage.getItem(STORY_SESSION_STORAGE_KEY))
+  } catch {
+    return null
+  }
+}
+
+function storeStorySession(storyId, sessionId) {
+  if (typeof window === 'undefined') return
+  window.sessionStorage.setItem(
+    STORY_SESSION_STORAGE_KEY,
+    JSON.stringify({ storyId, sessionId }),
+  )
+}
+
+export function clearStoredStorySession() {
+  if (typeof window === 'undefined') return
+  window.sessionStorage.removeItem(STORY_SESSION_STORAGE_KEY)
+}
+
+async function storyFetch(path, init) {
+  const response = await fetch(path, {
+    ...init,
+    headers: {
+      'content-type': 'application/json',
+      ...(init?.headers || {}),
+    },
+  })
+  let data
+  try {
+    data = await response.json()
+  } catch {
+    throw new StoryAPIError('INVALID_RESPONSE', '故事服务返回了无法解析的响应。', response.status)
+  }
+  if (!response.ok || !data.ok) {
+    const error = data?.error || {}
+    throw new StoryAPIError(
+      error.code || 'STORY_REQUEST_FAILED',
+      error.message || `故事服务请求失败（${response.status}）`,
+      response.status,
+      error.details,
+    )
+  }
+  return data.story
+}
+
+function startStoryRequest() {
+  useAppStore.getState().startStoryRequest()
+}
+
+function finishStoryRequest(story) {
+  useAppStore.getState().setStorySnapshot(story)
+  return story
+}
+
+function failStoryRequest(error) {
+  useAppStore.getState().setStoryError({
+    code: error.code || 'STORY_REQUEST_FAILED',
+    message: error.message || '故事服务暂时不可用。',
+  })
+  throw error
+}
+
+export async function createStorySession({
+  name,
+  city,
+  importantEvent,
+  satellite,
+  damageLevel = 0,
+  historyEventIds = [],
+}) {
+  const sessionId = globalThis.crypto.randomUUID()
+  clearStoredStorySession()
+  startStoryRequest()
+  try {
+    const story = await storyFetch('/api/stories', {
+      method: 'POST',
+      body: JSON.stringify({
+        session_id: sessionId,
+        nickname: name,
+        city,
+        important_event: importantEvent,
+        satellite,
+        game_context: {
+          damage_level: damageLevel,
+          history_event_ids: historyEventIds,
+        },
+        language: currentLanguage(),
+      }),
+    })
+    storeStorySession(story.story_id, sessionId)
+    return finishStoryRequest(story)
+  } catch (error) {
+    return failStoryRequest(error)
+  }
+}
+
+export async function restoreStorySession() {
+  const state = useAppStore.getState()
+  const credentials = getStoredStorySession()
+  if (!state.storyId) return null
+  if (!credentials || credentials.storyId !== state.storyId) {
+    clearStoredStorySession()
+    state.clearStorySession()
+    return null
+  }
+  startStoryRequest()
+  try {
+    const story = await storyFetch(
+      `/api/stories/${encodeURIComponent(state.storyId)}?session_id=${encodeURIComponent(credentials.sessionId)}`,
+      { method: 'GET' },
+    )
+    return finishStoryRequest(story)
+  } catch (error) {
+    if (error.status === 404) {
+      clearStoredStorySession()
+      state.clearStorySession()
+    } else {
+      state.setStoryError({ code: error.code, message: error.message })
+    }
+    throw error
+  }
+}
+
+async function submitStoryAction(action) {
+  const state = useAppStore.getState()
+  const credentials = getStoredStorySession()
+  if (!state.storyId || !credentials || credentials.storyId !== state.storyId) {
+    throw new StoryAPIError('STORY_SESSION_MISSING', '请先在身份信息阶段建立故事。', 409)
+  }
+  startStoryRequest()
+  try {
+    const story = await storyFetch(
+      `/api/stories/${encodeURIComponent(state.storyId)}/actions`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          session_id: credentials.sessionId,
+          version: state.storyVersion,
+          payload: {},
+          ...action,
+        }),
+      },
+    )
+    return finishStoryRequest(story)
+  } catch (error) {
+    return failStoryRequest(error)
+  }
+}
+
+export function submitMaterialStoryAction(materials) {
+  return submitStoryAction({
+    action_type: STORY_ACTION.MATERIALS_COMMIT,
+    source_id: 'satellite_build',
+    action_id: 'materials_commit',
+    payload: { selections: materials },
+  })
+}
+
+export function submitMissionStoryAction(missionId) {
+  return submitStoryAction({
+    action_type: STORY_ACTION.MISSION_SELECT,
+    source_id: 'mission',
+    action_id: missionId,
+    payload: {},
+  })
+}
+
+export function submitOrbitalEventStoryAction(eventId, optionId) {
+  return submitStoryAction({
+    action_type: STORY_ACTION.ORBITAL_EVENT_RESOLVE,
+    source_id: eventId,
+    action_id: optionId,
+    payload: {},
+  })
+}
+
+export function submitCleanupPairStoryAction({
+  idealMethodId,
+  uiTargetId,
+}) {
+  const pair = CLEANUP_PAIR_IDS[idealMethodId]
+  if (!pair) {
+    return Promise.reject(new StoryAPIError('INVALID_CLEANUP_METHOD', '未知清理方式。', 400))
+  }
+  return submitStoryAction({
+    action_type: STORY_ACTION.CLEANUP_PAIR_SUBMIT,
+    source_id: pair.targetId,
+    action_id: pair.methodId,
+    payload: { ui_target_id: uiTargetId },
+  })
+}
 
 const MATERIAL_LABELS = {
   aluminum: ['铝合金', 'aluminum alloy'],

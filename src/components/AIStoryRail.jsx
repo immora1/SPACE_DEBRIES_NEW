@@ -5,15 +5,22 @@ import useI18n from '../i18n/useI18n'
 import {
   getStoryPhase,
   getTimelineTickScale,
+  publicStoryTimelineToEvents,
 } from '../services/aiTimeline'
 import './AIStoryRail.css'
 
 export default function AIStoryRail() {
   const { language, pick } = useI18n()
   const aiTimeline = useAppStore((state) => state.aiTimeline)
+  const storyTimeline = useAppStore((state) => state.storyTimeline)
+  const storyId = useAppStore((state) => state.storyId)
   const currentModule = useAppStore((state) => state.currentModule)
   const storySessionReady = useAppStore((state) => state.storySessionReady)
-  const entries = aiTimeline
+  const publicStoryEntries = useMemo(
+    () => publicStoryTimelineToEvents(storyTimeline, language),
+    [language, storyTimeline],
+  )
+  const entries = publicStoryEntries.length ? publicStoryEntries : aiTimeline
   const phase = useMemo(
     () => getStoryPhase(entries, currentModule, language),
     [currentModule, entries, language],
@@ -80,7 +87,7 @@ export default function AIStoryRail() {
     }, 120)
   }
 
-  if (!storySessionReady) return null
+  if (!storySessionReady && !storyId) return null
 
   return (
     <div className="ai-story-hud" aria-label={pick('AI 个性化故事记录', 'AI personalized story log')}>

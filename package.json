@@ -10,7 +10,8 @@
     "dev:server": "node --watch server/index.js",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "npx wrangler pages dev dist --port 8788"
+    "preview": "npx wrangler pages dev dist --port 8788",
+    "test:story": "node --test functions/_story/*.test.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",
@@ -31,6 +32,7 @@
     "react-router-dom": "^7.14.2",
     "tailwindcss": "^4.2.4",
     "three": "^0.184.0",
+    "zod": "^4.0.0",
     "zustand": "^5.0.12"
   },
   "devDependencies": {

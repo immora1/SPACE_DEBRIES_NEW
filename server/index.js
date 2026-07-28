@@ -10,6 +10,10 @@ import express from 'express'
 import cors from 'cors'
 import fetch from 'node-fetch'
 import { HttpsProxyAgent } from 'https-proxy-agent'
+import { MemoryStoryRepository } from '../functions/_story/repository.js'
+import { createOpenAIStageGenerator } from '../functions/_story/model.js'
+import { StoryService } from '../functions/_story/story-service.js'
+import { StoryError } from '../functions/_story/constants.js'
 
 const PROXY_URL = process.env.PROXY_URL || 'http://127.0.0.1:22307'
 const agent = new HttpsProxyAgent(PROXY_URL)
@@ -20,6 +24,67 @@ const proxiedFetch = (url, init = {}) => fetch(url, { ...init, agent })
 const app = express()
 app.use(cors())
 app.use(express.json())
+
+const localStoryRepository = new MemoryStoryRepository()
+const localStoryService = new StoryService({
+  repository: localStoryRepository,
+  generateStage: createOpenAIStageGenerator(
+    {
+      OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+      STORY_MODEL: process.env.STORY_MODEL,
+    },
+    { fetch: proxiedFetch },
+  ),
+})
+
+function sendStoryError(res, error) {
+  if (error instanceof StoryError) {
+    res.status(error.status).json({
+      ok: false,
+      error: {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+      },
+    })
+    return
+  }
+  res.status(500).json({
+    ok: false,
+    error: {
+      code: 'INTERNAL_ERROR',
+      message: error?.message || 'Unexpected story service error.',
+    },
+  })
+}
+
+// ── 本地故事 API：与 Pages Functions 共用同一 StoryService ─────────────────
+app.post('/api/stories', async (req, res) => {
+  try {
+    const story = await localStoryService.createStory(req.body)
+    res.status(201).json({ ok: true, story })
+  } catch (error) {
+    sendStoryError(res, error)
+  }
+})
+
+app.get('/api/stories/:storyId', async (req, res) => {
+  try {
+    const story = await localStoryService.getStory(req.params.storyId, req.query.session_id)
+    res.json({ ok: true, story })
+  } catch (error) {
+    sendStoryError(res, error)
+  }
+})
+
+app.post('/api/stories/:storyId/actions', async (req, res) => {
+  try {
+    const story = await localStoryService.advanceStory(req.params.storyId, req.body)
+    res.json({ ok: true, story })
+  } catch (error) {
+    sendStoryError(res, error)
+  }
+})
 
 
 // ── GPT 测试端点（raw HTTP，代理注入）──────────────────────────────────────
@@ -179,7 +244,7 @@ app.get('/api/satellite', (req, res) => {
 
 // ── 健康检查 ────────────────────────────────────────────────────────────────
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, proxy: PROXY_URL })
+  res.json({ ok: true, proxy: PROXY_URL, storyPersistence: 'memory-dev-only' })
 })
 
 const PORT = process.env.PORT || 3001

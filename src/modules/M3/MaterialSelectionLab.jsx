@@ -40,7 +40,7 @@ export default function MaterialSelectionLab({
   const activePart = PARTS[activePartIndex]
   const selectedCount = PARTS.filter((part) => Boolean(materials[part.id])).length
   const selectedOptionId = materials[activePart.id]
-  const interactionLocked = aiState === 'loading'
+  const interactionLocked = aiState === 'loading' || aiState === 'done'
   const controlsLocked = interactionLocked
 
   useEffect(() => {
@@ -233,8 +233,15 @@ export default function MaterialSelectionLab({
                   <span>RE-ENTRY PROFILE · 03</span>
                   <b>{pick('材料分析', 'Material analysis')}</b>
                 </div>
-                <p>{aiState === 'done' ? feedback : pick('材料分析服务暂时不可用，材料组合已记录。', 'Material analysis is temporarily unavailable. Your selection has been saved.')}</p>
-                <button type="button" onClick={onContinue}>{pick('进入任务选择', 'Continue to mission')} <ArrowRight size={16} strokeWidth={1.6} /></button>
+                <p>{aiState === 'done' ? feedback : pick(
+                  '材料分析暂时失败，故事状态尚未推进。你的选择仍保留在当前页面，可直接重试。',
+                  'Material analysis failed and the story did not advance. Your current selections remain available for a retry.',
+                )}</p>
+                <button type="button" onClick={aiState === 'done' ? onContinue : onAnalyze}>
+                  {aiState === 'done' ? pick('进入任务选择', 'Continue to mission') : pick('重试材料分析', 'Retry analysis')}
+                  {' '}
+                  <ArrowRight size={16} strokeWidth={1.6} />
+                </button>
               </motion.article>
             ) : null}
           </AnimatePresence>

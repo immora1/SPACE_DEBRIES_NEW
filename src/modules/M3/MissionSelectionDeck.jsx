@@ -82,7 +82,7 @@ export default function MissionSelectionDeck({
 
   const activeMission = missions[activeIndex]
   const selectedMission = selectedIndex >= 0 ? missions[selectedIndex] : null
-  const interactionLocked = aiState !== 'idle'
+  const interactionLocked = aiState === 'loading' || aiState === 'done'
   const controlsLocked = resolving || interactionLocked
 
   useEffect(() => {
@@ -271,7 +271,7 @@ export default function MissionSelectionDeck({
             </motion.div>
           ) : null}
 
-          {selectedMission && (aiState === 'done' || aiState === 'error') ? (
+          {selectedMission && aiState === 'done' ? (
             <motion.article
               key="mission-story"
               className="m3-mission-story"
@@ -287,8 +287,27 @@ export default function MissionSelectionDeck({
                 <span><small>{pick('轨道', 'Orbit')}</small><b>{pick(selectedMission.orbit, selectedMission.orbitEn)}</b></span>
                 <span><small>{pick('典型案例', 'Examples')}</small><b>{pick(selectedMission.example, selectedMission.exampleEn)}</b></span>
               </div>
-              <p>{aiState === 'done' ? story : pick('叙事生成失败，任务已记录，继续下一章。', 'Narrative generation failed. The mission was recorded; continue to the next chapter.')}</p>
+              <p>{story}</p>
               <footer><Sparkles size={15} strokeWidth={1.4} /> {pick('第二段 · 任务展开', 'PART TWO · MISSION DEPLOYMENT')} <ArrowRight size={16} strokeWidth={1.5} /></footer>
+            </motion.article>
+          ) : null}
+
+          {aiState === 'error' ? (
+            <motion.article
+              key="mission-error"
+              className="m3-mission-story"
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, ease: EASE }}
+            >
+              <div className="m3-mission-story-head">
+                <span>MISSION NARRATIVE · RETRY REQUIRED</span>
+                <b>{pick('任务尚未提交', 'Mission not committed')}</b>
+              </div>
+              <p>{pick(
+                '叙事生成失败，故事状态没有推进。请再次点击“指派此任务”重试。',
+                'Narrative generation failed and the story did not advance. Click “Assign this mission” to retry.',
+              )}</p>
             </motion.article>
           ) : null}
         </AnimatePresence>

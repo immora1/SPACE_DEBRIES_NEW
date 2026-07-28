@@ -2,7 +2,11 @@ import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AnimateChars, ScrollReveal } from '../../animations'
 import useAppStore from '../../store/useAppStore'
-import { generateMissionStory, generateStoryOutline, generateOpeningStory, generateMaterialFeedback } from '../../services/ai'
+import {
+  createStorySession,
+  submitMaterialStoryAction,
+  submitMissionStoryAction,
+} from '../../services/ai'
 import OrbitGlobe from './OrbitGlobe'
 import OrbitClassification from './OrbitClassification'
 import IdentityDossier from './IdentityDossier'
@@ -128,9 +132,13 @@ const MISSIONS = [
 export default function M3({ onComplete }) {
   const { pick } = useI18n()
   const satellite       = useAppStore((s) => s.satellite)
-  const user            = useAppStore((s) => s.user)
-  const storyOutline    = useAppStore((s) => s.storyOutline)
   const materials       = useAppStore((s) => s.materials)
+  const damageLevel     = useAppStore((s) => s.damageLevel)
+  const clickedHistoryEvents = useAppStore((s) => s.clickedHistoryEvents)
+  const storyId         = useAppStore((s) => s.storyId)
+  const storyCheckpoint = useAppStore((s) => s.storyCheckpoint)
+  const storyTimeline   = useAppStore((s) => s.storyTimeline)
+  const publicGameState = useAppStore((s) => s.publicGameState)
   const setUser         = useAppStore((s) => s.setUser)
   const setSatellite    = useAppStore((s) => s.setSatellite)
   const setStoryOutline = useAppStore((s) => s.setStoryOutline)
@@ -141,26 +149,75 @@ export default function M3({ onComplete }) {
   const setScrollLocked  = useAppStore((s) => s.setScrollLocked)
   const setMaterialPart  = useAppStore((s) => s.setMaterialPart)
 
-  const [mission,        setMissionLocal]  = useState(null)
-  const [aiState,        setAiState]       = useState('idle')
-  const [story,          setStory]         = useState('')
+  const restoredMissionId = publicGameState?.mission?.action_id || null
+  const restoredMaterialsCommitted = Object.keys(publicGameState?.satellite_build?.materials || {}).length === 4
+  const restoredMaterialStage = [...(storyTimeline || [])].reverse().find(
+    (stage) => stage.input_action?.module === 'M2_MATERIALS',
+  )
+  const restoredOpeningStage = [...(storyTimeline || [])].reverse().find(
+    (stage) => stage.task_type === 'STORY_OPENING',
+  )
+  const restoredOutlineStage = (storyTimeline || []).find(
+    (stage) => stage.task_type === 'STORY_OUTLINE',
+  )
+
+  const [mission,        setMissionLocal]  = useState(restoredMissionId)
+  const [aiState,        setAiState]       = useState(restoredMissionId ? 'done' : 'idle')
+  const [story,          setStory]         = useState(restoredOpeningStage?.display_content?.story_text || '')
   const [currentStep,    setCurrentStep]   = useState(0)
   const [activeOrbit, setActiveOrbit] = useState('leo')
   const [pinnedOrbit, setPinnedOrbit] = useState('leo')
-  const [matAiState,     setMatAiState]    = useState('idle')
-  const [matFeedback,    setMatFeedback]   = useState('')
+  const [matAiState,     setMatAiState]    = useState(restoredMaterialsCommitted ? 'done' : 'idle')
+  const [matFeedback,    setMatFeedback]   = useState(restoredMaterialStage?.display_content?.story_text || '')
 
-  const [formStep,       setFormStep]      = useState('form')
+  const [formStep,       setFormStep]      = useState(storyId && satellite ? 'result' : 'form')
   const [form,           setForm]          = useState({ name: '', city: '', importantEvent: '' })
-  const [openingStory,   setOpeningStory]  = useState('')
+  const [openingStory,   setOpeningStory]  = useState(restoredOutlineStage?.display_content?.story_text || '')
   const [formError,      setFormError]     = useState(null)
 
   const onCompleteRef = useRef(onComplete)
+  const storyRestoreAppliedRef = useRef(false)
   useEffect(() => { onCompleteRef.current = onComplete }, [onComplete])
 
   useEffect(() => {
-    if (mission) onCompleteRef.current?.({ autoScroll: false })
-  }, [mission])
+    if (mission && aiState === 'done') onCompleteRef.current?.({ autoScroll: false })
+  }, [aiState, mission])
+
+  useEffect(() => {
+    if (
+      !storyRestoreAppliedRef.current
+      && storyId
+      && satellite
+      && formStep !== 'generating'
+    ) {
+      storyRestoreAppliedRef.current = true
+      setFormStep('result')
+      if (restoredOutlineStage?.display_content?.story_text) {
+        setOpeningStory(restoredOutlineStage.display_content.story_text)
+      }
+    }
+
+    if (restoredMaterialsCommitted && storyCheckpoint !== 'materials') {
+      setMatAiState('done')
+      setMatFeedback(restoredMaterialStage?.display_content?.story_text || '')
+    }
+
+    if (restoredMissionId) {
+      setMissionLocal(restoredMissionId)
+      setAiState('done')
+      setStory(restoredOpeningStage?.display_content?.story_text || '')
+    }
+  }, [
+    formStep,
+    restoredMaterialStage,
+    restoredMaterialsCommitted,
+    restoredMissionId,
+    restoredOpeningStage,
+    restoredOutlineStage,
+    satellite,
+    storyCheckpoint,
+    storyId,
+  ])
 
   useEffect(() => {
     setActiveOrbit(currentStep === 0 ? pinnedOrbit : null)
@@ -260,29 +317,30 @@ export default function M3({ onComplete }) {
       setUser(form)
       setSatellite(sat)
       beginStorySession()
+      setMission(null)
+      setMissionLocal(null)
+      setAiState('idle')
+      setStory('')
+      setMatAiState('idle')
+      setMatFeedback('')
       setFormStep('generating')
-      let outline = null
-      try {
-        outline = await generateStoryOutline({ name: form.name, city: form.city, importantEvent: form.importantEvent, satellite: sat })
-        setStoryOutline(outline)
-      } catch (e) {
-        console.warn('outline failed:', e)
-      }
-      let openStory = ''
-      try {
-        const result = await generateOpeningStory({ name: form.name, city: form.city, importantEvent: form.importantEvent, satellite: sat, storyOutline: outline })
-        openStory = result.story ?? ''
-      } catch {
-        openStory = pick(
-          `${sat.name} 于 ${sat.launchYear} 年进入轨道，高度 ${sat.altitudeKm} 公里。在那个平行宇宙里，它刚刚完成初始化，任务系统就绪，状态正常。而你最重要的那件事，正处于前夜。一切尚好。`,
-          `${sat.name} entered orbit in ${sat.launchYear} at an altitude of ${sat.altitudeKm} km. In that parallel world, initialization has just finished and every system is nominal. The event that matters most to you is still approaching. For now, everything is intact.`,
-        )
-      }
+      const storySnapshot = await createStorySession({
+        name: form.name,
+        city: form.city,
+        importantEvent: form.importantEvent,
+        satellite: sat,
+        damageLevel,
+        historyEventIds: (clickedHistoryEvents || []).map((event) => (
+          event?.id || event?.eventId || event?.name || event?.title || String(event)
+        )),
+      })
+      setStoryOutline(null)
+      const openStory = storySnapshot.current_stage?.display_content?.story_text || ''
       setOpeningStory(openStory)
       setStoryChapter('opening', openStory)
       setFormStep('result')
-    } catch {
-      setFormError(pick('匹配失败，请重试', 'Matching failed. Please try again.'))
+    } catch (error) {
+      setFormError(error?.message || pick('匹配失败，请重试', 'Matching failed. Please try again.'))
       setFormStep('form')
     }
   }
@@ -373,13 +431,14 @@ export default function M3({ onComplete }) {
     if (!matAllDone || matAiState !== 'idle') return
     setMatAiState('loading')
     try {
-      const result = await generateMaterialFeedback({ materials, satellite, user, storyOutline })
-      setMatFeedback(result.feedback ?? '')
+      const storySnapshot = await submitMaterialStoryAction(materials)
+      setMatFeedback(storySnapshot.current_stage?.display_content?.story_text || '')
       setMatAiState('done')
     } catch { setMatAiState('error') }
   }
 
   function handleMaterialSelect(partId, optionId) {
+    if (matAiState === 'done') return
     setMaterialPart(partId, optionId)
     if (matAiState !== 'idle') {
       setMatAiState('idle')
@@ -388,16 +447,13 @@ export default function M3({ onComplete }) {
   }
 
   async function handleMissionSelect(missionId) {
-    if (aiState !== 'idle') return
-    setMissionLocal(missionId)
-    setMission(missionId)
+    if (aiState === 'loading' || aiState === 'done') return
     setAiState('loading')
     try {
-      const result = await generateMissionStory({
-        mission: MISSIONS.find((m) => m.id === missionId)?.label ?? missionId,
-        satellite, user, material: materials?.frame ?? '铝合金', storyOutline,
-      })
-      const text = result.story ?? ''
+      const storySnapshot = await submitMissionStoryAction(missionId)
+      const text = storySnapshot.current_stage?.display_content?.story_text || ''
+      setMissionLocal(missionId)
+      setMission(missionId)
       setStory(text)
       setStoryChapter('m3', text)
       setAiState('done')

@@ -7,10 +7,7 @@ import gsap from 'gsap'
 import * as THREE from 'three'
 import useAppStore from '../../store/useAppStore'
 import useI18n from '../../i18n/useI18n'
-import {
-  generateGameDecisionFeedback,
-  generateGameReflection,
-} from '../../services/ai'
+import { submitOrbitalEventStoryAction } from '../../services/ai'
 import { calcInitialArmor, evaluateResult, localizeThreatEvent, pickEvents } from './gameData'
 import { commitOrbitDragProgress, shouldStartOrbitMission } from './orbitControl'
 import ReflectionPage from './ReflectionPage'
@@ -2025,6 +2022,7 @@ function GamePanel({
   event,
   round,
   loading,
+  error,
   feedback,
   onChoose,
   onContinue,
@@ -2079,6 +2077,11 @@ function GamePanel({
             <h2>{event.title}</h2>
             <p>{event.description}</p>
             <div className="m4-game-reference">{event.realRef}</div>
+            {error ? (
+              <div className="m4-game-reference" role="alert" style={{ color: '#b13b32' }}>
+                {error}
+              </div>
+            ) : null}
             <div className="m4-game-label">{pick('选择应对方案', 'SELECT RESPONSE')}</div>
             <div className="m4-game-options">
               {event.options.map((option, index) => (
@@ -4124,21 +4127,23 @@ export default function M4New({ onComplete = () => {} }) {
   const { language, pick } = useI18n()
   const {
     satellite,
-    user,
     materials,
     damageLevel,
     clickedHistoryEvents,
-    storyOutline,
     storyChapters,
     setGameResult,
     setDebrisGenerated,
     setScrollLocked,
     setStoryChapter,
   } = useAppStore()
+  const storyId = useAppStore((state) => state.storyId)
+  const publicGameState = useAppStore((state) => state.publicGameState)
+  const storyTimeline = useAppStore((state) => state.storyTimeline)
   const proxy = useRef({ scale: MIN_EARTH_SCALE, orbitOpacity: 1, x: 0 })
   const satelliteFocusRef = useRef(new THREE.Vector3())
   const started = useRef(false)
   const completionUnlocked = useRef(false)
+  const storyRestoreApplied = useRef(false)
   const progressRef = useRef(0)
   const moduleRef = useRef(null)
   const [isModuleInView, setIsModuleInView] = useState(false)
@@ -4156,6 +4161,7 @@ export default function M4New({ onComplete = () => {} }) {
   const [phase, setPhase] = useState(GAME_PHASE.EVENT)
   const [round, setRound] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [decisionError, setDecisionError] = useState('')
   const [feedback, setFeedback] = useState(null)
   const [decisions, setDecisions] = useState([])
   const [reflection, setReflection] = useState(null)
@@ -4246,27 +4252,15 @@ export default function M4New({ onComplete = () => {} }) {
     const material = materials?.frame || '铝合金'
     const finalStory = finalStories[finalStories.length - 1]
 
-    setLoading(true)
-    let generatedReflection
-    try {
-      generatedReflection = await generateGameReflection({
-        gameResult: isSuccess ? 'success' : 'failure',
-        decisions: allDecisions,
-        satellite: satellite || { name: 'UNKNOWN' },
-        user: user || { name: '用户', importantEvent: '某件重要的事' },
-        material,
-        storyOutline,
-      })
-    } catch {
-      generatedReflection = {
-        knowledgePoints: language === 'en'
-          ? ['Every avoidance maneuver consumes limited fuel.', 'Small debris can still cause irreversible damage.', 'An uncontrolled satellite adds further risk to low Earth orbit.']
-          : ['每一次轨道规避都会消耗有限燃料。', '小尺寸碎片仍可能造成不可逆损伤。', '失控卫星会继续增加近地轨道风险。'],
-        satFate: isSuccess
-          ? pick('卫星完成任务并保留了离轨能力。', 'The satellite completes its mission and retains deorbit capability.')
-          : pick('卫星失去控制，成为新的轨道碎片来源。', 'The satellite loses control and becomes a new source of orbital debris.'),
-        debrisDescription: pick(`${material}碎片，来源于受损卫星，残留于近地轨道。`, `${material} fragments from the damaged satellite remain in low Earth orbit.`),
-      }
+    const generatedReflection = {
+      knowledgePoints: language === 'en'
+        ? ['Every avoidance maneuver consumes limited fuel.', 'Small debris can still cause irreversible damage.', 'End-of-life disposal capability must be reserved before the final maneuver.']
+        : ['每一次轨道规避都会消耗有限燃料。', '小尺寸碎片仍可能造成不可逆损伤。', '任务末期处置能力必须在最后一次机动前预留。'],
+      satFate: isSuccess
+        ? pick('卫星完成任务并保留了离轨能力。', 'The satellite completes its mission and retains deorbit capability.')
+        : pick('卫星失去控制，成为新的轨道碎片来源。', 'The satellite loses control and becomes a new source of orbital debris.'),
+      debrisDescription: pick(`${material}碎片，来源于受损卫星，残留于近地轨道。`, `${material} fragments from the damaged satellite remain in low Earth orbit.`),
+      storyEnding: finalStory,
     }
 
     const normalizedReflection = {
@@ -4289,18 +4283,91 @@ export default function M4New({ onComplete = () => {} }) {
     setStoryChapter('m4', normalizedReflection.storyEnding)
     setLocalResult(result)
     setReflection(normalizedReflection)
-    setLoading(false)
     setPhase(GAME_PHASE.REFLECTION)
   }, [
     materials,
-    satellite,
     setDebrisGenerated,
     setGameResult,
     setStoryChapter,
-    storyOutline,
-    user,
     language,
     pick,
+  ])
+
+  useEffect(() => {
+    if (storyRestoreApplied.current || !storyId || !publicGameState) return
+    storyRestoreApplied.current = true
+
+    const resolvedEvents = publicGameState.orbital_events?.resolved || []
+    const metrics = publicGameState.technical_metrics
+    if (metrics) {
+      setGameStatus({
+        armor: metrics.armor,
+        fuel: metrics.fuel,
+        missionProgress: metrics.mission_progress,
+      })
+    }
+    if (!resolvedEvents.length) return
+
+    const restoredDecisions = resolvedEvents.map((resolved, index) => {
+      const event = localizeThreatEvent(
+        events.find((item) => item.id === resolved.event_id),
+        language,
+      )
+      const option = event?.options.find((item) => item.id === resolved.action_id)
+      return {
+        round: index,
+        eventId: resolved.event_id,
+        eventTitle: event?.title || resolved.event_id,
+        optionId: resolved.action_id,
+        optionLabel: option?.label || resolved.action_id,
+        outcome: resolved.outcome,
+        armorDelta: option?.armorDelta || 0,
+        fuelDelta: option?.fuelDelta || 0,
+        missionDelta: option?.missionDelta || 0,
+      }
+    })
+    const restoredStoryBeats = storyTimeline
+      .filter((stage) => stage.input_action?.module === 'M4_ORBITAL_EVENTS')
+      .map((stage) => stage.display_content?.story_text)
+      .filter(Boolean)
+    const restoredStories = [initialStory, ...restoredStoryBeats].filter(Boolean)
+    const restoredStatus = metrics
+      ? {
+          armor: metrics.armor,
+          fuel: metrics.fuel,
+          missionProgress: metrics.mission_progress,
+        }
+      : gameStatus
+
+    setDecisions(restoredDecisions)
+    setStoryThread(restoredStories)
+    progressRef.current = 1
+    proxy.current.scale = EXPANDED_EARTH_SCALE
+    proxy.current.orbitOpacity = 0
+    setOrbitProgress(1)
+    setOrbitOpacity(0)
+    setOrbitLocked(true)
+    setOrbitVisible(false)
+    setGameStarted(true)
+    started.current = true
+
+    if (resolvedEvents.length >= TOTAL_ROUNDS) {
+      void handleGameEnd(restoredDecisions, restoredStatus, restoredStories)
+      return
+    }
+
+    setRound(resolvedEvents.length)
+    setFeedback(null)
+    setPhase(GAME_PHASE.EVENT)
+  }, [
+    events,
+    gameStatus,
+    handleGameEnd,
+    initialStory,
+    language,
+    publicGameState,
+    storyId,
+    storyTimeline,
   ])
 
   const handleChoose = useCallback(async (option) => {
@@ -4324,29 +4391,27 @@ export default function M4New({ onComplete = () => {} }) {
     }
 
     setLoading(true)
-    let aiResult
+    setDecisionError('')
+    let storySnapshot
     try {
-      aiResult = await generateGameDecisionFeedback({
-        decision: option.label,
-        threat: currentEvent.title,
-        outcome: option.outcome,
-        satellite: satellite || { name: 'UNKNOWN' },
-        user: user || { name: '用户', importantEvent: '某件重要的事' },
-        storyOutline,
-        decisionIndex: round,
-        totalDecisions: TOTAL_ROUNDS,
-      })
-    } catch {
-      aiResult = {
-        feedback: option.techNote,
-        storyUpdate: option.outcome === 'correct'
-          ? pick(`${satellite?.name || '卫星'}完成机动，轨道数据重新稳定。平行时空中的关键节点暂时没有偏离。`, `${satellite?.name || 'The satellite'} completes the maneuver and its orbit stabilizes. The key point in the parallel timeline remains intact.`)
-          : pick(`${satellite?.name || '卫星'}的遥测信号出现新的波动。平行时空中的一个细节随之改变。`, `${satellite?.name || 'The satellite'} reports a new telemetry fluctuation. A detail in the parallel timeline changes with it.`),
-      }
+      storySnapshot = await submitOrbitalEventStoryAction(currentEvent.id, option.id)
+    } catch (error) {
+      setDecisionError(error?.message || pick('任务日志生成失败，请重试。', 'Mission log generation failed. Please retry.'))
+      setLoading(false)
+      return
     }
 
-    const nextStories = aiResult.storyUpdate
-      ? [...storyThread, aiResult.storyUpdate]
+    const storyUpdate = storySnapshot.current_stage?.display_content?.story_text || ''
+    const metrics = storySnapshot.public_game_state?.technical_metrics
+    const resolvedStatus = metrics
+      ? {
+          armor: metrics.armor,
+          fuel: metrics.fuel,
+          missionProgress: metrics.mission_progress,
+        }
+      : nextStatus
+    const nextStories = storyUpdate
+      ? [...storyThread, storyUpdate]
       : storyThread
     const nextDecisions = [...decisions, decision]
     const feedbackColor = option.outcome === 'correct'
@@ -4355,7 +4420,7 @@ export default function M4New({ onComplete = () => {} }) {
         ? '#b66b16'
         : '#b13b32'
 
-    setGameStatus(nextStatus)
+    setGameStatus(resolvedStatus)
     setDecisions(nextDecisions)
     setStoryThread(nextStories)
     setFeedback({
@@ -4365,11 +4430,11 @@ export default function M4New({ onComplete = () => {} }) {
         : option.outcome === 'partial'
           ? pick('风险仍未完全解除', 'Risk remains')
           : pick('轨道状态继续恶化', 'Orbit continues to degrade'),
-      aiLog: aiResult.feedback || option.techNote,
+      aiLog: storyUpdate || storySnapshot.current_stage?.stage_summary || option.techNote,
       color: feedbackColor,
       nextDecisions,
       nextStories,
-      nextStatus,
+      nextStatus: resolvedStatus,
     })
     setLoading(false)
     setPhase(GAME_PHASE.FEEDBACK)
@@ -4379,10 +4444,7 @@ export default function M4New({ onComplete = () => {} }) {
     gameStatus,
     loading,
     round,
-    satellite,
-    storyOutline,
     storyThread,
-    user,
     pick,
   ])
 
@@ -4390,8 +4452,6 @@ export default function M4New({ onComplete = () => {} }) {
     if (!feedback) return
 
     const isFinished = round + 1 >= TOTAL_ROUNDS
-      || feedback.nextStatus.armor <= 0
-      || feedback.nextStatus.fuel <= 0
 
     if (isFinished) {
       await handleGameEnd(feedback.nextDecisions, feedback.nextStatus, feedback.nextStories)
@@ -4423,6 +4483,10 @@ export default function M4New({ onComplete = () => {} }) {
   }, [])
 
   const handleJumpToRecovery = useCallback(() => {
+    if (storyId && (publicGameState?.orbital_events?.resolved?.length || 0) < TOTAL_ROUNDS) {
+      setDecisionError(pick('请先完成六个轨道事件，故事状态才能进入清理阶段。', 'Resolve all six orbital events before entering cleanup.'))
+      return
+    }
     const material = materials?.frame || '卫星结构材料'
 
     if (!reflection) {
@@ -4459,6 +4523,8 @@ export default function M4New({ onComplete = () => {} }) {
     unlockNextStageWithoutScroll,
     language,
     pick,
+    publicGameState?.orbital_events?.resolved?.length,
+    storyId,
   ])
 
   const handleModuleWheel = useCallback((event) => {
@@ -4603,6 +4669,7 @@ export default function M4New({ onComplete = () => {} }) {
                 event={currentEvent}
                 round={round}
                 loading={loading}
+                error={decisionError}
                 feedback={feedback}
                 onChoose={handleChoose}
                 onContinue={handleContinue}

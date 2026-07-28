@@ -1,3 +1,10 @@
 name = "space-debries"
 pages_build_output_dir = "dist"
 compatibility_date = "2024-09-23"
+
+[[d1_databases]]
+binding = "STORY_DB"
+database_name = "space-debris-stories"
+database_id = "00000000-0000-0000-0000-000000000000"
+preview_database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"

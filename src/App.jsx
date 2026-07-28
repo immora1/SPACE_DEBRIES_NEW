@@ -4,6 +4,7 @@ import ModuleWrapper from './components/ModuleWrapper'
 import StageNav from './components/StageNav'
 import AIStoryRail from './components/AIStoryRail'
 import useI18n from './i18n/useI18n'
+import { restoreStorySession } from './services/ai'
 
 const M1 = lazy(() => import('./modules/M1'))
 const M2 = lazy(() => import('./modules/M2'))
@@ -157,12 +158,20 @@ export default function App() {
   const setScrollLocked = useAppStore((s) => s.setScrollLocked)
   const unlockModule = useAppStore((s) => s.unlockModule)
   const markModuleComplete = useAppStore((s) => s.markModuleComplete)
+  const storyId = useAppStore((s) => s.storyId)
 
   const unlockedSet = useMemo(() => new Set(unlockedModules), [unlockedModules])
   const completedSet = useMemo(() => new Set(completedModules), [completedModules])
   const allModuleIds = useMemo(() => MODULES.map((module) => module.id), [])
 
   useEffect(() => { window.scrollTo(0, 0) }, [])
+
+  useEffect(() => {
+    if (!storyId) return
+    restoreStorySession().catch((error) => {
+      console.warn('[story] restore failed:', error.code || error.message)
+    })
+  }, [storyId])
 
   useEffect(() => {
     document.body.style.overflow = scrollLocked ? 'hidden' : ''
