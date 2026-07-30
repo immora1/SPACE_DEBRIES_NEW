@@ -7,6 +7,7 @@ import {
   getTimelineTickScale,
   publicStoryTimelineToEvents,
 } from '../services/aiTimeline'
+import { submitCurrentStoryOption } from '../services/ai'
 import './AIStoryRail.css'
 
 export default function AIStoryRail() {
@@ -16,6 +17,9 @@ export default function AIStoryRail() {
   const storyId = useAppStore((state) => state.storyId)
   const currentModule = useAppStore((state) => state.currentModule)
   const storySessionReady = useAppStore((state) => state.storySessionReady)
+  const currentStoryNode = useAppStore((state) => state.currentStoryNode)
+  const currentStoryOptions = useAppStore((state) => state.currentStoryOptions)
+  const storyLoading = useAppStore((state) => state.storyLoading)
   const publicStoryEntries = useMemo(
     () => publicStoryTimelineToEvents(storyTimeline, language),
     [language, storyTimeline],
@@ -39,6 +43,9 @@ export default function AIStoryRail() {
   const viewportRef = useRef(null)
   const closeTimerRef = useRef(0)
   const [hoverState, setHoverState] = useState(null)
+  const [choiceError, setChoiceError] = useState('')
+  const [pendingOptionId, setPendingOptionId] = useState(null)
+  const retryActionRef = useRef(null)
   const hoveredIndex = hoverState?.index ?? null
   const hoveredEntry = hoveredIndex === null ? null : entries[hoveredIndex]
 
@@ -87,6 +94,27 @@ export default function AIStoryRail() {
     }, 120)
   }
 
+  async function chooseStoryOption(optionId) {
+    if (storyLoading) return
+    const retry = retryActionRef.current?.optionId === optionId
+      ? retryActionRef.current
+      : {
+          optionId,
+          clientActionId: globalThis.crypto.randomUUID(),
+        }
+    retryActionRef.current = retry
+    setPendingOptionId(optionId)
+    setChoiceError('')
+    try {
+      await submitCurrentStoryOption(optionId, retry.clientActionId)
+      retryActionRef.current = null
+    } catch (error) {
+      setChoiceError(error?.message || pick('故事推进失败，请重试。', 'Story generation failed. Please retry.'))
+    } finally {
+      setPendingOptionId(null)
+    }
+  }
+
   if (!storySessionReady && !storyId) return null
 
   return (
@@ -105,6 +133,30 @@ export default function AIStoryRail() {
           <MousePointer2 size={13} strokeWidth={1.7} />
           <span>{phase.action}</span>
         </div>
+        {currentStoryOptions.length ? (
+          <section className="ai-story-phase__choices" aria-label={pick('当前故事选项', 'Current story options')}>
+            <header>
+              <span>{currentStoryNode} / {currentStoryOptions.length} OPTIONS</span>
+              {storyLoading ? <small>{pick('生成中', 'GENERATING')}</small> : null}
+            </header>
+            <div>
+              {currentStoryOptions.map((option, index) => (
+                <button
+                  key={option.option_id}
+                  type="button"
+                  disabled={storyLoading}
+                  title={option.effect_summary}
+                  onClick={() => void chooseStoryOption(option.option_id)}
+                >
+                  <b>{String(index + 1).padStart(2, '0')}</b>
+                  <span>{option.label}</span>
+                  {pendingOptionId === option.option_id ? <i aria-hidden="true" /> : null}
+                </button>
+              ))}
+            </div>
+            {choiceError ? <p role="alert">{choiceError}</p> : null}
+          </section>
+        ) : null}
       </aside>
 
       {hoveredEntry ? (

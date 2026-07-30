@@ -6,6 +6,7 @@ import {
   formatAIOutput,
   getStoryPhase,
   getTimelineTickScale,
+  publicStoryStageToEvent,
 } from './aiTimeline.js'
 
 test('formats every field in a structured AI response', () => {
@@ -60,4 +61,30 @@ test('tick scale falls away from the hovered event without changing layout', () 
   assert.equal(getTimelineTickScale(1, 3, 6), 0.58)
   assert.equal(getTimelineTickScale(0, 3, 6), 0.43)
   assert.equal(getTimelineTickScale(5, null, 6), 0.28)
+})
+
+test('Knowledge Reveal 分块字段无需旧 knowledge_text 也能完整展示', () => {
+  const event = publicStoryStageToEvent({
+    stage_id: 'knowledge-stage',
+    task_type: 'KNOWLEDGE_REVEAL',
+    input_action: {},
+    stage_summary: '知识揭示完成。',
+    created_at_ms: 30,
+    display_content: {
+      knowledge_title: '延迟更新如何影响现场判断',
+      story_connection: '故事中的天气提示晚于天井里的雨点。',
+      causal_chain: [
+        { point_title: '轨道风险', point_text: '相关航天器可能调整工作状态。' },
+        { point_title: '更新偏差', point_text: '局部数据更新可能短暂滞后。' },
+        { point_title: '生活影响', point_text: '现场准备窗口因此变得不可靠。' },
+      ],
+      reality_note: '现实影响通常局部且短暂。',
+      story_completed: true,
+    },
+  })
+
+  assert.match(event.content, /延迟更新如何影响现场判断/)
+  assert.match(event.content, /轨道风险：相关航天器可能调整工作状态/)
+  assert.match(event.content, /现实影响通常局部且短暂/)
+  assert.equal(event.content.includes('knowledge_text'), false)
 })

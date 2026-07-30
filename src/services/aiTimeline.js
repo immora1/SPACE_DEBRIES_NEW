@@ -125,13 +125,29 @@ const PRODUCT_MODULE_TO_STAGE = {
   M5_CLEANUP: 'm6',
 }
 
+function knowledgeRevealText(displayContent) {
+  if (!displayContent?.knowledge_title) return ''
+  const chain = (displayContent.causal_chain || [])
+    .map((point) => [point.point_title, point.point_text].filter(Boolean).join('：'))
+    .filter(Boolean)
+    .join('\n')
+  return [
+    displayContent.knowledge_title,
+    displayContent.story_connection,
+    chain,
+    displayContent.reality_note,
+  ].filter(Boolean).join('\n\n')
+}
+
 export function publicStoryStageToEvent(stage, language = 'zh') {
   if (!stage) return null
   const inputAction = stage.input_action || {}
   const stageId = PRODUCT_MODULE_TO_STAGE[inputAction.module]
     || (stage.task_type === 'KNOWLEDGE_REVEAL' || stage.task_type === 'STORY_ENDING' ? 'm6' : 'm3')
   const stageMeta = AI_STORY_STAGES[stageId] || AI_STORY_STAGES.m3
-  const storyText = stage.display_content?.story_text || ''
+  const storyText = stage.task_type === 'KNOWLEDGE_REVEAL'
+    ? knowledgeRevealText(stage.display_content) || stage.display_content?.story_text || ''
+    : stage.display_content?.story_text || ''
   const title = text(STORY_TASK_TITLES[stage.task_type], language) || stage.task_type
 
   return {

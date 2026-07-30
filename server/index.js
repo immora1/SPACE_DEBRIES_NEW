@@ -13,9 +13,17 @@ import { HttpsProxyAgent } from 'https-proxy-agent'
 import { MemoryStoryRepository } from '../functions/_story/repository.js'
 import { createOpenAIStageGenerator } from '../functions/_story/model.js'
 import { StoryService } from '../functions/_story/story-service.js'
-import { StoryError } from '../functions/_story/constants.js'
+import {
+  STORY_MODEL,
+  STORY_REASONING_EFFORT,
+  STORY_VERBOSITY,
+  StoryError,
+} from '../functions/_story/constants.js'
 
 const PROXY_URL = process.env.PROXY_URL || 'http://127.0.0.1:22307'
+const OPENAI_MODEL = process.env.STORY_MODEL || STORY_MODEL
+const OPENAI_REASONING_EFFORT = process.env.STORY_REASONING_EFFORT || STORY_REASONING_EFFORT
+const OPENAI_VERBOSITY = process.env.STORY_VERBOSITY || STORY_VERBOSITY
 const agent = new HttpsProxyAgent(PROXY_URL)
 
 // 所有外部请求共用此 fetch，强制走代理
@@ -32,6 +40,10 @@ const localStoryService = new StoryService({
     {
       OPENAI_API_KEY: process.env.OPENAI_API_KEY,
       STORY_MODEL: process.env.STORY_MODEL,
+      STORY_REASONING_EFFORT: process.env.STORY_REASONING_EFFORT,
+      STORY_VERBOSITY: process.env.STORY_VERBOSITY,
+      OPENAI_STORY_TIMEOUT_MS: process.env.OPENAI_STORY_TIMEOUT_MS,
+      OPENAI_STORY_NETWORK_RETRIES: process.env.OPENAI_STORY_NETWORK_RETRIES,
     },
     { fetch: proxiedFetch },
   ),
@@ -53,7 +65,7 @@ function sendStoryError(res, error) {
     ok: false,
     error: {
       code: 'INTERNAL_ERROR',
-      message: error?.message || 'Unexpected story service error.',
+      message: 'Unexpected story service error.',
     },
   })
 }
@@ -102,8 +114,10 @@ app.post('/api/test-gpt', async (req, res) => {
         'authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        max_tokens: 256,
+        model: OPENAI_MODEL,
+        reasoning_effort: OPENAI_REASONING_EFFORT,
+        verbosity: OPENAI_VERBOSITY,
+        max_completion_tokens: 256,
         messages: [
           { role: 'user', content: '用一句话描述太空碎片问题，语气冷静克制，不超过50字。' },
         ],
@@ -132,7 +146,7 @@ app.post('/api/gpt', async (req, res) => {
     const apiKey = process.env.OPENAI_API_KEY
     if (!apiKey || apiKey === 'your_key_here') throw new Error('OPENAI_API_KEY not set')
 
-    const { systemPrompt, userPrompt, temperature = 0.7, maxTokens = 512 } = req.body
+    const { systemPrompt, userPrompt, maxTokens = 512 } = req.body
 
     const response = await proxiedFetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -141,9 +155,10 @@ app.post('/api/gpt', async (req, res) => {
         'authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        max_tokens: maxTokens,
-        temperature,
+        model: OPENAI_MODEL,
+        reasoning_effort: OPENAI_REASONING_EFFORT,
+        verbosity: OPENAI_VERBOSITY,
+        max_completion_tokens: maxTokens,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },

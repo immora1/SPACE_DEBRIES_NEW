@@ -1,0 +1,550 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "story-backend-contracts-v2",
+  "title": "Story backend numeric-state contracts",
+  "$defs": {
+    "stateMetrics": {
+      "type": "object",
+      "properties": {
+        "event_integrity": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "relationship_connection": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "uncertainty": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        }
+      },
+      "required": [
+        "event_integrity",
+        "relationship_connection",
+        "uncertainty"
+      ],
+      "additionalProperties": false
+    },
+    "stateDelta": {
+      "type": "object",
+      "properties": {
+        "event_integrity": {
+          "type": "integer",
+          "minimum": -100,
+          "maximum": 100
+        },
+        "relationship_connection": {
+          "type": "integer",
+          "minimum": -100,
+          "maximum": 100
+        },
+        "uncertainty": {
+          "type": "integer",
+          "minimum": -100,
+          "maximum": 100
+        }
+      },
+      "required": [
+        "event_integrity",
+        "relationship_connection",
+        "uncertainty"
+      ],
+      "additionalProperties": false
+    },
+    "consequence": {
+      "type": "object",
+      "properties": {
+        "consequence_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "consequence_id",
+        "description"
+      ],
+      "additionalProperties": false
+    },
+    "optionConfig": {
+      "type": "object",
+      "properties": {
+        "option_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "effect_summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "state_delta": {
+          "$ref": "#/$defs/stateDelta"
+        },
+        "add_consequence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "resolve_consequence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "key_outcome": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "option_id",
+        "label",
+        "effect_summary",
+        "state_delta",
+        "add_consequence_ids",
+        "resolve_consequence_ids",
+        "key_outcome"
+      ],
+      "additionalProperties": false
+    },
+    "nodeOptionSet": {
+      "type": "object",
+      "properties": {
+        "node_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "options": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/optionConfig"
+          }
+        }
+      },
+      "required": [
+        "node_id",
+        "options"
+      ],
+      "additionalProperties": false
+    },
+    "handoff": {
+      "type": "object",
+      "properties": {
+        "current_situation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "unresolved_threads": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "current_situation",
+        "unresolved_threads"
+      ],
+      "additionalProperties": false
+    },
+    "continueContext": {
+      "type": "object",
+      "properties": {
+        "current_node": {
+          "type": "object",
+          "properties": {
+            "node_id": {
+              "enum": [
+                "node_02",
+                "node_03",
+                "node_04",
+                "node_05",
+                "node_06",
+                "node_07",
+                "node_08"
+              ]
+            },
+            "task_type": {
+              "enum": [
+                "STORY_CONTINUE",
+                "STORY_BRANCH"
+              ]
+            },
+            "summary": {
+              "type": "string",
+              "minLength": 1
+            },
+            "entry_condition": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "node_id",
+            "task_type",
+            "summary",
+            "entry_condition"
+          ],
+          "additionalProperties": false
+        },
+        "selected_option_effect": {
+          "type": "object",
+          "properties": {
+            "option_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "effect_summary": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "option_id",
+            "effect_summary"
+          ],
+          "additionalProperties": false
+        },
+        "state_transition": {
+          "type": "object",
+          "properties": {
+            "before": {
+              "$ref": "#/$defs/stateMetrics"
+            },
+            "delta": {
+              "$ref": "#/$defs/stateDelta"
+            },
+            "after": {
+              "$ref": "#/$defs/stateMetrics"
+            },
+            "active_consequences": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/consequence"
+              }
+            }
+          },
+          "required": [
+            "before",
+            "delta",
+            "after",
+            "active_consequences"
+          ],
+          "additionalProperties": false
+        },
+        "previous_handoff": {
+          "$ref": "#/$defs/handoff"
+        },
+        "story_context": {
+          "type": "object",
+          "properties": {
+            "core_event": {
+              "type": "string",
+              "minLength": 1
+            },
+            "irreplaceable_part": {
+              "type": "string",
+              "minLength": 1
+            },
+            "primary_anomaly": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "core_event",
+            "irreplaceable_part",
+            "primary_anomaly"
+          ],
+          "additionalProperties": false
+        },
+        "known_to_user": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "current_node",
+        "selected_option_effect",
+        "state_transition",
+        "previous_handoff",
+        "story_context",
+        "known_to_user"
+      ],
+      "additionalProperties": false
+    },
+    "endingContext": {
+      "type": "object",
+      "properties": {
+        "current_node": {
+          "type": "object",
+          "properties": {
+            "node_id": {
+              "const": "node_09"
+            },
+            "task_type": {
+              "const": "STORY_ENDING"
+            },
+            "summary": {
+              "type": "string",
+              "minLength": 1
+            },
+            "entry_condition": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "node_id",
+            "task_type",
+            "summary",
+            "entry_condition"
+          ],
+          "additionalProperties": false
+        },
+        "selected_ending": {
+          "type": "object",
+          "properties": {
+            "ending_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "outcome": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "ending_id",
+            "outcome"
+          ],
+          "additionalProperties": false
+        },
+        "previous_handoff": {
+          "$ref": "#/$defs/handoff"
+        },
+        "story_context": {
+          "type": "object",
+          "properties": {
+            "core_event": {
+              "type": "string",
+              "minLength": 1
+            },
+            "user_expectation": {
+              "type": "string",
+              "minLength": 1
+            },
+            "irreplaceable_part": {
+              "type": "string",
+              "minLength": 1
+            },
+            "primary_anomaly": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "core_event",
+            "user_expectation",
+            "irreplaceable_part",
+            "primary_anomaly"
+          ],
+          "additionalProperties": false
+        },
+        "story_state": {
+          "$ref": "#/$defs/stateMetrics"
+        },
+        "active_consequences": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/consequence"
+          }
+        },
+        "key_outcomes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "known_to_user": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "current_node",
+        "selected_ending",
+        "previous_handoff",
+        "story_context",
+        "story_state",
+        "active_consequences",
+        "key_outcomes",
+        "known_to_user"
+      ],
+      "additionalProperties": false
+    },
+    "endingCondition": {
+      "type": "object",
+      "properties": {
+        "metric": {
+          "enum": [
+            "event_integrity",
+            "relationship_connection",
+            "uncertainty"
+          ]
+        },
+        "operator": {
+          "enum": [
+            "gte",
+            "lte",
+            "gt",
+            "lt",
+            "eq"
+          ]
+        },
+        "value": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        }
+      },
+      "required": [
+        "metric",
+        "operator",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "endingRule": {
+      "type": "object",
+      "properties": {
+        "priority": {
+          "type": "integer"
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/endingCondition"
+          }
+        },
+        "required_consequence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "forbidden_consequence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "fallback": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "priority",
+        "conditions",
+        "required_consequence_ids",
+        "forbidden_consequence_ids",
+        "fallback"
+      ],
+      "additionalProperties": false
+    },
+    "knowledgeContext": {
+      "type": "object",
+      "properties": {
+        "current_node": {
+          "type": "object",
+          "properties": {
+            "node_id": {
+              "const": "node_10"
+            },
+            "task_type": {
+              "const": "KNOWLEDGE_REVEAL"
+            },
+            "summary": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "node_id",
+            "task_type",
+            "summary"
+          ],
+          "additionalProperties": false
+        },
+        "primary_anomaly": {
+          "type": "string",
+          "minLength": 1
+        },
+        "hidden_facts": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "ending_summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "next_node_context": {
+          "type": "string",
+          "minLength": 1
+        },
+        "story_anomaly_effects": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "current_node",
+        "primary_anomaly",
+        "hidden_facts",
+        "ending_summary",
+        "next_node_context",
+        "story_anomaly_effects"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

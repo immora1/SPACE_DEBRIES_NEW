@@ -1,0 +1,52 @@
+{
+  "name": "story_opening",
+  "strict": true,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "story_text": {
+        "type": "string",
+        "description": "直接展示给用户的 node_01 故事开场正文；应为第二人称、3 至 5 段、约 350 至 550 个中文字符。"
+      },
+      "known_to_user_additions": {
+        "type": "array",
+        "description": "仅记录本阶段正文中新察觉或确认的独立事实，不重复初始 known_to_user，不泄露 hidden_facts。",
+        "minItems": 1,
+        "maxItems": 4,
+        "items": {
+          "type": "string"
+        }
+      },
+      "continuity_handoff": {
+        "type": "object",
+        "description": "仅用于下一阶段衔接，保存于阶段记录，不写入永久 story_state。",
+        "properties": {
+          "current_situation": {
+            "type": "string",
+            "description": "node_01 结束时的人物位置、重要物件状态和已发生的现场变化；不复述整段正文，不提前写后续剧情。"
+          },
+          "unresolved_threads": {
+            "type": "array",
+            "description": "node_01 结束时仍可在后续推进的问题；不包含已解决事项或隐藏技术原因。",
+            "minItems": 1,
+            "maxItems": 3,
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "current_situation",
+          "unresolved_threads"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "required": [
+      "story_text",
+      "known_to_user_additions",
+      "continuity_handoff"
+    ],
+    "additionalProperties": false
+  }
+}

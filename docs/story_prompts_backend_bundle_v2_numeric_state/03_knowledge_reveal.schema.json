@@ -1,0 +1,76 @@
+{
+  "name": "knowledge_reveal",
+  "strict": true,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "task_type": {
+        "type": "string",
+        "enum": [
+          "KNOWLEDGE_REVEAL"
+        ],
+        "description": "当前任务类型"
+      },
+      "node_id": {
+        "type": "string",
+        "enum": [
+          "node_10"
+        ],
+        "description": "当前知识揭示节点"
+      },
+      "knowledge_title": {
+        "type": "string",
+        "description": "概括本次主要异常机制的简短标题"
+      },
+      "story_connection": {
+        "type": "string",
+        "description": "指出故事中出现的具体异常，以及异常对核心事件造成的实际影响"
+      },
+      "causal_chain": {
+        "type": "array",
+        "description": "从轨道环境风险到故事影响的连续因果链",
+        "minItems": 3,
+        "maxItems": 5,
+        "items": {
+          "type": "object",
+          "properties": {
+            "point_title": {
+              "type": "string",
+              "description": "当前因果环节的简短标题"
+            },
+            "point_text": {
+              "type": "string",
+              "description": "当前环节的通俗解释，以及它与前后环节的联系"
+            }
+          },
+          "required": [
+            "point_title",
+            "point_text"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "reality_note": {
+        "type": "string",
+        "description": "说明现实影响通常是局部、短暂或不一致的，并不等于整个系统完全失效"
+      },
+      "story_completed": {
+        "type": "boolean",
+        "enum": [
+          true
+        ],
+        "description": "表示故事及知识揭示阶段已经完成"
+      }
+    },
+    "required": [
+      "task_type",
+      "node_id",
+      "knowledge_title",
+      "story_connection",
+      "causal_chain",
+      "reality_note",
+      "story_completed"
+    ],
+    "additionalProperties": false
+  }
+}

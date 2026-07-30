@@ -157,9 +157,6 @@ export default function M3({ onComplete }) {
   const restoredOpeningStage = [...(storyTimeline || [])].reverse().find(
     (stage) => stage.task_type === 'STORY_OPENING',
   )
-  const restoredOutlineStage = (storyTimeline || []).find(
-    (stage) => stage.task_type === 'STORY_OUTLINE',
-  )
 
   const [mission,        setMissionLocal]  = useState(restoredMissionId)
   const [aiState,        setAiState]       = useState(restoredMissionId ? 'done' : 'idle')
@@ -172,7 +169,7 @@ export default function M3({ onComplete }) {
 
   const [formStep,       setFormStep]      = useState(storyId && satellite ? 'result' : 'form')
   const [form,           setForm]          = useState({ name: '', city: '', importantEvent: '' })
-  const [openingStory,   setOpeningStory]  = useState(restoredOutlineStage?.display_content?.story_text || '')
+  const [openingStory,   setOpeningStory]  = useState(restoredOpeningStage?.display_content?.story_text || '')
   const [formError,      setFormError]     = useState(null)
 
   const onCompleteRef = useRef(onComplete)
@@ -192,8 +189,8 @@ export default function M3({ onComplete }) {
     ) {
       storyRestoreAppliedRef.current = true
       setFormStep('result')
-      if (restoredOutlineStage?.display_content?.story_text) {
-        setOpeningStory(restoredOutlineStage.display_content.story_text)
+      if (restoredOpeningStage?.display_content?.story_text) {
+        setOpeningStory(restoredOpeningStage.display_content.story_text)
       }
     }
 
@@ -213,7 +210,6 @@ export default function M3({ onComplete }) {
     restoredMaterialsCommitted,
     restoredMissionId,
     restoredOpeningStage,
-    restoredOutlineStage,
     satellite,
     storyCheckpoint,
     storyId,

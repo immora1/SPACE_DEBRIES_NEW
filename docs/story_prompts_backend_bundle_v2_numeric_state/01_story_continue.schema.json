@@ -1,0 +1,49 @@
+{
+  "name": "story_continue",
+  "strict": true,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "story_text": {
+        "type": "string",
+        "description": "直接展示给用户的当前故事节点正文；不得输出或修改后端状态数值"
+      },
+      "known_to_user_additions": {
+        "type": "array",
+        "description": "本阶段用户新察觉或确认的信息，不包含此前已有事实或隐藏事实",
+        "items": {
+          "type": "string"
+        }
+      },
+      "continuity_handoff": {
+        "type": "object",
+        "properties": {
+          "current_situation": {
+            "type": "string",
+            "description": "用一句话概括本阶段结束后的最新故事状态"
+          },
+          "unresolved_threads": {
+            "type": "array",
+            "description": "本阶段结束时仍未解决的问题",
+            "minItems": 1,
+            "maxItems": 3,
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "current_situation",
+          "unresolved_threads"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "required": [
+      "story_text",
+      "known_to_user_additions",
+      "continuity_handoff"
+    ],
+    "additionalProperties": false
+  }
+}

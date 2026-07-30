@@ -1,3 +1,9 @@
+import {
+  STORY_MODEL,
+  STORY_REASONING_EFFORT,
+  STORY_VERBOSITY,
+} from '../_story/constants.js'
+
 export async function onRequestPost({ env }) {
   const apiKey = env.OPENAI_API_KEY
   if (!apiKey) {
@@ -11,8 +17,10 @@ export async function onRequestPost({ env }) {
         authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        max_tokens: 256,
+        model: env.STORY_MODEL || STORY_MODEL,
+        reasoning_effort: env.STORY_REASONING_EFFORT || STORY_REASONING_EFFORT,
+        verbosity: env.STORY_VERBOSITY || STORY_VERBOSITY,
+        max_completion_tokens: 256,
         messages: [{ role: 'user', content: '用一句话描述太空碎片问题，语气冷静克制，不超过50字。' }],
       }),
     })

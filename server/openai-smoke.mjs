@@ -7,12 +7,18 @@ config({ path: join(__dirname, '.env') })
 
 import fetch from 'node-fetch'
 import { HttpsProxyAgent } from 'https-proxy-agent'
+import {
+  STORY_MODEL,
+  STORY_REASONING_EFFORT,
+  STORY_VERBOSITY,
+} from '../functions/_story/constants.js'
 
 const PROXY_URL = process.env.PROXY_URL || 'http://127.0.0.1:22307'
 const apiKey = process.env.OPENAI_API_KEY
+const model = process.env.STORY_MODEL || STORY_MODEL
 
 console.log('proxy:', PROXY_URL)
-console.log('key prefix:', apiKey?.slice(0, 16) ?? 'MISSING')
+console.log('api key configured:', Boolean(apiKey))
 
 const agent = new HttpsProxyAgent(PROXY_URL)
 
@@ -26,8 +32,10 @@ try {
       'authorization': `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      max_tokens: 64,
+      model,
+      reasoning_effort: process.env.STORY_REASONING_EFFORT || STORY_REASONING_EFFORT,
+      verbosity: process.env.STORY_VERBOSITY || STORY_VERBOSITY,
+      max_completion_tokens: 64,
       messages: [{ role: 'user', content: '用一句话描述太空碎片。' }],
     }),
   })

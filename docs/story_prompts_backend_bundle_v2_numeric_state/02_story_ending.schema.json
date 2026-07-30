@@ -1,0 +1,56 @@
+{
+  "name": "story_ending",
+  "strict": true,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "task_type": {
+        "type": "string",
+        "enum": [
+          "STORY_ENDING"
+        ],
+        "description": "当前任务类型"
+      },
+      "node_id": {
+        "type": "string",
+        "enum": [
+          "node_09"
+        ],
+        "description": "当前结局节点"
+      },
+      "selected_ending_id": {
+        "type": "string",
+        "description": "必须与后端传入的 selected_ending.ending_id 完全一致"
+      },
+      "story_text": {
+        "type": "string",
+        "description": "直接展示给用户的故事结局正文"
+      },
+      "ending_summary": {
+        "type": "string",
+        "description": "用1至3句话概括核心事件结果、不可替代部分的保留情况和人物关系状态"
+      },
+      "next_node_context": {
+        "type": "string",
+        "description": "用1至3句话总结故事中出现的异常现象、实际影响和尚未解释的原因，供知识揭示阶段使用"
+      },
+      "next_node_id": {
+        "type": "string",
+        "enum": [
+          "node_10"
+        ],
+        "description": "下一个故事节点"
+      }
+    },
+    "required": [
+      "task_type",
+      "node_id",
+      "selected_ending_id",
+      "story_text",
+      "ending_summary",
+      "next_node_context",
+      "next_node_id"
+    ],
+    "additionalProperties": false
+  }
+}

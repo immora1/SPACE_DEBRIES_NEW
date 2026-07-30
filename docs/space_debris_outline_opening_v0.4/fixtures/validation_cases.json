@@ -1,0 +1,66 @@
+{
+  "outline_mutation_cases": [
+    {
+      "name": "reject_missing_node",
+      "mutation": "remove story_nodes[9]",
+      "expected_error": "OUTLINE_NODE_COUNT_INVALID"
+    },
+    {
+      "name": "reject_wrong_node_order",
+      "mutation": "swap story_nodes[3] and story_nodes[4]",
+      "expected_error": "OUTLINE_NODE_SEQUENCE_INVALID"
+    },
+    {
+      "name": "reject_duplicate_node_id",
+      "mutation": "set story_nodes[1].node_id to node_01",
+      "expected_error": "OUTLINE_NODE_ID_DUPLICATE"
+    },
+    {
+      "name": "reject_legacy_condition",
+      "mutation": "add reachable_endings[0].condition",
+      "expected_error": "OUTLINE_ADDITIONAL_FIELD_INVALID"
+    },
+    {
+      "name": "reject_nonempty_initial_consequences",
+      "mutation": "append any string to initial_story_state.active_consequences",
+      "expected_error": "OUTLINE_INITIAL_STATE_INVALID"
+    },
+    {
+      "name": "reject_wrong_current_node",
+      "mutation": "set initial_story_state.current_node_id to node_02",
+      "expected_error": "OUTLINE_INITIAL_STATE_INVALID"
+    }
+  ],
+  "opening_mutation_cases": [
+    {
+      "name": "reject_legacy_state_patch",
+      "mutation": "add top-level state_patch",
+      "expected_error": "OPENING_ADDITIONAL_FIELD_INVALID"
+    },
+    {
+      "name": "reject_next_node_id",
+      "mutation": "add top-level next_node_id",
+      "expected_error": "OPENING_ADDITIONAL_FIELD_INVALID"
+    },
+    {
+      "name": "reject_empty_threads",
+      "mutation": "set continuity_handoff.unresolved_threads to []",
+      "expected_error": "OPENING_SCHEMA_INVALID"
+    },
+    {
+      "name": "dedupe_known_fact",
+      "mutation": "append an existing story_state.known_to_user item to known_to_user_additions",
+      "expected_behavior": "remove duplicate before merge"
+    },
+    {
+      "name": "opening_failure_no_advance",
+      "mutation": "make Opening validation fail",
+      "expected_behavior": "do not create node_01 stage and keep current_node_id at node_01"
+    },
+    {
+      "name": "idempotent_retry",
+      "mutation": "repeat successful Opening request with same story and idempotency key",
+      "expected_behavior": "only one node_01 stage exists"
+    }
+  ]
+}

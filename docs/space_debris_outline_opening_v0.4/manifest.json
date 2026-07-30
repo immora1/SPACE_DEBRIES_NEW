@@ -1,0 +1,24 @@
+{
+  "package": "space_debris_outline_opening",
+  "version": "0.4",
+  "scope": [
+    "STORY_OUTLINE",
+    "STORY_OPENING"
+  ],
+  "files": [
+    "README.md",
+    "codex/codex_prompt_integrate_outline_opening_v0.4.md",
+    "contracts/backend_integration_contract.md",
+    "contracts/backend_validation_rules.json",
+    "contracts/json_field_contract.md",
+    "fixtures/story_opening.valid.json",
+    "fixtures/story_outline.valid.json",
+    "fixtures/story_user_input.valid.json",
+    "fixtures/validation_cases.json",
+    "prompts/story_opening_prompt.md",
+    "prompts/story_outline_prompt.md",
+    "schemas/story_opening.schema.json",
+    "schemas/story_outline.schema.json",
+    "space_debris_outline_opening_spec_v0.4.md"
+  ]
+}

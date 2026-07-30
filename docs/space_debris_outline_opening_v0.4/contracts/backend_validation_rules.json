@@ -1,0 +1,96 @@
+{
+  "version": "0.4",
+  "outline": {
+    "expected_node_sequence": [
+      {
+        "node_id": "node_01",
+        "task_type": "STORY_OPENING"
+      },
+      {
+        "node_id": "node_02",
+        "task_type": "STORY_CONTINUE"
+      },
+      {
+        "node_id": "node_03",
+        "task_type": "STORY_CONTINUE"
+      },
+      {
+        "node_id": "node_04",
+        "task_type": "STORY_BRANCH"
+      },
+      {
+        "node_id": "node_05",
+        "task_type": "STORY_CONTINUE"
+      },
+      {
+        "node_id": "node_06",
+        "task_type": "STORY_BRANCH"
+      },
+      {
+        "node_id": "node_07",
+        "task_type": "STORY_CONTINUE"
+      },
+      {
+        "node_id": "node_08",
+        "task_type": "STORY_CONTINUE"
+      },
+      {
+        "node_id": "node_09",
+        "task_type": "STORY_ENDING"
+      },
+      {
+        "node_id": "node_10",
+        "task_type": "KNOWLEDGE_REVEAL"
+      }
+    ],
+    "reachable_endings": {
+      "min": 4,
+      "max": 5,
+      "forbidden_fields": [
+        "condition"
+      ]
+    },
+    "initial_story_state": {
+      "current_node_id": "node_01",
+      "active_consequences_must_be_empty": true,
+      "last_user_action_must_be_null": true,
+      "uncertainty_min": 5,
+      "uncertainty_max": 15
+    },
+    "retry_on_semantic_validation_failure": 1
+  },
+  "opening": {
+    "allowed_top_level_fields": [
+      "story_text",
+      "known_to_user_additions",
+      "continuity_handoff"
+    ],
+    "forbidden_legacy_fields": [
+      "state_patch",
+      "add_known_to_user",
+      "uncertainty_delta",
+      "add_active_consequences",
+      "next_node_context",
+      "next_node_id"
+    ],
+    "story_text": {
+      "min_paragraphs": 3,
+      "max_paragraphs": 5,
+      "target_chinese_chars_min": 350,
+      "target_chinese_chars_max": 550
+    },
+    "known_to_user_additions": {
+      "min": 1,
+      "max": 4,
+      "deduplicate_against": "story_state.known_to_user"
+    },
+    "unresolved_threads": {
+      "min": 1,
+      "max": 3
+    },
+    "backend_next_node_id": "node_02",
+    "mutates_metrics": false,
+    "mutates_consequences": false,
+    "mutates_last_user_action": false
+  }
+}

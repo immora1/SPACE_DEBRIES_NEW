@@ -1,0 +1,93 @@
+{
+  "continue_context_example": {
+    "current_node": {
+      "node_id": "node_04",
+      "task_type": "STORY_BRANCH",
+      "summary": "使用 Outline 中 node_04 的原始 summary",
+      "entry_condition": "使用 Outline 中 node_04 的原始 entry_condition"
+    },
+    "selected_option_effect": {
+      "option_id": "option_b",
+      "effect_summary": "本次操作优先保护关键物件，同时压缩准备时间，并让两人的分工出现新的摩擦。"
+    },
+    "state_transition": {
+      "before": {
+        "event_integrity": 68,
+        "relationship_connection": 72,
+        "uncertainty": 46
+      },
+      "delta": {
+        "event_integrity": 7,
+        "relationship_connection": -4,
+        "uncertainty": 5
+      },
+      "after": {
+        "event_integrity": 75,
+        "relationship_connection": 68,
+        "uncertainty": 51
+      },
+      "active_consequences": [
+        {
+          "consequence_id": "panel_edge_gap",
+          "description": "修好的灯片边缘留下可见缺口，后续不得无故恢复。"
+        }
+      ]
+    },
+    "previous_handoff": {
+      "current_situation": "上一节点结束后的最新状态。",
+      "unresolved_threads": [
+        "尚未解决的问题一",
+        "尚未解决的问题二"
+      ]
+    },
+    "story_context": {
+      "core_event": "核心事件",
+      "irreplaceable_part": "不可替代部分",
+      "primary_anomaly": "WEATHER_UPDATE_DELAY"
+    },
+    "known_to_user": [
+      "截至当前节点已经确认的事实"
+    ]
+  },
+  "ending_context_example": {
+    "current_node": {
+      "node_id": "node_09",
+      "task_type": "STORY_ENDING",
+      "summary": "使用 Outline 中 node_09 的原始 summary",
+      "entry_condition": "使用 Outline 中 node_09 的原始 entry_condition"
+    },
+    "selected_ending": {
+      "ending_id": "ending_02",
+      "outcome": "核心约定得以实现，但关键物件与最终画面留下无法完全修复的缺口。"
+    },
+    "previous_handoff": {
+      "current_situation": "node_08 结束后的最新状态。",
+      "unresolved_threads": [
+        "结局需要回收的问题"
+      ]
+    },
+    "story_context": {
+      "core_event": "核心事件",
+      "user_expectation": "用户期待",
+      "irreplaceable_part": "不可替代部分",
+      "primary_anomaly": "WEATHER_UPDATE_DELAY"
+    },
+    "story_state": {
+      "event_integrity": 72,
+      "relationship_connection": 84,
+      "uncertainty": 39
+    },
+    "active_consequences": [
+      {
+        "consequence_id": "visible_object_damage",
+        "description": "关键物件保留下来，但存在可见且无法在结局前修复的缺口。"
+      }
+    ],
+    "key_outcomes": [
+      "此前真正影响结局的关键结果"
+    ],
+    "known_to_user": [
+      "结局前已经确认的事实"
+    ]
+  }
+}

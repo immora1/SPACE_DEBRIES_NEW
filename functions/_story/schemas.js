@@ -1,152 +1,39 @@
 import { z } from 'zod'
-import { ACTION_TYPE, TASK_TYPE } from './constants.js'
+import {
+  ACTION_TYPE,
+  INTERACTIVE_NODE_IDS,
+  STORY_NODE_IDS,
+  TASK_TYPE,
+} from './constants.js'
 
 const strictObject = (shape) => z.object(shape).strict()
-const text = z.string().min(1).max(1200)
-const shortText = z.string().min(1).max(240)
-const stringList = z.array(z.string().min(1).max(240)).max(32)
+const trimmedText = (max) => z.string().trim().min(1).max(max)
+const stringList = z.array(trimmedText(500)).max(64)
+const consequenceId = z.string().trim().min(1).max(128)
 
-export const StoryMetricsSchema = strictObject({
-  event_integrity: z.number().min(0).max(100),
-  relationship_connection: z.number().min(0).max(100),
-  uncertainty: z.number().min(0).max(100),
+export const ImportantEventInputSchema = strictObject({
+  people: z.array(trimmedText(120)).min(1).max(16),
+  time: z.string().trim().max(240),
+  location: z.string().trim().max(240),
+  description: trimmedText(2400),
 })
 
-export const UserActionSchema = strictObject({
-  module: z.string().min(1).max(64),
-  source_id: z.string().min(1).max(128),
-  action_id: z.string().min(1).max(128),
-  label: z.string().min(1).max(240),
-})
-
-export const StoryStateSchema = strictObject({
-  current_node_id: z.string().min(1).max(128).nullable(),
-  metrics: StoryMetricsSchema,
-  confirmed_facts: stringList,
-  known_to_user: stringList,
-  hidden_facts: stringList,
-  open_threads: stringList,
-  active_consequences: stringList,
-  story_tags: stringList,
-  last_user_action: UserActionSchema.nullable(),
-})
-
-export const StoryStatePatchSchema = strictObject({
-  metrics_delta: strictObject({
-    event_integrity: z.number().min(-100).max(100),
-    relationship_connection: z.number().min(-100).max(100),
-    uncertainty: z.number().min(-100).max(100),
-  }),
-  add_confirmed_facts: stringList,
-  add_known_to_user: stringList,
-  add_hidden_facts: stringList,
-  resolve_open_threads: stringList,
-  add_open_threads: stringList,
-  add_active_consequences: stringList,
-  add_story_tags: stringList,
-})
-
-const ExtractedEventSchema = strictObject({
-  people: stringList,
-  relationships: stringList,
-  time: z.string().max(240),
-  place: z.string().max(240),
-  core_event: shortText,
-  user_expectation: shortText,
-  core_emotion: shortText,
-  irreplaceable_part: shortText,
-})
-
-const NarrativeRulesSchema = strictObject({
-  hidden_cause: z.enum([
-    'POSITIONING_OFFSET',
-    'MESSAGE_DELAY',
-    'COMMUNICATION_INTERRUPTION',
-    'TIME_SYNC_ERROR',
-    'WEATHER_DATA_DELAY',
-    'TRAVEL_INFORMATION_ERROR',
-  ]),
-  secondary_phenomenon: z.string().max(240),
-  perspective: z.literal('SECOND_PERSON'),
-  tone: z.literal('RESTRAINED_REALISTIC'),
-})
-
-const StoryNodeSchema = strictObject({
-  id: z.string().min(1).max(128),
-  label: shortText,
-  beat: text,
-})
-
-const AllowedEndingSchema = strictObject({
-  id: z.string().min(1).max(128),
-  label: shortText,
-  condition_hint: shortText,
-})
-
-export const StoryOutlineSchema = strictObject({
-  extracted_event: ExtractedEventSchema,
-  narrative_rules: NarrativeRulesSchema,
-  nodes: z.array(StoryNodeSchema).min(3).max(12),
-  allowed_endings: z.array(AllowedEndingSchema).min(3).max(5),
-})
-
-export const StoryOutlineAIOutputSchema = strictObject({
-  story_outline: StoryOutlineSchema,
-  initial_story_state: StoryStateSchema,
-})
-
-const StoryChoiceSchema = strictObject({
-  id: z.string().min(1).max(128),
-  label: shortText,
-  benefit: shortText,
-  cost: shortText,
-})
-
-export const DisplayContentSchema = strictObject({
-  story_text: text,
-  choices: z.array(StoryChoiceSchema).max(4),
-})
-
-function stageOutputSchema(taskType) {
-  return strictObject({
-    node_id: z.string().min(1).max(128),
-    task_type: z.literal(taskType),
-    checkpoint: z.string().min(1).max(128),
-    display_content: DisplayContentSchema,
-    story_state_patch: StoryStatePatchSchema,
-    stage_summary: shortText,
-    node_completed: z.boolean(),
-    next_node_id: z.string().min(1).max(128).nullable(),
-  })
-}
-
-export const StoryOpeningAIOutputSchema = stageOutputSchema(TASK_TYPE.OPENING)
-export const StoryContinueAIOutputSchema = stageOutputSchema(TASK_TYPE.CONTINUE)
-export const StoryBranchAIOutputSchema = stageOutputSchema(TASK_TYPE.BRANCH)
-export const StoryEndingAIOutputSchema = stageOutputSchema(TASK_TYPE.ENDING)
-export const KnowledgeRevealAIOutputSchema = stageOutputSchema(TASK_TYPE.KNOWLEDGE_REVEAL)
-
-export const AI_OUTPUT_SCHEMA_BY_TASK = Object.freeze({
-  [TASK_TYPE.OUTLINE]: StoryOutlineAIOutputSchema,
-  [TASK_TYPE.OPENING]: StoryOpeningAIOutputSchema,
-  [TASK_TYPE.CONTINUE]: StoryContinueAIOutputSchema,
-  [TASK_TYPE.BRANCH]: StoryBranchAIOutputSchema,
-  [TASK_TYPE.ENDING]: StoryEndingAIOutputSchema,
-  [TASK_TYPE.KNOWLEDGE_REVEAL]: KnowledgeRevealAIOutputSchema,
+export const CanonicalStoryUserInputSchema = strictObject({
+  important_event: ImportantEventInputSchema,
 })
 
 export const StoryUserInputSchema = strictObject({
-  nickname: z.string().trim().min(1).max(80),
-  city: z.string().trim().min(1).max(120),
-  important_event: z.string().trim().min(1).max(1800),
+  nickname: trimmedText(80),
+  city: trimmedText(120),
+  important_event: trimmedText(1800),
   submitted_at_ms: z.number().int().nonnegative(),
 })
 
 export const CreateStoryRequestSchema = strictObject({
   session_id: z.string().uuid().optional(),
-  nickname: z.string().trim().min(1).max(80),
-  city: z.string().trim().min(1).max(120),
-  important_event: z.string().trim().min(1).max(1800),
+  nickname: trimmedText(80),
+  city: trimmedText(120),
+  important_event: trimmedText(1800),
   satellite: z.record(z.string(), z.unknown()),
   game_context: strictObject({
     damage_level: z.number().min(0).max(100),
@@ -155,13 +42,148 @@ export const CreateStoryRequestSchema = strictObject({
   language: z.enum(['zh', 'en']),
 })
 
-export const StoryActionRequestSchema = strictObject({
+export const StoryOptionActionRequestSchema = strictObject({
   session_id: z.string().uuid(),
   version: z.number().int().nonnegative(),
-  action_type: z.enum(Object.values(ACTION_TYPE)),
+  action_type: z.literal(ACTION_TYPE.STORY_OPTION_SELECT),
+  node_id: z.enum(INTERACTIVE_NODE_IDS),
+  option_id: z.string().trim().min(1).max(128),
+  client_action_id: z.string().uuid(),
+})
+
+export const ProductActionRequestSchema = strictObject({
+  session_id: z.string().uuid(),
+  version: z.number().int().nonnegative(),
+  action_type: z.enum([
+    ACTION_TYPE.MATERIALS_COMMIT,
+    ACTION_TYPE.MISSION_SELECT,
+    ACTION_TYPE.ORBITAL_EVENT_RESOLVE,
+    ACTION_TYPE.CLEANUP_PAIR_SUBMIT,
+  ]),
   source_id: z.string().min(1).max(128),
   action_id: z.string().min(1).max(128),
   payload: z.record(z.string(), z.unknown()),
+})
+
+export const StoryActionRequestSchema = z.union([
+  StoryOptionActionRequestSchema,
+  ProductActionRequestSchema,
+])
+
+export const StoryMetricsSchema = strictObject({
+  event_integrity: z.number().int().min(0).max(100),
+  relationship_connection: z.number().int().min(0).max(100),
+  uncertainty: z.number().int().min(0).max(100),
+})
+
+export const StoryStateDeltaSchema = strictObject({
+  event_integrity: z.number().int().min(-100).max(100),
+  relationship_connection: z.number().int().min(-100).max(100),
+  uncertainty: z.number().int().min(-100).max(100),
+})
+
+export const StoryOptionSchema = strictObject({
+  option_id: z.string().trim().min(1).max(128),
+  label: trimmedText(160),
+  effect_summary: trimmedText(800),
+  state_delta: StoryStateDeltaSchema,
+  add_consequence_ids: z.array(consequenceId).max(16),
+  resolve_consequence_ids: z.array(consequenceId).max(16),
+  key_outcome: z.string().trim().max(500),
+})
+
+export const ConsequenceSchema = strictObject({
+  consequence_id: consequenceId,
+  description: trimmedText(500),
+})
+
+export const StoryHandoffSchema = strictObject({
+  current_situation: trimmedText(1000),
+  unresolved_threads: z.array(trimmedText(500)).min(1).max(3),
+})
+
+export const LastStoryActionSchema = strictObject({
+  node_id: z.enum(INTERACTIVE_NODE_IDS),
+  option_id: z.string().trim().min(1).max(128),
+  client_action_id: z.string().uuid(),
+})
+
+export const RuntimeStoryStateSchema = strictObject({
+  confirmed_facts: stringList,
+  known_to_user: stringList,
+  hidden_facts: stringList,
+  event_integrity: StoryMetricsSchema.shape.event_integrity,
+  relationship_connection: StoryMetricsSchema.shape.relationship_connection,
+  uncertainty: StoryMetricsSchema.shape.uncertainty,
+  current_node_id: z.enum(STORY_NODE_IDS).nullable(),
+  active_consequences: z.array(consequenceId).max(32),
+  key_outcomes: stringList,
+  last_user_action: LastStoryActionSchema.nullable(),
+})
+
+const CurrentContinueNodeSchema = strictObject({
+  node_id: z.enum(INTERACTIVE_NODE_IDS),
+  task_type: z.enum([TASK_TYPE.CONTINUE, TASK_TYPE.BRANCH]),
+  summary: trimmedText(2400),
+  entry_condition: trimmedText(1200),
+})
+
+export const ContinueContextSchema = strictObject({
+  current_node: CurrentContinueNodeSchema,
+  selected_option_effect: strictObject({
+    option_id: z.string().trim().min(1).max(128),
+    effect_summary: trimmedText(800),
+  }),
+  state_transition: strictObject({
+    before: StoryMetricsSchema,
+    delta: StoryStateDeltaSchema,
+    after: StoryMetricsSchema,
+    active_consequences: z.array(ConsequenceSchema).max(32),
+  }),
+  previous_handoff: StoryHandoffSchema,
+  story_context: strictObject({
+    core_event: trimmedText(2400),
+    irreplaceable_part: trimmedText(1200),
+    primary_anomaly: trimmedText(128),
+  }),
+  known_to_user: stringList,
+})
+
+export const EndingContextSchema = strictObject({
+  current_node: strictObject({
+    node_id: z.literal('node_09'),
+    task_type: z.literal(TASK_TYPE.ENDING),
+    summary: trimmedText(2400),
+    entry_condition: trimmedText(1200),
+  }),
+  selected_ending: strictObject({
+    ending_id: trimmedText(128),
+    outcome: trimmedText(2400),
+  }),
+  previous_handoff: StoryHandoffSchema,
+  story_context: strictObject({
+    core_event: trimmedText(2400),
+    user_expectation: trimmedText(1200),
+    irreplaceable_part: trimmedText(1200),
+    primary_anomaly: trimmedText(128),
+  }),
+  story_state: StoryMetricsSchema,
+  active_consequences: z.array(ConsequenceSchema).max(32),
+  key_outcomes: stringList,
+  known_to_user: stringList,
+})
+
+export const KnowledgeContextSchema = strictObject({
+  current_node: strictObject({
+    node_id: z.literal('node_10'),
+    task_type: z.literal(TASK_TYPE.KNOWLEDGE_REVEAL),
+    summary: trimmedText(2400),
+  }),
+  primary_anomaly: trimmedText(128),
+  hidden_facts: stringList,
+  ending_summary: trimmedText(2400),
+  next_node_context: trimmedText(2400),
+  story_anomaly_effects: z.array(trimmedText(800)).min(1).max(4),
 })
 
 export const TechnicalMetricsSchema = strictObject({

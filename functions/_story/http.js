@@ -34,7 +34,7 @@ export function errorResponse(error) {
     ok: false,
     error: {
       code: 'INTERNAL_ERROR',
-      message: error?.message || 'Unexpected story service error.',
+      message: 'Unexpected story service error.',
     },
   }, 500)
 }

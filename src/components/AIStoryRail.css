@@ -24,6 +24,7 @@
   box-shadow: 0 16px 44px rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(12px) saturate(112%);
   -webkit-backdrop-filter: blur(12px) saturate(112%);
+  pointer-events: auto;
 }
 
 .ai-story-phase__eyebrow,
@@ -94,6 +95,100 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.ai-story-phase__choices {
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(226, 234, 255, 0.1);
+}
+
+.ai-story-phase__choices header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: rgba(185, 202, 236, 0.58);
+  font: 8px/1 "Space Mono", monospace;
+}
+
+.ai-story-phase__choices header small {
+  color: #88aff2;
+  font: inherit;
+}
+
+.ai-story-phase__choices > div {
+  display: grid;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.ai-story-phase__choices button {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) 12px;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 6px 8px;
+  color: rgba(241, 245, 255, 0.86);
+  text-align: left;
+  border: 1px solid rgba(226, 234, 255, 0.12);
+  border-radius: 5px;
+  background: rgba(244, 247, 255, 0.035);
+  cursor: pointer;
+}
+
+.ai-story-phase__choices button:hover:not(:disabled),
+.ai-story-phase__choices button:focus-visible {
+  color: #fff;
+  border-color: rgba(136, 175, 242, 0.54);
+  background: rgba(136, 175, 242, 0.12);
+}
+
+.ai-story-phase__choices button:focus-visible {
+  outline: 1px solid rgba(136, 175, 242, 0.72);
+  outline-offset: 1px;
+}
+
+.ai-story-phase__choices button:disabled {
+  cursor: wait;
+  opacity: 0.52;
+}
+
+.ai-story-phase__choices button b {
+  color: #88aff2;
+  font: 8px/1 "Space Mono", monospace;
+}
+
+.ai-story-phase__choices button span {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 10px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-story-phase__choices button i {
+  width: 9px;
+  height: 9px;
+  border: 1px solid rgba(136, 175, 242, 0.35);
+  border-top-color: #88aff2;
+  border-radius: 50%;
+  animation: ai-story-choice-spin 0.8s linear infinite;
+}
+
+.ai-story-phase__choices > p {
+  margin: 7px 0 0;
+  color: #ff9e9e;
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+@keyframes ai-story-choice-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .ai-story-popover {

@@ -1,0 +1,142 @@
+{
+  "task_type": "STORY_OUTLINE",
+  "event_anchor": {
+    "characters": [
+      {
+        "label": "南枝",
+        "relationship": "用户本人"
+      },
+      {
+        "label": "外婆",
+        "relationship": "南枝的外婆"
+      }
+    ],
+    "time": "2027年2月11日傍晚",
+    "location": "泉州一座老宅的天井",
+    "core_event": "南枝要在天黑前写完最后一句灯诗，亲手装回修好的灯片，并与外婆在来访者进入天井前共同点亮最后一次公开展示的走马灯。",
+    "user_expectation": "与外婆共同完成灯诗、灯片安装和点灯，并看着修好的灯片完整转过一圈。",
+    "core_emotion": "弥补童年遗憾、珍惜外婆手艺，以及担心最后一次共同点灯无法完整实现的不安。",
+    "irreplaceable_part": "不是单纯观看展示，而是亲手完成修补后的灯片归位，并与外婆共同点灯、共同看完修好灯片的一整圈。",
+    "facts_to_preserve": [
+      "事件发生在2027年2月11日傍晚。",
+      "地点是泉州一座老宅的天井。",
+      "这是外婆最后一次对外展示手工走马灯。",
+      "南枝已经修好童年时打破的灯片。",
+      "最后一句灯诗尚未写完。",
+      "南枝要亲手装回灯片并与外婆共同点灯。"
+    ]
+  },
+  "primary_anomaly": "WEATHER_UPDATE_DELAY",
+  "story_nodes": [
+    {
+      "node_id": "node_01",
+      "task_type": "STORY_OPENING",
+      "summary": "南枝进入正在布置的老宅天井，自然带出灯诗、修好灯片和共同点灯约定；天气提示与零星水点出现轻微偏差。",
+      "entry_condition": "故事开始，灯片尚未安装，最后一句灯诗尚未写下。"
+    },
+    {
+      "node_id": "node_02",
+      "task_type": "STORY_CONTINUE",
+      "summary": "南枝进一步确认现场天气与提示不一致，准备时间开始变得不可靠。",
+      "entry_condition": "开场已完成，南枝已察觉零星水点。"
+    },
+    {
+      "node_id": "node_03",
+      "task_type": "STORY_CONTINUE",
+      "summary": "风和湿度继续变化，未完成的灯诗与灯片安装受到更明显的时间压力。",
+      "entry_condition": "天气提示仍未更新，准备继续。"
+    },
+    {
+      "node_id": "node_04",
+      "task_type": "STORY_BRANCH",
+      "summary": "根据当前限制规划不同应对方向，使不同操作产生不同实际后果。",
+      "entry_condition": "天气风险已经实际影响准备窗口。"
+    },
+    {
+      "node_id": "node_05",
+      "task_type": "STORY_CONTINUE",
+      "summary": "承接第一次分支结果，推进物件保护、准备进度与人物配合。",
+      "entry_condition": "第一次分支操作已由后端确定。"
+    },
+    {
+      "node_id": "node_06",
+      "task_type": "STORY_BRANCH",
+      "summary": "在临近点灯时规划第二次具有不同代价的行动方向。",
+      "entry_condition": "剩余准备窗口进一步缩短。"
+    },
+    {
+      "node_id": "node_07",
+      "task_type": "STORY_CONTINUE",
+      "summary": "承接第二次分支结果，确定灯诗、灯片和灯架的最后准备状态。",
+      "entry_condition": "第二次分支操作已由后端确定。"
+    },
+    {
+      "node_id": "node_08",
+      "task_type": "STORY_CONTINUE",
+      "summary": "进入点灯前后的关键时刻，让此前累计结果影响共同点灯能否完整发生。",
+      "entry_condition": "走马灯已进入可点亮或替代展示状态。"
+    },
+    {
+      "node_id": "node_09",
+      "task_type": "STORY_ENDING",
+      "summary": "根据后端已选定的结局方向完成核心事件。",
+      "entry_condition": "核心事件结果已经由累计状态确定。"
+    },
+    {
+      "node_id": "node_10",
+      "task_type": "KNOWLEDGE_REVEAL",
+      "summary": "在结局后解释天气信息更新滞后与空间基础设施风险的知识范围，不在大纲中展开完整技术说明。",
+      "entry_condition": "结局正文已经完成。"
+    }
+  ],
+  "reachable_endings": [
+    {
+      "ending_id": "ending_01",
+      "ending_type": "FULLY_PRESERVED",
+      "outcome": "灯诗、灯片安装与共同点灯全部完成，两人一起看完修好灯片的一整圈。"
+    },
+    {
+      "ending_id": "ending_02",
+      "ending_type": "CONTINUED_DIFFERENTLY",
+      "outcome": "展示转移到廊下，但共同点灯和观看修好灯片的意义得以延续。"
+    },
+    {
+      "ending_id": "ending_03",
+      "ending_type": "PARTIALLY_CHANGED",
+      "outcome": "走马灯得以点亮，但不可替代的几个动作只完成了一部分。"
+    },
+    {
+      "ending_id": "ending_04",
+      "ending_type": "MISSED_OR_INTERRUPTED",
+      "outcome": "点灯窗口被打断，南枝未能在原定时刻与外婆共同完成约定。"
+    },
+    {
+      "ending_id": "ending_05",
+      "ending_type": "PRESERVED_WITH_IRREPLACEABLE_LOSS",
+      "outcome": "走马灯和修好灯片被保留下来，但共同完成的某个不可替代时刻没有发生。"
+    }
+  ],
+  "initial_story_state": {
+    "confirmed_facts": [
+      "外婆将在老宅完成最后一次对外展示的走马灯点灯。",
+      "南枝已经修好童年时打破的灯片。",
+      "最后一句灯诗尚未写完。",
+      "南枝要亲手装回灯片并与外婆共同点灯。"
+    ],
+    "known_to_user": [
+      "展示发生在2027年2月11日傍晚。",
+      "地点是泉州一座老宅的天井。",
+      "修好的灯片仍需安装。"
+    ],
+    "hidden_facts": [
+      "天气信息更新将晚于现场天气变化。",
+      "知识揭示前不得公开异常的真实技术原因。"
+    ],
+    "event_integrity": 100,
+    "relationship_connection": 50,
+    "uncertainty": 10,
+    "current_node_id": "node_01",
+    "active_consequences": [],
+    "last_user_action": null
+  }
+}

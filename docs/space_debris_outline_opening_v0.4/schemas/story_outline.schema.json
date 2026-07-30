@@ -1,0 +1,281 @@
+{
+  "name": "story_outline",
+  "strict": true,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "task_type": {
+        "type": "string",
+        "enum": [
+          "STORY_OUTLINE"
+        ],
+        "description": "固定任务类型。"
+      },
+      "event_anchor": {
+        "type": "object",
+        "description": "从用户重要事件中提取的不可变事实锚点。",
+        "properties": {
+          "characters": {
+            "type": "array",
+            "description": "用户明确涉及的人物及关系，不推断未提供的人口属性。",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string",
+                  "description": "人物称呼或中性标识。"
+                },
+                "relationship": {
+                  "type": "string",
+                  "description": "与用户或事件的中性关系说明。"
+                }
+              },
+              "required": [
+                "label",
+                "relationship"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "time": {
+            "type": "string",
+            "description": "用户明确提供的时间；信息不足时保持概括，不擅自补齐。"
+          },
+          "location": {
+            "type": "string",
+            "description": "重要事件发生地点；不得擅自使用用户所在城市。"
+          },
+          "core_event": {
+            "type": "string",
+            "description": "重要事件本身及必须完成的核心动作。"
+          },
+          "user_expectation": {
+            "type": "string",
+            "description": "用户希望在事件中实现的结果。"
+          },
+          "core_emotion": {
+            "type": "string",
+            "description": "由用户事件合理归纳的核心情绪，不写技术原因。"
+          },
+          "irreplaceable_part": {
+            "type": "string",
+            "description": "一旦失去便无法由普通替代方案弥补的动作、关系或时刻。"
+          },
+          "facts_to_preserve": {
+            "type": "array",
+            "description": "后续任何节点都不得违背的用户已确认事实。",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "characters",
+          "time",
+          "location",
+          "core_event",
+          "user_expectation",
+          "core_emotion",
+          "irreplaceable_part",
+          "facts_to_preserve"
+        ],
+        "additionalProperties": false
+      },
+      "primary_anomaly": {
+        "type": "string",
+        "enum": [
+          "NAVIGATION_OFFSET",
+          "MESSAGE_DELAY",
+          "COMMUNICATION_INTERRUPTION",
+          "TIME_SYNC_ERROR",
+          "WEATHER_UPDATE_DELAY",
+          "TRAVEL_INFO_DEVIATION"
+        ],
+        "description": "全故事唯一的主要异常机制。"
+      },
+      "story_nodes": {
+        "type": "array",
+        "description": "严格按 node_01 至 node_10 顺序排列的内部节点规划。",
+        "minItems": 10,
+        "maxItems": 10,
+        "items": {
+          "type": "object",
+          "properties": {
+            "node_id": {
+              "type": "string",
+              "enum": [
+                "node_01",
+                "node_02",
+                "node_03",
+                "node_04",
+                "node_05",
+                "node_06",
+                "node_07",
+                "node_08",
+                "node_09",
+                "node_10"
+              ],
+              "description": "节点唯一 ID。"
+            },
+            "task_type": {
+              "type": "string",
+              "enum": [
+                "STORY_OPENING",
+                "STORY_CONTINUE",
+                "STORY_BRANCH",
+                "STORY_ENDING",
+                "KNOWLEDGE_REVEAL"
+              ],
+              "description": "节点任务类型。"
+            },
+            "summary": {
+              "type": "string",
+              "description": "仅规划该节点应推进的内容，不写正式正文。"
+            },
+            "entry_condition": {
+              "type": "string",
+              "description": "进入该节点前必须已经成立的故事状态，不写程序表达式。"
+            }
+          },
+          "required": [
+            "node_id",
+            "task_type",
+            "summary",
+            "entry_condition"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "reachable_endings": {
+        "type": "array",
+        "description": "仅描述可达结局的内容方向，不包含程序判定条件。",
+        "minItems": 4,
+        "maxItems": 5,
+        "items": {
+          "type": "object",
+          "properties": {
+            "ending_id": {
+              "type": "string",
+              "enum": [
+                "ending_01",
+                "ending_02",
+                "ending_03",
+                "ending_04",
+                "ending_05"
+              ],
+              "description": "结局唯一 ID。"
+            },
+            "ending_type": {
+              "type": "string",
+              "enum": [
+                "FULLY_PRESERVED",
+                "CONTINUED_DIFFERENTLY",
+                "PARTIALLY_CHANGED",
+                "MISSED_OR_INTERRUPTED",
+                "PRESERVED_WITH_IRREPLACEABLE_LOSS"
+              ],
+              "description": "结局内容类型。"
+            },
+            "outcome": {
+              "type": "string",
+              "description": "该结局中核心事件、人物关系和不可替代部分的最终结果方向。"
+            }
+          },
+          "required": [
+            "ending_id",
+            "ending_type",
+            "outcome"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "initial_story_state": {
+        "type": "object",
+        "description": "进入 node_01 前的初始状态；生成后作为不可变大纲的一部分保存。",
+        "properties": {
+          "confirmed_facts": {
+            "type": "array",
+            "description": "仅包含用户明确提供并已确认的事实。",
+            "items": {
+              "type": "string"
+            }
+          },
+          "known_to_user": {
+            "type": "array",
+            "description": "仅包含故事开始前用户已经知道的信息。",
+            "items": {
+              "type": "string"
+            }
+          },
+          "hidden_facts": {
+            "type": "array",
+            "description": "供后续连续性使用、但尚未向用户揭示的内部事实。",
+            "items": {
+              "type": "string"
+            }
+          },
+          "event_integrity": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "核心事件初始完整度，通常为 100。"
+          },
+          "relationship_connection": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "人物关系初始连接度，信息不足时为 50。"
+          },
+          "uncertainty": {
+            "type": "integer",
+            "minimum": 5,
+            "maximum": 15,
+            "description": "进入开场前的不确定性初始值。"
+          },
+          "current_node_id": {
+            "type": "string",
+            "enum": [
+              "node_01"
+            ],
+            "description": "固定从 node_01 开始。"
+          },
+          "active_consequences": {
+            "type": "array",
+            "description": "初始阶段不得存在持续后果，必须为空数组。",
+            "maxItems": 0,
+            "items": {
+              "type": "string"
+            }
+          },
+          "last_user_action": {
+            "type": "null",
+            "description": "故事开始前没有用户操作，必须为 null。"
+          }
+        },
+        "required": [
+          "confirmed_facts",
+          "known_to_user",
+          "hidden_facts",
+          "event_integrity",
+          "relationship_connection",
+          "uncertainty",
+          "current_node_id",
+          "active_consequences",
+          "last_user_action"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "required": [
+      "task_type",
+      "event_anchor",
+      "primary_anomaly",
+      "story_nodes",
+      "reachable_endings",
+      "initial_story_state"
+    ],
+    "additionalProperties": false
+  }
+}

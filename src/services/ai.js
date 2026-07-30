@@ -5,6 +5,7 @@ let aiEventSequence = 0
 const STORY_SESSION_STORAGE_KEY = 'space-debris-story-session'
 
 export const STORY_ACTION = Object.freeze({
+  STORY_OPTION_SELECT: 'STORY_OPTION_SELECT',
   MATERIALS_COMMIT: 'MATERIALS_COMMIT',
   MISSION_SELECT: 'MISSION_SELECT',
   ORBITAL_EVENT_RESOLVE: 'ORBITAL_EVENT_RESOLVE',
@@ -177,7 +178,6 @@ async function submitStoryAction(action) {
         body: JSON.stringify({
           session_id: credentials.sessionId,
           version: state.storyVersion,
-          payload: {},
           ...action,
         }),
       },
@@ -186,6 +186,21 @@ async function submitStoryAction(action) {
   } catch (error) {
     return failStoryRequest(error)
   }
+}
+
+export function submitCurrentStoryOption(optionId, clientActionId = globalThis.crypto.randomUUID()) {
+  const state = useAppStore.getState()
+  if (!state.currentStoryNode) {
+    return Promise.reject(
+      new StoryAPIError('STORY_NODE_MISSING', '当前没有等待处理的故事节点。', 409),
+    )
+  }
+  return submitStoryAction({
+    action_type: STORY_ACTION.STORY_OPTION_SELECT,
+    node_id: state.currentStoryNode,
+    option_id: optionId,
+    client_action_id: clientActionId,
+  })
 }
 
 export function submitMaterialStoryAction(materials) {
