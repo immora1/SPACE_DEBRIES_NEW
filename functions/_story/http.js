@@ -3,10 +3,25 @@ import { createStoryRepository } from './repository.js'
 import { createOpenAIStageGenerator } from './model.js'
 import { StoryService } from './story-service.js'
 
+const generatorByEnvironment = new WeakMap()
+
+function requestGenerator(env) {
+  if (!env || typeof env !== 'object') return createOpenAIStageGenerator(env)
+  let generator = generatorByEnvironment.get(env)
+  if (!generator) {
+    generator = createOpenAIStageGenerator(env)
+    generatorByEnvironment.set(env, generator)
+  }
+  return generator
+}
+
 export function createRequestStoryService(env) {
   return new StoryService({
     repository: createStoryRepository(env),
-    generateStage: createOpenAIStageGenerator(env),
+    generateStage: requestGenerator(env),
+    recordPerformance: (metrics) => {
+      console.info('[story-performance]', JSON.stringify(metrics))
+    },
   })
 }
 

@@ -50,6 +50,118 @@
           "additionalProperties": false
         }
       },
+      "material_insights": {
+        "type": "array",
+        "description": "只引用用户实际网站材料选择的结构化知识；旧故事没有材料快照时为空数组",
+        "minItems": 0,
+        "maxItems": 4,
+        "items": {
+          "type": "object",
+          "properties": {
+            "option_id": {
+              "type": "string",
+              "description": "selected_site_options 中实际存在的材料 option_id"
+            },
+            "option_name": {
+              "type": "string",
+              "description": "后端快照中的实际材料名称"
+            },
+            "insight_title": {
+              "type": "string",
+              "description": "与该材料选择相关的简短知识标题"
+            },
+            "insight_text": {
+              "type": "string",
+              "description": "只依据 knowledge_profile 写出的材料知识说明"
+            }
+          },
+          "required": [
+            "option_id",
+            "option_name",
+            "insight_title",
+            "insight_text"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "mission_insights": {
+        "type": "array",
+        "description": "只引用用户实际确认任务快照的结构化知识；没有任务快照时为空数组",
+        "minItems": 0,
+        "maxItems": 1,
+        "items": {
+          "type": "object",
+          "properties": {
+            "option_id": {
+              "type": "string",
+              "description": "selected_site_options 中实际存在的任务 option_id"
+            },
+            "option_name": {
+              "type": "string",
+              "description": "后端快照中的实际任务名称"
+            },
+            "insight_title": {
+              "type": "string",
+              "description": "与该任务选择相关的简短知识标题"
+            },
+            "insight_text": {
+              "type": "string",
+              "description": "只依据任务 knowledge_profile 写出的现实任务知识"
+            }
+          },
+          "required": [
+            "option_id",
+            "option_name",
+            "insight_title",
+            "insight_text"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "cleanup_insights": {
+        "type": "array",
+        "description": "只引用 cleanup_game_result 中用户实际完成配对的清理知识；旧故事没有 M6 快照时为空数组。",
+        "minItems": 0,
+        "maxItems": 3,
+        "items": {
+          "type": "object",
+          "properties": {
+            "cleanup_target_id": {
+              "type": "string",
+              "description": "cleanup_game_result.matches 中真实存在的 cleanup_target_id"
+            },
+            "cleanup_target_name": {
+              "type": "string",
+              "description": "后端冻结快照中的目标名称"
+            },
+            "cleanup_method_id": {
+              "type": "string",
+              "description": "同一条真实配对中的 cleanup_method_id"
+            },
+            "cleanup_method_name": {
+              "type": "string",
+              "description": "后端冻结快照中的清理方式名称"
+            },
+            "insight_title": {
+              "type": "string",
+              "description": "该实际配对对应的简短知识标题"
+            },
+            "insight_text": {
+              "type": "string",
+              "description": "仅依据后端 profile 编写的通俗说明"
+            }
+          },
+          "required": [
+            "cleanup_target_id",
+            "cleanup_target_name",
+            "cleanup_method_id",
+            "cleanup_method_name",
+            "insight_title",
+            "insight_text"
+          ],
+          "additionalProperties": false
+        }
+      },
       "reality_note": {
         "type": "string",
         "description": "说明现实影响通常是局部、短暂或不一致的，并不等于整个系统完全失效"
@@ -68,6 +180,9 @@
       "knowledge_title",
       "story_connection",
       "causal_chain",
+      "material_insights",
+      "mission_insights",
+      "cleanup_insights",
       "reality_note",
       "story_completed"
     ],

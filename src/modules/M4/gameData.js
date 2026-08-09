@@ -193,33 +193,10 @@ export function localizeThreatEvent(event, language = 'zh') {
   }
 }
 
-function normalizeText(value) {
-  if (!value) return ''
-  if (typeof value === 'string') return value
-  return [value.name, value.title, value.label].filter(Boolean).join(' ')
-}
-
-function scoreEvent(event, weights, index) {
-  return (weights[event.type] || 0) + index * 0.01
-}
-
 export function pickEvents(damageLevel = 0, clickedEvents = [], count = 6) {
-  const weights = { ...BASE_WEIGHTS }
-  const history = clickedEvents.map(normalizeText).join(' ')
-
-  Object.entries(EVENT_WEIGHT_BOOST).forEach(([keyword, boost]) => {
-    if (!history.includes(keyword)) return
-    Object.entries(boost).forEach(([type, delta]) => {
-      weights[type] = (weights[type] || 0) + delta
-    })
-  })
-
-  if (damageLevel > 20) weights[THREAT_TYPES.CASCADE_FRAGMENT] += 10
-  if (damageLevel > 40) weights[THREAT_TYPES.FUEL_LEAK] += 12
-
-  return [...THREAT_EVENTS]
-    .sort((a, b) => scoreEvent(b, weights, THREAT_EVENTS.indexOf(b)) - scoreEvent(a, weights, THREAT_EVENTS.indexOf(a)))
-    .slice(0, Math.min(count, THREAT_EVENTS.length))
+  void damageLevel
+  void clickedEvents
+  return THREAT_EVENTS.slice(0, Math.min(count, THREAT_EVENTS.length))
 }
 
 export function calcInitialArmor(damageLevel = 0) {

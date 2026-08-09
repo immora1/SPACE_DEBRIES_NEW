@@ -4,6 +4,7 @@ import test from 'node:test'
 import {
   createAIOutputEvent,
   formatAIOutput,
+  getCurrentOrbitalStoryPanelText,
   getStoryPhase,
   getTimelineTickScale,
   publicStoryStageToEvent,
@@ -39,7 +40,7 @@ test('creates a normalized event with stage and story influence', () => {
   assert.match(event.content, /故事内容/)
 })
 
-test('current story phase follows the page while preserving the latest influence', () => {
+test('current story phase follows the page and uses history only without an active node', () => {
   const phase = getStoryPhase([
     createAIOutputEvent({
       type: 'game-decision',
@@ -53,6 +54,103 @@ test('current story phase follows the page while preserving the latest influence
   assert.equal(phase.code, 'M2')
   assert.equal(phase.action, '执行规避机动')
   assert.equal(phase.impact, '燃料减少，但碰撞风险下降。')
+})
+
+test('current story phase shows the active node instead of the previous completed stage', () => {
+  const phase = getStoryPhase([{
+    id: 'node-05-stage',
+    stageId: 'm4',
+    choice: '切换安全模式',
+    impact: 'node_05 已根据轨道事件确认结果生成。',
+  }], 'm4', 'zh', {
+    storyStatus: 'in_progress',
+    currentNodeId: 'node_06',
+    currentInteraction: {
+      node_id: 'node_06',
+      interaction_mode: 'SITE_GAME_RESULT',
+      waiting_prompt: {
+        zh: '请在右侧轨道事件面板确认答案；故事将在后台按节点顺序生成，游戏无需等待。',
+      },
+    },
+    gameStorySync: {
+      queued_story_stages: 0,
+      queued_nodes: [],
+      current_generation_node: null,
+      has_failed_job: false,
+    },
+  })
+
+  assert.equal(phase.code, 'M4')
+  assert.equal(phase.action, '等待 node_06 的当前操作')
+  assert.match(phase.impact, /右侧轨道事件面板/)
+  assert.equal(phase.impact.includes('node_05'), false)
+})
+
+test('current story phase exposes the queued or generating node rather than stale history', () => {
+  const queued = getStoryPhase([], 'm4', 'zh', {
+    storyStatus: 'in_progress',
+    currentNodeId: 'node_06',
+    gameStorySync: {
+      queued_story_stages: 1,
+      queued_nodes: ['node_06'],
+    },
+  })
+  assert.equal(queued.action, 'node_06 已进入生成队列')
+  assert.match(queued.impact, /node_06/)
+
+  const generating = getStoryPhase([], 'm4', 'zh', {
+    storyStatus: 'in_progress',
+    currentNodeId: 'node_06',
+    gameStorySync: {
+      current_generation_node: 'node_06',
+    },
+  })
+  assert.equal(generating.action, '正在生成 node_06')
+  assert.match(generating.impact, /node_06/)
+})
+
+test('M4 story panel replaces the previous node text with current generation status', () => {
+  const submitting = getCurrentOrbitalStoryPanelText({
+    currentNodeId: 'node_06',
+    latestGeneratedNodeId: 'node_05',
+    latestStory: '这是 node_05 的旧故事正文。',
+    loading: true,
+  })
+  assert.match(submitting, /node_06/)
+  assert.equal(submitting.includes('旧故事正文'), false)
+
+  const catchingUp = getCurrentOrbitalStoryPanelText({
+    currentNodeId: 'node_07',
+    latestGeneratedNodeId: 'node_05',
+    latestStory: '这是 node_05 的旧故事正文。',
+    gameStorySync: {
+      current_generation_node: 'node_06',
+    },
+  })
+  assert.match(catchingUp, /node_07/)
+  assert.match(catchingUp, /node_06/)
+  assert.equal(catchingUp.includes('旧故事正文'), false)
+})
+
+test('M4 story panel may show narrative only when it belongs to the current node', () => {
+  const currentStory = getCurrentOrbitalStoryPanelText({
+    currentNodeId: 'node_06',
+    latestGeneratedNodeId: 'node_06',
+    latestStory: '这是 node_06 的故事正文。',
+  })
+  assert.equal(currentStory, '这是 node_06 的故事正文。')
+})
+
+test('M4 story panel accepts a null story sync before the story session exists', () => {
+  const waiting = getCurrentOrbitalStoryPanelText({
+    currentNodeId: 'node_04',
+    latestGeneratedNodeId: null,
+    latestStory: '故事开场。',
+    gameStorySync: null,
+  })
+
+  assert.match(waiting, /node_04/)
+  assert.equal(waiting.includes('故事开场'), false)
 })
 
 test('tick scale falls away from the hovered event without changing layout', () => {

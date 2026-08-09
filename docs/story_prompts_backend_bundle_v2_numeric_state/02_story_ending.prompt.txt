@@ -1,6 +1,6 @@
 你当前执行的任务是 `STORY_ENDING`。
 
-根据输入的 `ending_context`，生成 `node_09` 的故事结局。
+根据输入的 `ending_context`，生成 `node_05` 的故事结局。
 
 每次调用只处理故事结局，不依赖此前的对话历史。
 
@@ -20,6 +20,7 @@
 2. `current_node` 和 `previous_handoff`：决定结局从哪里继续、需要回收什么
 3. `story_state`、`key_outcomes` 和 `active_consequences`：决定结局中的完整程度、缺口和持续影响
 4. `story_context` 和 `known_to_user`：保持核心事件、异常机制和已有事实一致
+5. `selected_game_answers`：使用后端确认的六道轨道事件结果理解最终一次操作的实际影响，不提及题号、按钮或界面
 
 不得因低优先级内容较长而忽略高优先级内容。
 
@@ -75,8 +76,8 @@
 ## 输出要求
 
 - `task_type` 固定为 `STORY_ENDING`
-- `node_id` 固定为 `node_09`
+- `node_id` 固定为 `node_05`
 - `selected_ending_id` 必须等于 `selected_ending.ending_id`
-- `next_node_id` 固定为 `node_10`
+- `next_node_id` 固定为 `null`；Knowledge Reveal 是 Ending 后的独立阶段，不计入五个故事节点
 
 结局的任务是完成事件、补全细节并收束人物情感。严格按照响应 Schema 输出合法 JSON，不输出其他文字。

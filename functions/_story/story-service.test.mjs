@@ -21,6 +21,7 @@ function createHarness(options = {}) {
     repository,
     generateOutput,
     clock: () => now,
+    recordPerformance: options.recordPerformance,
   })
   return {
     repository,
@@ -59,10 +60,14 @@ test('创建故事按 Outline→Opening 完成，并只由后端推进到 node_0
   assert.equal(story.status, 'in_progress')
   assert.equal(story.current_node_id, 'node_02')
   assert.equal(story.current_checkpoint, 'materials')
-  assert.equal(story.current_options.length, 3)
+  assert.equal(story.current_options.length, 0)
+  assert.equal(story.current_interaction.interaction_mode, 'SITE_COMPOSITE')
+  assert.equal(story.current_interaction.module_id, 'M2')
   assert.equal(story.story_text, VALID_OPENING_FIXTURE.story_text)
   assert.equal(story.timeline.length, 1)
   assert.equal(story.timeline[0].node_id, 'node_01')
+  assert.equal(story.timeline[0].generated_from_node_id, 'node_01')
+  assert.equal(story.timeline[0].artifact_type, 'OPENING')
   assert.equal(story.timeline[0].task_type, 'STORY_OPENING')
 
   const internal = harness.repository.stories.get(story.story_id)
@@ -155,7 +160,26 @@ test('Outline 业务校验失败会携带原因重试一次', async () => {
   assert.equal(generator.getCallCount(), 3)
   const calls = generator.getCalls()
   assert.equal(calls[1].taskType, 'STORY_OUTLINE')
-  assert.match(calls[1].context.retryReason, /OUTLINE_NODE_SEQUENCE_INVALID/)
+  assert.match(calls[1].context.retryReason, /OUTLINE_STAGE_SEQUENCE_INVALID/)
+})
+
+test('创建阶段上报 Outline、Opening、数据库与总耗时，不包含故事正文或隐藏事实', async () => {
+  const reports = []
+  const harness = createHarness({
+    recordPerformance: (metrics) => reports.push(metrics),
+  })
+  await harness.service.createStory(createRequest())
+
+  assert.equal(reports.length, 1)
+  assert.equal(reports[0].stage, 'CREATE_STORY')
+  assert.equal(reports[0].outline.retry_count, 0)
+  assert.equal(reports[0].opening.retry_count, 0)
+  assert.ok(reports[0].create_story.db_read_duration_ms >= 0)
+  assert.ok(reports[0].create_story.db_commit_duration_ms >= 0)
+  assert.ok(reports[0].create_story.total_stage_duration_ms >= 0)
+  const serialized = JSON.stringify(reports[0])
+  assert.equal(serialized.includes('story_text'), false)
+  assert.equal(serialized.includes('hidden_facts'), false)
 })
 
 test('Outline 不可达结局重试反馈包含 ending ID 与真实数值范围', async () => {
@@ -178,8 +202,10 @@ test('Outline 不可达结局重试反馈包含 ending ID 与真实数值范围'
   const reason = generator.getCalls()[1].context.retryReason
   assert.match(reason, /OUTLINE_ENDING_UNREACHABLE/)
   assert.match(reason, /ending_01/)
-  assert.match(reason, /event_integrity 72-100/)
-  assert.match(reason, /更高 priority 规则完全遮蔽/)
+  assert.match(reason, /event_integrity 76-100/)
+  assert.match(reason, /"operator":"eq"/)
+  assert.match(reason, /"required_consequence_ids":\[\]/)
+  assert.match(reason, /"fallback":false/)
 })
 
 test('Opening 结构校验失败会重试，最终只保存一个 node_01 stage', async () => {
@@ -214,7 +240,7 @@ ${'你听见远处传来声音，细节依旧悬而未决。'.repeat(7)}`
 
   const reason = generator.getCalls()[2].context.retryReason
   assert.match(reason, /OPENING_STORY_TEXT_INVALID/)
-  assert.match(reason, /420-500 个汉字/)
+  assert.match(reason, /480-520 个汉字/)
   assert.match(reason, /不计标点、数字和空格/)
   assert.match(reason, /3-5 段/)
   assert.match(reason, /第二人称“你”/)

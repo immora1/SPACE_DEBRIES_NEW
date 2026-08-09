@@ -10,6 +10,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { GLBSatelliteModel } from '../M1/SatelliteModel'
+import { materialControlId } from '../../services/storySiteInteractions'
 import useI18n from '../../i18n/useI18n'
 import { CanvasErrorBoundary, PARTS, PART_ACCENT } from './SceneMaterial'
 import './material-selection-lab.css'
@@ -27,6 +28,7 @@ export default function MaterialSelectionLab({
   allDone,
   aiState,
   feedback,
+  error,
   onSelect,
   onAnalyze,
   onContinue,
@@ -161,6 +163,8 @@ export default function MaterialSelectionLab({
                     return (
                       <label key={option.id} className={`m3-material-radio-option${selected ? ' is-selected' : ''}`}>
                         <input
+                          id={materialControlId(activePart.id, option.id)}
+                          data-story-control-id={materialControlId(activePart.id, option.id)}
                           type="radio"
                           name={`material-${activePart.id}`}
                           value={option.id}
@@ -237,6 +241,9 @@ export default function MaterialSelectionLab({
                   '材料分析暂时失败，故事状态尚未推进。你的选择仍保留在当前页面，可直接重试。',
                   'Material analysis failed and the story did not advance. Your current selections remain available for a retry.',
                 )}</p>
+                {aiState === 'error' && error?.code ? (
+                  <footer>{error.code} · {error.message}</footer>
+                ) : null}
                 <button type="button" onClick={aiState === 'done' ? onContinue : onAnalyze}>
                   {aiState === 'done' ? pick('进入任务选择', 'Continue to mission') : pick('重试材料分析', 'Retry analysis')}
                   {' '}

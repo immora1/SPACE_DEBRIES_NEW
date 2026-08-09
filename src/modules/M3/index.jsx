@@ -6,12 +6,15 @@ import {
   createStorySession,
   submitMaterialStoryAction,
   submitMissionStoryAction,
+  StoryAPIError,
 } from '../../services/ai'
+import { isStorySessionUnavailableError } from '../../services/storySessionRecovery'
 import OrbitGlobe from './OrbitGlobe'
 import OrbitClassification from './OrbitClassification'
 import IdentityDossier from './IdentityDossier'
 import MaterialSelectionLab from './MaterialSelectionLab'
 import MissionSelectionDeck from './MissionSelectionDeck'
+import { DEFAULT_MISSION_ID, MISSION_CANDIDATES } from './missionCandidates'
 import OrbitNarrative from './OrbitNarrative'
 import useI18n from '../../i18n/useI18n'
 import './orbit-classification.css'
@@ -122,15 +125,9 @@ const ORBITS = [
   },
 ]
 
-const MISSIONS = [
-  { id: 'weather', label: '气象监测', labelEn: 'WEATHER MONITORING', desc: '实时追踪大气层云系、温度场与风速，为地面预报提供原始数据。', descEn: 'Track cloud systems, temperature fields, and wind speed to support ground forecasting.', orbit: '太阳同步近地轨道（SSO / LEO）· 800–1000 km', orbitEn: 'Sun-synchronous LEO · 800–1000 km', example: '风云三号、NOAA-20', exampleEn: 'Fengyun-3, NOAA-20' },
-  { id: 'comms', label: '通信中继', labelEn: 'COMMUNICATION RELAY', desc: '在轨道充当无线电中继，为偏远区域、船只或飞机提供网络覆盖。', descEn: 'Relay radio signals to provide coverage for remote regions, ships, and aircraft.', orbit: '低地球轨道星座（LEO）或地球静止轨道（GEO）· 550–35,786 km', orbitEn: 'LEO constellation or GEO · 550–35,786 km', example: '铱星系列、Starlink', exampleEn: 'Iridium, Starlink' },
-  { id: 'imaging', label: '地球成像', labelEn: 'EARTH OBSERVATION', desc: '拍摄可见光或合成孔径雷达图像，用于灾害监测与资源普查。', descEn: 'Capture optical or synthetic-aperture radar imagery for disaster monitoring and resource surveys.', orbit: '太阳同步近地轨道（SSO / LEO）· 400–800 km', orbitEn: 'Sun-synchronous LEO · 400–800 km', example: '哨兵-2A、LANDSAT 8', exampleEn: 'Sentinel-2A, LANDSAT 8' },
-  { id: 'science', label: '科学探测', labelEn: 'SCIENTIFIC RESEARCH', desc: '搭载精密仪器观测宇宙射线、地磁场或太阳粒子。', descEn: 'Use precision instruments to observe cosmic rays, Earth’s magnetic field, and solar particles.', orbit: '近极地低地球轨道（Polar LEO）· 450–530 km', orbitEn: 'Near-polar LEO · 450–530 km', example: 'Swarm、GRACE-FO', exampleEn: 'Swarm, GRACE-FO' },
-]
-
 export default function M3({ onComplete }) {
   const { pick } = useI18n()
+  const user            = useAppStore((s) => s.user)
   const satellite       = useAppStore((s) => s.satellite)
   const materials       = useAppStore((s) => s.materials)
   const damageLevel     = useAppStore((s) => s.damageLevel)
@@ -152,27 +149,41 @@ export default function M3({ onComplete }) {
   const restoredMissionId = publicGameState?.mission?.action_id || null
   const restoredMaterialsCommitted = Object.keys(publicGameState?.satellite_build?.materials || {}).length === 4
   const restoredMaterialStage = [...(storyTimeline || [])].reverse().find(
-    (stage) => stage.input_action?.module === 'M2_MATERIALS',
+    (stage) => ['M2', 'M2_MATERIALS'].includes(stage.input_action?.module),
   )
   const restoredOpeningStage = [...(storyTimeline || [])].reverse().find(
     (stage) => stage.task_type === 'STORY_OPENING',
   )
+  const restoredMissionStage = [...(storyTimeline || [])].reverse().find(
+    (stage) => stage.node_id === 'node_03' && stage.input_action?.module === 'M3',
+  )
 
   const [mission,        setMissionLocal]  = useState(restoredMissionId)
+  const [missionCandidate, setMissionCandidate] = useState(
+    restoredMissionId || DEFAULT_MISSION_ID,
+  )
   const [aiState,        setAiState]       = useState(restoredMissionId ? 'done' : 'idle')
+  const [missionError,   setMissionError]  = useState(null)
   const [story,          setStory]         = useState(restoredOpeningStage?.display_content?.story_text || '')
   const [currentStep,    setCurrentStep]   = useState(0)
   const [activeOrbit, setActiveOrbit] = useState('leo')
   const [pinnedOrbit, setPinnedOrbit] = useState('leo')
   const [matAiState,     setMatAiState]    = useState(restoredMaterialsCommitted ? 'done' : 'idle')
   const [matFeedback,    setMatFeedback]   = useState(restoredMaterialStage?.display_content?.story_text || '')
+  const [matError,       setMatError]      = useState(null)
 
   const [formStep,       setFormStep]      = useState(storyId && satellite ? 'result' : 'form')
-  const [form,           setForm]          = useState({ name: '', city: '', importantEvent: '' })
+  const [form,           setForm]          = useState({
+    name: user?.name || '',
+    city: user?.city || '',
+    importantEvent: user?.importantEvent || '',
+  })
   const [openingStory,   setOpeningStory]  = useState(restoredOpeningStage?.display_content?.story_text || '')
   const [formError,      setFormError]     = useState(null)
 
   const onCompleteRef = useRef(onComplete)
+  const materialActionRef = useRef(null)
+  const missionActionRef = useRef(null)
   const storyRestoreAppliedRef = useRef(false)
   useEffect(() => { onCompleteRef.current = onComplete }, [onComplete])
 
@@ -181,6 +192,11 @@ export default function M3({ onComplete }) {
   }, [aiState, mission])
 
   useEffect(() => {
+    if (!storyId && formStep !== 'form' && formStep !== 'generating') {
+      storyRestoreAppliedRef.current = false
+      setFormStep('form')
+    }
+
     if (
       !storyRestoreAppliedRef.current
       && storyId
@@ -201,14 +217,17 @@ export default function M3({ onComplete }) {
 
     if (restoredMissionId) {
       setMissionLocal(restoredMissionId)
+      setMissionCandidate(restoredMissionId)
       setAiState('done')
-      setStory(restoredOpeningStage?.display_content?.story_text || '')
+      setMissionError(null)
+      setStory(restoredMissionStage?.display_content?.story_text || '')
     }
   }, [
     formStep,
     restoredMaterialStage,
     restoredMaterialsCommitted,
     restoredMissionId,
+    restoredMissionStage,
     restoredOpeningStage,
     satellite,
     storyCheckpoint,
@@ -424,37 +443,159 @@ export default function M3({ onComplete }) {
   const matAllDone = Object.values(safeMatls).filter(Boolean).length === 4
 
   async function handleMatFeedback() {
-    if (!matAllDone || matAiState !== 'idle') return
+    if (!matAllDone || matAiState === 'loading' || matAiState === 'done') return
+    const fingerprint = JSON.stringify(materials)
+    const pendingAction = materialActionRef.current?.fingerprint === fingerprint
+      ? materialActionRef.current
+      : {
+          fingerprint,
+          clientActionId: globalThis.crypto.randomUUID(),
+        }
+    materialActionRef.current = pendingAction
+    setMatError(null)
     setMatAiState('loading')
     try {
-      const storySnapshot = await submitMaterialStoryAction(materials)
+      const storySnapshot = await submitMaterialStoryAction(
+        materials,
+        pendingAction.clientActionId,
+      )
       setMatFeedback(storySnapshot.current_stage?.display_content?.story_text || '')
       setMatAiState('done')
-    } catch { setMatAiState('error') }
+      materialActionRef.current = null
+    } catch (error) {
+      if (error?.code === 'STORY_SESSION_EXPIRED') {
+        materialActionRef.current = null
+        setMatAiState('idle')
+        setMatError(null)
+        setFormError(error.message)
+        setFormStep('form')
+        return
+      }
+      setMatError({
+        code: error?.code || 'STORY_GENERATION_FAILED',
+        message: error?.message || pick('故事生成暂时失败，请重试。', 'Story generation temporarily failed. Please retry.'),
+      })
+      setMatAiState('error')
+    }
   }
 
   function handleMaterialSelect(partId, optionId) {
     if (matAiState === 'done') return
+    materialActionRef.current = null
     setMaterialPart(partId, optionId)
     if (matAiState !== 'idle') {
       setMatAiState('idle')
       setMatFeedback('')
+      setMatError(null)
     }
+  }
+
+  function handleMissionCandidateSelect(missionId) {
+    if (aiState === 'loading' || aiState === 'done') return
+    missionActionRef.current = null
+    setMissionCandidate(missionId)
+    if (aiState === 'error') {
+      setAiState('idle')
+      setMissionError(null)
+    }
+  }
+
+  async function rebuildStorySessionToMissionNode() {
+    const recoveryIdentity = {
+      name: form.name.trim() || user?.name?.trim() || '',
+      city: form.city.trim() || user?.city?.trim() || '',
+      importantEvent: form.importantEvent.trim() || user?.importantEvent?.trim() || '',
+    }
+    const hasMaterials = Object.values(materials || {}).filter(Boolean).length === 4
+    if (
+      !recoveryIdentity.name
+      || !recoveryIdentity.city
+      || !recoveryIdentity.importantEvent
+      || !satellite
+      || !hasMaterials
+    ) {
+      throw new StoryAPIError(
+        'STORY_SESSION_RECOVERY_UNAVAILABLE',
+        pick(
+          '故事会话已丢失，且本地身份、卫星或四项材料信息不完整。请返回本模块的身份信息阶段重新建立故事。',
+          'The story session is missing and the saved identity, satellite, or four material selections are incomplete. Return to the identity section of this module to recreate the story.',
+        ),
+        409,
+      )
+    }
+
+    beginStorySession()
+    setForm(recoveryIdentity)
+    setFormError(null)
+    setFormStep('generating')
+    const createdStory = await createStorySession({
+      ...recoveryIdentity,
+      satellite,
+      damageLevel,
+      historyEventIds: (clickedHistoryEvents || []).map((event) => (
+        event?.id || event?.eventId || event?.name || event?.title || String(event)
+      )),
+    })
+    const recoveredOpening = createdStory.current_stage?.display_content?.story_text || ''
+    setOpeningStory(recoveredOpening)
+    setStoryChapter('opening', recoveredOpening)
+    setFormStep('result')
+
+    const materialStory = await submitMaterialStoryAction(
+      materials,
+      globalThis.crypto.randomUUID(),
+    )
+    setMatFeedback(materialStory.current_stage?.display_content?.story_text || '')
+    setMatAiState('done')
+    setMatError(null)
+    materialActionRef.current = null
   }
 
   async function handleMissionSelect(missionId) {
     if (aiState === 'loading' || aiState === 'done') return
+    if (!missionId) return
+    const pendingAction = missionActionRef.current?.missionId === missionId
+      ? missionActionRef.current
+      : {
+          missionId,
+          clientActionId: globalThis.crypto.randomUUID(),
+        }
+    missionActionRef.current = pendingAction
+    setMissionError(null)
     setAiState('loading')
     try {
-      const storySnapshot = await submitMissionStoryAction(missionId)
+      let storySnapshot
+      try {
+        storySnapshot = await submitMissionStoryAction(
+          missionId,
+          pendingAction.clientActionId,
+        )
+      } catch (error) {
+        if (!isStorySessionUnavailableError(error)) throw error
+        await rebuildStorySessionToMissionNode()
+        storySnapshot = await submitMissionStoryAction(
+          missionId,
+          pendingAction.clientActionId,
+        )
+      }
       const text = storySnapshot.current_stage?.display_content?.story_text || ''
       setMissionLocal(missionId)
       setMission(missionId)
       setStory(text)
       setStoryChapter('m3', text)
       setAiState('done')
-    } catch {
+      setMissionError(null)
+      missionActionRef.current = null
+    } catch (error) {
+      setMissionError({
+        code: error?.code || 'STORY_GENERATION_FAILED',
+        message: error?.message || pick('故事生成暂时失败，请重试。', 'Story generation temporarily failed. Please retry.'),
+      })
       setAiState('error')
+      if (isStorySessionUnavailableError(error)) {
+        setFormError(error.message)
+        setFormStep('form')
+      }
     }
   }
 
@@ -627,6 +768,7 @@ export default function M3({ onComplete }) {
               allDone={matAllDone}
               aiState={matAiState}
               feedback={matFeedback}
+              error={matError}
               onSelect={handleMaterialSelect}
               onAnalyze={handleMatFeedback}
               onContinue={() => chapterRef3.current?.scrollIntoView({ behavior: 'smooth' })}
@@ -638,11 +780,14 @@ export default function M3({ onComplete }) {
           ═══════════════════════════════════════════════ */}
           <div ref={chapterRef3} style={chapterWrap(3)}>
             <MissionSelectionDeck
-              missions={MISSIONS}
-              selectedMissionId={mission}
+              missions={MISSION_CANDIDATES}
+              selectedMissionId={missionCandidate}
+              confirmedMissionId={mission}
               aiState={aiState}
+              error={missionError}
               story={story}
               satelliteName={satellite?.name}
+              onSelect={handleMissionCandidateSelect}
               onConfirm={handleMissionSelect}
             />
           </div>
@@ -739,7 +884,7 @@ export default function M3({ onComplete }) {
                   </div>
                   <div className="m3-mission-globe-status-value">
                     {mission
-                      ? MISSIONS.find((m) => m.id === mission)?.label ?? mission
+                      ? MISSION_CANDIDATES.find((m) => m.id === mission)?.label ?? mission
                       : pick('— 请从左侧选择任务 —', '— SELECT A MISSION ON THE LEFT —')}
                   </div>
                 </motion.div>

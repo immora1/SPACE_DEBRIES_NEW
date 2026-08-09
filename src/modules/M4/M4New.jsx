@@ -7,7 +7,11 @@ import gsap from 'gsap'
 import * as THREE from 'three'
 import useAppStore from '../../store/useAppStore'
 import useI18n from '../../i18n/useI18n'
-import { submitOrbitalEventStoryAction } from '../../services/ai'
+import {
+  processQueuedStoryJobs,
+  submitOrbitalEventStoryAction,
+} from '../../services/ai'
+import { getCurrentOrbitalStoryPanelText } from '../../services/aiTimeline'
 import { calcInitialArmor, evaluateResult, localizeThreatEvent, pickEvents } from './gameData'
 import { commitOrbitDragProgress, shouldStartOrbitMission } from './orbitControl'
 import ReflectionPage from './ReflectionPage'
@@ -4139,6 +4143,7 @@ export default function M4New({ onComplete = () => {} }) {
   const storyId = useAppStore((state) => state.storyId)
   const publicGameState = useAppStore((state) => state.publicGameState)
   const storyTimeline = useAppStore((state) => state.storyTimeline)
+  const gameStorySync = useAppStore((state) => state.gameStorySync)
   const proxy = useRef({ scale: MIN_EARTH_SCALE, orbitOpacity: 1, x: 0 })
   const satelliteFocusRef = useRef(new THREE.Vector3())
   const started = useRef(false)
@@ -4176,12 +4181,33 @@ export default function M4New({ onComplete = () => {} }) {
       `${satellite?.name || 'The satellite'} enters low Earth orbit. The monitoring system begins recording every small deviation.`,
     )
   const [storyThread, setStoryThread] = useState([initialStory])
+  const orbitalStoryStages = useMemo(
+    () => storyTimeline.filter(
+      (stage) => stage.input_action?.module === 'M4_ORBITAL_EVENTS'
+        && stage.display_content?.story_text,
+    ),
+    [storyTimeline],
+  )
+  const orbitalStoryBeats = useMemo(
+    () => orbitalStoryStages.map((stage) => stage.display_content.story_text),
+    [orbitalStoryStages],
+  )
   const currentEvent = useMemo(
     () => localizeThreatEvent(events[round] || null, language),
     [events, language, round],
   )
   const currentMonth = GAME_MONTHS[round] || GAME_MONTHS[GAME_MONTHS.length - 1]
-  const latestStory = storyThread[storyThread.length - 1]
+  const currentQuestionNodeId = round < TOTAL_ROUNDS
+    ? `node_${String(round + 4).padStart(2, '0')}`
+    : null
+  const latestOrbitalStage = orbitalStoryStages.at(-1)
+  const latestStory = getCurrentOrbitalStoryPanelText({
+    currentNodeId: currentQuestionNodeId,
+    latestGeneratedNodeId: latestOrbitalStage?.node_id,
+    latestStory: storyThread.at(-1),
+    loading,
+    gameStorySync,
+  }, language)
   const recoveryStep = phase === GAME_PHASE.RECOVERY && recoveryStepsVisible
     ? activeRecoveryStepIndex === 0
       ? RECOVERY_ANIMATION_STEP.MISSION_END
@@ -4215,6 +4241,16 @@ export default function M4New({ onComplete = () => {} }) {
     moduleViewportObserver.observe(element)
     return () => moduleViewportObserver.disconnect()
   }, [])
+
+  useEffect(() => {
+    const synchronizedStories = [initialStory, ...orbitalStoryBeats].filter(Boolean)
+    setStoryThread((currentStories) => (
+      currentStories.length === synchronizedStories.length
+        && currentStories.every((story, index) => story === synchronizedStories[index])
+        ? currentStories
+        : synchronizedStories
+    ))
+  }, [initialStory, orbitalStoryBeats])
 
   useEffect(() => {
     if (!gameStarted) {
@@ -4326,11 +4362,7 @@ export default function M4New({ onComplete = () => {} }) {
         missionDelta: option?.missionDelta || 0,
       }
     })
-    const restoredStoryBeats = storyTimeline
-      .filter((stage) => stage.input_action?.module === 'M4_ORBITAL_EVENTS')
-      .map((stage) => stage.display_content?.story_text)
-      .filter(Boolean)
-    const restoredStories = [initialStory, ...restoredStoryBeats].filter(Boolean)
+    const restoredStories = [initialStory, ...orbitalStoryBeats].filter(Boolean)
     const restoredStatus = metrics
       ? {
           armor: metrics.armor,
@@ -4367,7 +4399,7 @@ export default function M4New({ onComplete = () => {} }) {
     language,
     publicGameState,
     storyId,
-    storyTimeline,
+    orbitalStoryBeats,
   ])
 
   const handleChoose = useCallback(async (option) => {
@@ -4394,14 +4426,17 @@ export default function M4New({ onComplete = () => {} }) {
     setDecisionError('')
     let storySnapshot
     try {
-      storySnapshot = await submitOrbitalEventStoryAction(currentEvent.id, option.id)
+      storySnapshot = await submitOrbitalEventStoryAction(
+        currentEvent.id,
+        option.id,
+        round + 1,
+      )
     } catch (error) {
-      setDecisionError(error?.message || pick('任务日志生成失败，请重试。', 'Mission log generation failed. Please retry.'))
+      setDecisionError(error?.message || pick('答案确认失败，请重试。', 'Answer confirmation failed. Please retry.'))
       setLoading(false)
       return
     }
 
-    const storyUpdate = storySnapshot.current_stage?.display_content?.story_text || ''
     const metrics = storySnapshot.public_game_state?.technical_metrics
     const resolvedStatus = metrics
       ? {
@@ -4410,38 +4445,28 @@ export default function M4New({ onComplete = () => {} }) {
           missionProgress: metrics.mission_progress,
         }
       : nextStatus
-    const nextStories = storyUpdate
-      ? [...storyThread, storyUpdate]
-      : storyThread
+    const nextStories = storyThread
     const nextDecisions = [...decisions, decision]
-    const feedbackColor = option.outcome === 'correct'
-      ? '#16835d'
-      : option.outcome === 'partial'
-        ? '#b66b16'
-        : '#b13b32'
 
     setGameStatus(resolvedStatus)
     setDecisions(nextDecisions)
     setStoryThread(nextStories)
-    setFeedback({
-      ...option,
-      title: option.outcome === 'correct'
-        ? pick('机动执行完成', 'Maneuver complete')
-        : option.outcome === 'partial'
-          ? pick('风险仍未完全解除', 'Risk remains')
-          : pick('轨道状态继续恶化', 'Orbit continues to degrade'),
-      aiLog: storyUpdate || storySnapshot.current_stage?.stage_summary || option.techNote,
-      color: feedbackColor,
-      nextDecisions,
-      nextStories,
-      nextStatus: resolvedStatus,
-    })
     setLoading(false)
-    setPhase(GAME_PHASE.FEEDBACK)
+    void processQueuedStoryJobs().catch(() => {})
+
+    if (round + 1 >= TOTAL_ROUNDS) {
+      await handleGameEnd(nextDecisions, resolvedStatus, nextStories)
+      return
+    }
+
+    setRound((value) => value + 1)
+    setFeedback(null)
+    setPhase(GAME_PHASE.EVENT)
   }, [
     currentEvent,
     decisions,
     gameStatus,
+    handleGameEnd,
     loading,
     round,
     storyThread,

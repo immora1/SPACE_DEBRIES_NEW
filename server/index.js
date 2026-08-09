@@ -36,17 +36,10 @@ app.use(express.json())
 const localStoryRepository = new MemoryStoryRepository()
 const localStoryService = new StoryService({
   repository: localStoryRepository,
-  generateStage: createOpenAIStageGenerator(
-    {
-      OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-      STORY_MODEL: process.env.STORY_MODEL,
-      STORY_REASONING_EFFORT: process.env.STORY_REASONING_EFFORT,
-      STORY_VERBOSITY: process.env.STORY_VERBOSITY,
-      OPENAI_STORY_TIMEOUT_MS: process.env.OPENAI_STORY_TIMEOUT_MS,
-      OPENAI_STORY_NETWORK_RETRIES: process.env.OPENAI_STORY_NETWORK_RETRIES,
-    },
-    { fetch: proxiedFetch },
-  ),
+  generateStage: createOpenAIStageGenerator(process.env, { fetch: proxiedFetch }),
+  recordPerformance: (metrics) => {
+    console.info('[story-performance]', JSON.stringify(metrics))
+  },
 })
 
 function sendStoryError(res, error) {
@@ -92,6 +85,19 @@ app.get('/api/stories/:storyId', async (req, res) => {
 app.post('/api/stories/:storyId/actions', async (req, res) => {
   try {
     const story = await localStoryService.advanceStory(req.params.storyId, req.body)
+    res.json({ ok: true, story })
+  } catch (error) {
+    sendStoryError(res, error)
+  }
+})
+
+app.post('/api/stories/:storyId/generations/process', async (req, res) => {
+  try {
+    const story = await localStoryService.processNextStoryJob(
+      req.params.storyId,
+      req.body.session_id,
+      req.body.retry_job_id || null,
+    )
     res.json({ ok: true, story })
   } catch (error) {
     sendStoryError(res, error)

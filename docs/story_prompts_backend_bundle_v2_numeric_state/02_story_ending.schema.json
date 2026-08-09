@@ -14,7 +14,7 @@
       "node_id": {
         "type": "string",
         "enum": [
-          "node_09"
+          "node_05"
         ],
         "description": "当前结局节点"
       },
@@ -35,11 +35,8 @@
         "description": "用1至3句话总结故事中出现的异常现象、实际影响和尚未解释的原因，供知识揭示阶段使用"
       },
       "next_node_id": {
-        "type": "string",
-        "enum": [
-          "node_10"
-        ],
-        "description": "下一个故事节点"
+        "type": "null",
+        "description": "固定为 null；Knowledge Reveal 是独立阶段，不属于五个故事节点"
       }
     },
     "required": [

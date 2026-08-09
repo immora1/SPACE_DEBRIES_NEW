@@ -111,8 +111,10 @@
   background: rgba(65, 111, 184, 0.075);
 }
 
+.m3-mission-tabs button.is-selected,
 .m3-mission-tabs button.is-assigned {
   color: #244f8b;
+  box-shadow: inset 0 -2px #416fb8;
 }
 
 .m3-mission-tabs button span {
@@ -277,7 +279,8 @@
 }
 
 .m3-mission-assign-row button:disabled {
-  cursor: wait;
+  cursor: not-allowed;
+  opacity: 0.46;
 }
 
 .m3-mission-loading,

@@ -16,31 +16,11 @@
       },
       {
         "node_id": "node_04",
-        "task_type": "STORY_BRANCH"
+        "task_type": "STORY_CONTINUE"
       },
       {
         "node_id": "node_05",
-        "task_type": "STORY_CONTINUE"
-      },
-      {
-        "node_id": "node_06",
-        "task_type": "STORY_BRANCH"
-      },
-      {
-        "node_id": "node_07",
-        "task_type": "STORY_CONTINUE"
-      },
-      {
-        "node_id": "node_08",
-        "task_type": "STORY_CONTINUE"
-      },
-      {
-        "node_id": "node_09",
         "task_type": "STORY_ENDING"
-      },
-      {
-        "node_id": "node_10",
-        "task_type": "KNOWLEDGE_REVEAL"
       }
     ],
     "reachable_endings": {

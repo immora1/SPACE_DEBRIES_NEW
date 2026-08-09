@@ -547,6 +547,13 @@
   scrollbar-width: thin;
 }
 
+.m3-material-report > footer {
+  margin: -8px 0 16px;
+  color: #a53b48;
+  font: 9px/1.55 'Space Mono', monospace;
+  overflow-wrap: anywhere;
+}
+
 @keyframes m3-material-pulse {
   0%, 100% { opacity: 0.28; transform: translateY(0); }
   50% { opacity: 1; transform: translateY(-3px); }

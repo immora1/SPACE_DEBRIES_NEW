@@ -97,6 +97,33 @@
   white-space: nowrap;
 }
 
+.ai-story-phase__site-wait {
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(226, 234, 255, 0.1);
+}
+
+.ai-story-phase__site-wait header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: rgba(185, 202, 236, 0.58);
+  font: 8px/1 "Space Mono", monospace;
+}
+
+.ai-story-phase__site-wait header small {
+  color: #88aff2;
+  font: inherit;
+}
+
+.ai-story-phase__site-wait p {
+  margin: 8px 0 0;
+  color: rgba(239, 243, 252, 0.76);
+  font-size: 9px;
+  line-height: 1.5;
+}
+
 .ai-story-phase__choices {
   margin-top: 10px;
   padding-top: 9px;

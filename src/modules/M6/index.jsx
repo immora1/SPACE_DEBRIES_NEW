@@ -1,13 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import useAppStore from '../../store/useAppStore'
 import useI18n from '../../i18n/useI18n'
-import { submitCleanupPairStoryAction } from '../../services/ai'
+import {
+  processQueuedStoryJobs,
+  submitCleanupMatchingComplete,
+  submitCleanupMatchStoryAction,
+} from '../../services/ai'
 import './index.css'
 
 const METHODS = [
   {
     id: 'laser',
+    cleanupMethodId: 'LASER_ABLATION',
     image: '/cleanup/1.jpg',
     title: '激光烧蚀',
     titleEn: 'LASER ABLATION',
@@ -23,6 +28,7 @@ const METHODS = [
   },
   {
     id: 'arm',
+    cleanupMethodId: 'ROBOTIC_ARM_CAPTURE',
     image: '/cleanup/2.jpg',
     title: '机械臂抓取',
     titleEn: 'ROBOTIC CAPTURE',
@@ -38,6 +44,7 @@ const METHODS = [
   },
   {
     id: 'net',
+    cleanupMethodId: 'FLEXIBLE_NET_CAPTURE',
     image: '/cleanup/3.jpg',
     title: '柔性捕捉网',
     titleEn: 'FLEXIBLE NET',
@@ -53,6 +60,7 @@ const METHODS = [
   },
   {
     id: 'harpoon',
+    cleanupMethodId: 'HARPOON_CAPTURE',
     image: '/cleanup/4.jpg',
     title: '飞行鱼叉',
     titleEn: 'HARPOON CAPTURE',
@@ -68,6 +76,7 @@ const METHODS = [
   },
   {
     id: 'tether',
+    cleanupMethodId: 'ELECTRODYNAMIC_TETHER',
     image: '/cleanup/5.jpg',
     title: '电动力缆索',
     titleEn: 'ELECTRODYNAMIC TETHER',
@@ -83,6 +92,7 @@ const METHODS = [
   },
   {
     id: 'sail',
+    cleanupMethodId: 'DRAG_SAIL',
     image: '/cleanup/6.jpg',
     title: '阻力帆',
     titleEn: 'DRAG SAIL',
@@ -227,21 +237,21 @@ function buildTargets({ gameResult, materials, debrisGenerated, satellite }) {
   const satelliteName = satellite?.name || '任务卫星'
 
   const laserTarget = pickRandom([
-    { id: 'fragment-cloud', code: 'A-17', type: '碎片云', size: '1–10 cm', motion: '高速分散', name: solar + '与' + insulation + '形成的小碎片群', source: 'M4 事件：' + event },
-    { id: 'paint-flakes', code: 'A-31', type: '微小剥落物', size: '3–7 cm', motion: '密集漂移', name: '漆片、薄膜与绝热材料混合碎片', source: '随机目标：多点反射信号' },
-    { id: 'panel-splinters', code: 'A-42', type: '板材碎片群', size: '5–12 cm', motion: '轨道相位分散', name: solar + '断裂后形成的薄片群', source: '随机目标：雷达散射截面低' },
+    { id: 'A17_FRAGMENT_CLOUD', uiId: 'fragment-cloud', code: 'A-17', type: '碎片云', size: '1–10 cm', motion: '高速分散', name: solar + '与' + insulation + '形成的小碎片群', source: 'M4 事件：' + event },
+    { id: 'A31_MICRO_DEBRIS', uiId: 'paint-flakes', code: 'A-31', type: '微小剥落物', size: '3–7 cm', motion: '密集漂移', name: '漆片、薄膜与绝热材料混合碎片', source: '随机目标：多点反射信号' },
+    { id: 'A42_PANEL_SPLINTERS', uiId: 'panel-splinters', code: 'A-42', type: '板材碎片群', size: '5–12 cm', motion: '轨道相位分散', name: solar + '断裂后形成的薄片群', source: '随机目标：雷达散射截面低' },
   ])
 
   const armTarget = pickRandom([
-    { id: 'intact-body', code: 'B-04', type: failed ? '失控主体' : '退役主体', size: '2.4 m / 620 kg', motion: failed ? '姿态翻滚' : '缓慢漂移', name: frame + '与' + propulsion + '构成的完整主体', source: 'M4 结算：护甲 ' + (gameResult?.finalArmor ?? '—') + ' / 燃料 ' + (gameResult?.finalFuel ?? '—') },
-    { id: 'rocket-stage', code: 'B-16', type: '火箭末级', size: '8.1 m / 1.8 t', motion: '低速滚转', name: '失去控制的上面级壳体', source: '随机目标：大型完整回波' },
-    { id: 'adapter-ring', code: 'B-27', type: '适配器结构', size: '1.6 m / 180 kg', motion: '稳定漂移', name: '带有可夹持边缘的环形结构', source: '随机目标：可建立刚性接触' },
+    { id: 'B04_INTACT_BODY', uiId: 'intact-body', code: 'B-04', type: failed ? '失控主体' : '退役主体', size: '2.4 m / 620 kg', motion: failed ? '姿态翻滚' : '缓慢漂移', name: frame + '与' + propulsion + '构成的完整主体', source: 'M4 结算：护甲 ' + (gameResult?.finalArmor ?? '—') + ' / 燃料 ' + (gameResult?.finalFuel ?? '—') },
+    { id: 'B16_ROCKET_STAGE', uiId: 'rocket-stage', code: 'B-16', type: '火箭末级', size: '8.1 m / 1.8 t', motion: '低速滚转', name: '失去控制的上面级壳体', source: '随机目标：大型完整回波' },
+    { id: 'B27_RING_STRUCTURE', uiId: 'adapter-ring', code: 'B-27', type: '适配器结构', size: '1.6 m / 180 kg', motion: '稳定漂移', name: '带有可夹持边缘的环形结构', source: '随机目标：可建立刚性接触' },
   ])
 
   const sailTarget = pickRandom([
-    { id: 'end-of-life', code: 'C-22', type: '预防性处置', size: '低轨小卫星', motion: '仍可控制', name: satelliteName + '的寿命末期平台', source: 'M1 轨道：' + (satellite?.altitudeKm ?? 836) + ' km / 倾角 ' + (satellite?.inclination ?? 98) + '°' },
-    { id: 'cubesat', code: 'C-08', type: '立方星', size: '12U / 26 kg', motion: '轨道自然衰减慢', name: '任务结束但仍能触发装置的小卫星', source: '随机目标：低轨可控目标' },
-    { id: 'leo-platform', code: 'C-35', type: '低轨平台', size: '60×40×30 cm', motion: '速度稳定', name: '可部署末期离轨装置的低轨载荷', source: '随机目标：尚未解体' },
+    { id: 'C22_END_OF_LIFE_PLATFORM', uiId: 'end-of-life', code: 'C-22', type: '预防性处置', size: '低轨小卫星', motion: '仍可控制', name: satelliteName + '的寿命末期平台', source: 'M1 轨道：' + (satellite?.altitudeKm ?? 836) + ' km / 倾角 ' + (satellite?.inclination ?? 98) + '°' },
+    { id: 'C08_CUBESAT', uiId: 'cubesat', code: 'C-08', type: '立方星', size: '12U / 26 kg', motion: '轨道自然衰减慢', name: '任务结束但仍能触发装置的小卫星', source: '随机目标：低轨可控目标' },
+    { id: 'C35_LEO_PLATFORM', uiId: 'leo-platform', code: 'C-35', type: '低轨平台', size: '60×40×30 cm', motion: '速度稳定', name: '可部署末期离轨装置的低轨载荷', source: '随机目标：尚未解体' },
   ])
 
   return shuffleTargets([
@@ -249,6 +259,21 @@ function buildTargets({ gameResult, materials, debrisGenerated, satellite }) {
     { ...armTarget, ideal: 'arm', diagnosis: '目标质量集中且结构仍完整，需要先稳定相对姿态，再可靠固定并执行受控离轨。' },
     { ...sailTarget, ideal: 'sail', diagnosis: '目标尚未变成自由碎片。此时部署低质量、低复杂度的离轨装置，比事后回收更有效。' },
   ])
+}
+
+function buildBackendTargets(targetSet) {
+  return (targetSet || []).map((target) => ({
+    id: target.cleanup_target_id,
+    uiId: target.ui_target_id,
+    code: target.code,
+    type: target.target_profile.target_type,
+    size: [target.target_profile.size, target.target_profile.mass].filter(Boolean).join(' / '),
+    motion: target.target_profile.motion_state,
+    name: target.cleanup_target_name,
+    source: target.source,
+    ideal: BACKEND_METHOD_TO_UI_METHOD[target.preferred_method_id],
+    diagnosis: target.target_profile.risk_traits.join('；'),
+  }))
 }
 
 function buildAssessment(target, method, correct, language = 'zh') {
@@ -270,14 +295,18 @@ const BACKEND_METHOD_TO_UI_METHOD = {
 
 function buildRestoredResults(targets, resolvedMatches, language) {
   return Object.fromEntries((resolvedMatches || []).flatMap((match) => {
-    const methodId = BACKEND_METHOD_TO_UI_METHOD[match.method_id]
-    const target = targets.find((item) => item.ideal === methodId)
+    const stableMethodId = match.cleanup_method_id || match.method_id
+    const methodId = BACKEND_METHOD_TO_UI_METHOD[stableMethodId]
+    const target = targets.find((item) => (
+      item.id === match.cleanup_target_id
+      || item.ideal === methodId
+    ))
     const method = methodId ? localizeMethod(METHOD_MAP[methodId], language) : null
     if (!target || !method) return []
     return [[target.id, {
-      correct: true,
+      correct: match.is_allowed_match ?? true,
       methodId,
-      message: buildAssessment(target, method, true, language),
+      message: buildAssessment(target, method, match.is_allowed_match ?? true, language),
     }]]
   }))
 }
@@ -454,6 +483,7 @@ function DragMatchLab({
   resolvedMatches,
   onComplete,
   onStoryMatch,
+  onStoryComplete,
 }) {
   const { language, pick } = useI18n()
   const methods = METHODS.map((method) => localizeMethod(method, language))
@@ -469,9 +499,9 @@ function DragMatchLab({
     () => Object.keys(buildRestoredResults(targets, resolvedMatches, language)).length,
   )
   const [pendingTargetId, setPendingTargetId] = useState(null)
+  const [completionPending, setCompletionPending] = useState(false)
   const [requestError, setRequestError] = useState('')
-  const [storyBeat, setStoryBeat] = useState('')
-  const [latestStorySnapshot, setLatestStorySnapshot] = useState(null)
+  const [storyFeedback, setStoryFeedback] = useState('')
 
   const resolvedCount = targets.filter((target) => results[target.id]?.correct).length
   const allResolved = resolvedCount === targets.length
@@ -497,34 +527,29 @@ function DragMatchLab({
       || results[targetId]?.correct
       || lockedMethodIds.has(methodId)
     ) return
-    const correct = target.ideal === methodId
-
-    if (correct) {
-      setPendingTargetId(targetId)
-      setRequestError('')
-      setStoryBeat('')
-      setDraggingMethodId(null)
-      setDragOverId(null)
-      try {
-        const storySnapshot = await onStoryMatch({
-          idealMethodId: target.ideal,
-          uiTargetId: target.id,
-        })
-        setLatestStorySnapshot(storySnapshot)
-        setStoryBeat(
-          storySnapshot.current_stage?.display_content?.story_text
-          || storySnapshot.current_stage?.stage_summary
-          || '',
-        )
-      } catch (error) {
-        setRequestError(
-          error?.message
-          || pick('故事推进失败，配对尚未提交。请重试。', 'Story generation failed, so the match was not committed. Please retry.'),
-        )
-        setPendingTargetId(null)
-        return
-      }
+    setPendingTargetId(targetId)
+    setRequestError('')
+    setStoryFeedback('')
+    setDraggingMethodId(null)
+    setDragOverId(null)
+    let confirmation
+    try {
+      const storySnapshot = await onStoryMatch({
+        cleanupTargetId: target.id,
+        cleanupMethodId: method.cleanupMethodId,
+      })
+      confirmation = storySnapshot.action_confirmation
+      setStoryFeedback(confirmation?.feedback || '')
+    } catch (error) {
+      setRequestError(
+        error?.message
+        || pick('配对保存失败，当前卡片尚未锁定。请重试。', 'The match could not be saved. Please retry.'),
+      )
+      setPendingTargetId(null)
+      return
     }
+
+    const correct = Boolean(confirmation?.cleanup_match?.is_allowed_match)
 
     setAttempts((current) => current + 1)
     setResults((current) => ({ ...current, [targetId]: { correct, methodId, message: buildAssessment(target, method, correct, language) } }))
@@ -532,6 +557,23 @@ function DragMatchLab({
     setDraggingMethodId(null)
     setDragOverId(null)
     setPendingTargetId(null)
+  }
+
+  async function completeMatching() {
+    if (!allResolved || pendingTargetId || completionPending) return
+    setCompletionPending(true)
+    setRequestError('')
+    try {
+      const storySnapshot = await onStoryComplete()
+      onComplete(efficiency, storySnapshot)
+    } catch (error) {
+      setRequestError(
+        error?.message
+        || pick('配对结果提交失败，已完成的配对仍会保留。', 'The completion could not be submitted; saved matches are preserved.'),
+      )
+    } finally {
+      setCompletionPending(false)
+    }
   }
 
   function startDrag(event, methodId) {
@@ -580,10 +622,10 @@ function DragMatchLab({
           <span>{pick('目标生成 / 3 个随机轨道物体', 'TARGET SET / 3 ORBITAL OBJECTS')}</span>
           <b>{resolvedCount} / {targets.length} {pick('已归档', 'RESOLVED')}</b>
         </div>
-        {(requestError || storyBeat) && (
+        {(requestError || storyFeedback) && (
           <div className={requestError ? 'm6-story-message is-error' : 'm6-story-message'}>
             <span>{requestError ? 'STORY ERROR' : 'STORY UPDATE'}</span>
-            <p>{requestError || storyBeat}</p>
+            <p>{requestError || storyFeedback}</p>
           </div>
         )}
 
@@ -689,8 +731,8 @@ function DragMatchLab({
                       <span><b>MOTION</b>{target.motion}</span>
                     </div>
                     <div className="m6-pocket-slot">
-                      <span>{pending ? pick('正在生成故事节点', 'GENERATING STORY BEAT') : result?.correct ? pick('匹配完成', 'MATCHED') : result ? pick('方式不合适', 'NOT SUITABLE') : isOver ? pick('松开装入卡兜', 'DROP TO APPLY') : pick('等待清理卡', 'AWAITING METHOD')}</span>
-                      <small>{pending ? pick('AI 成功后才会锁定本次配对。', 'This match is committed only after the AI response succeeds.') : result && !result.correct ? result.message : target.source}</small>
+                      <span>{pending ? pick('正在校验并保存', 'VALIDATING AND SAVING') : result?.correct ? pick('匹配完成', 'MATCHED') : result ? pick('方式不合适', 'NOT SUITABLE') : isOver ? pick('松开装入卡兜', 'DROP TO APPLY') : pick('等待清理卡', 'AWAITING METHOD')}</span>
+                      <small>{pending ? pick('本次操作只由后端规则校验，不调用 AI。', 'This action uses backend rules only and does not call AI.') : result && !result.correct ? result.message : target.source}</small>
                     </div>
                   </div>
                 </motion.div>
@@ -706,10 +748,12 @@ function DragMatchLab({
         <p>{allResolved ? pick('目标与清理方式已全部对应。', 'Every target now has a suitable cleanup method.') : pick('完成三个卡兜匹配后进入下一章节。', 'Resolve all three targets to continue.')}</p>
         <button
           type="button"
-          disabled={!allResolved || Boolean(pendingTargetId)}
-          onClick={() => onComplete(efficiency, latestStorySnapshot)}
+          disabled={!allResolved || Boolean(pendingTargetId) || completionPending}
+          onClick={() => void completeMatching()}
         >
-          {pick('继续下一章', 'Continue')}
+          {completionPending
+            ? pick('正在提交配对', 'Submitting matches')
+            : pick('提交配对并继续', 'Submit and continue')}
         </button>
       </div>
     </section>
@@ -722,8 +766,20 @@ export default function M6({ onComplete }) {
   const resolvedCleanupMatches = useAppStore(
     (state) => state.publicGameState?.cleanup_test?.matches,
   )
-  const restoredFinalStory = useAppStore((state) => state.finalStory)
-  const rawTargets = useMemo(() => buildTargets({ gameResult, materials, debrisGenerated, satellite }), [debrisGenerated, gameResult, materials, satellite])
+  const backendTargetSet = useAppStore(
+    (state) => state.publicGameState?.cleanup_test?.target_set,
+  )
+  const persistedCompletionId = useAppStore(
+    (state) => state.publicGameState?.cleanup_test?.completion_id,
+  )
+  const storyTimeline = useAppStore((state) => state.storyTimeline)
+  const completionIdRef = useRef(persistedCompletionId || globalThis.crypto.randomUUID())
+  const rawTargets = useMemo(
+    () => backendTargetSet?.length
+      ? buildBackendTargets(backendTargetSet)
+      : buildTargets({ gameResult, materials, debrisGenerated, satellite }),
+    [backendTargetSet, debrisGenerated, gameResult, materials, satellite],
+  )
   const targets = useMemo(
     () => rawTargets.map((target, index) => localizeTarget(target, language, index)),
     [language, rawTargets],
@@ -738,17 +794,27 @@ export default function M6({ onComplete }) {
     ? `${cleanupFlowText}  ·  ${cleanupFlowText}  ·  `
     : CLEANUP_FLOW_MARQUEE_TEXT
 
+  useEffect(() => {
+    if (persistedCompletionId) completionIdRef.current = persistedCompletionId
+  }, [persistedCompletionId])
+
+  async function completeStory() {
+    const storySnapshot = await submitCleanupMatchingComplete(completionIdRef.current)
+    void processQueuedStoryJobs().catch(() => {})
+    return storySnapshot
+  }
+
   function finishModule(efficiency, storySnapshot) {
     const satelliteName = satellite?.name || pick('任务卫星', 'mission satellite')
     const fallbackEpilogue = pick(
       `${user?.name || '任务指挥员'}为${satelliteName}完成了三类清理决策，决策效率为 ${efficiency}%。真正有效的轨道治理，从来不是寻找一种万能技术，而是让目标、时机与处置方法准确对应。`,
       `${user?.name || 'The mission operator'} completed three cleanup decisions for ${satelliteName} with ${efficiency}% efficiency. Effective orbital governance depends on matching the target, timing, and disposal method rather than relying on one universal technology.`,
     )
-    const finalStory = storySnapshot?.final_story_if_completed || restoredFinalStory
-    const ending = finalStory?.ending?.story_text || fallbackEpilogue
-    const knowledgeReveal = finalStory?.knowledge_reveal?.story_text || ''
+    const endingStage = [...(storySnapshot?.timeline || storyTimeline)]
+      .reverse()
+      .find((stage) => stage.node_id === 'node_05')
+    const ending = endingStage?.display_content?.story_text || fallbackEpilogue
     setStoryChapter('m6', ending)
-    if (knowledgeReveal) setStoryChapter('knowledgeReveal', knowledgeReveal)
     onComplete()
   }
 
@@ -792,7 +858,8 @@ export default function M6({ onComplete }) {
         targets={targets}
         resolvedMatches={resolvedCleanupMatches || []}
         onComplete={finishModule}
-        onStoryMatch={submitCleanupPairStoryAction}
+        onStoryMatch={submitCleanupMatchStoryAction}
+        onStoryComplete={completeStory}
       />
       <footer className="m6-sources">
         <span>{pick('资料依据', 'SOURCES')}</span>

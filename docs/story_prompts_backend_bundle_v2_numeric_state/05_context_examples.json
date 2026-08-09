@@ -2,13 +2,17 @@
   "continue_context_example": {
     "current_node": {
       "node_id": "node_04",
-      "task_type": "STORY_BRANCH",
-      "summary": "使用 Outline 中 node_04 的原始 summary",
-      "entry_condition": "使用 Outline 中 node_04 的原始 entry_condition"
+      "task_type": "STORY_CONTINUE",
+      "summary": "Use the immutable node_04 summary from the Outline.",
+      "entry_condition": "Use the immutable node_04 entry condition from the Outline."
     },
-    "selected_option_effect": {
-      "option_id": "option_b",
-      "effect_summary": "本次操作优先保护关键物件，同时压缩准备时间，并让两人的分工出现新的摩擦。"
+    "generation_source": {
+      "interaction_node_id": "node_04",
+      "interaction_snapshot": {
+        "question_id": "near_field_conjunction",
+        "answer_id": "avoidance_burn",
+        "effect_summary": "Use a controlled avoidance burn to reduce immediate conjunction risk."
+      }
     },
     "state_transition": {
       "before": {
@@ -28,48 +32,47 @@
       },
       "active_consequences": [
         {
-          "consequence_id": "panel_edge_gap",
-          "description": "修好的灯片边缘留下可见缺口，后续不得无故恢复。"
+          "consequence_id": "time_window_compressed",
+          "description": "The remaining decision window is compressed."
         }
       ]
     },
     "previous_handoff": {
-      "current_situation": "上一节点结束后的最新状态。",
+      "current_situation": "The mission-selected stage has reached the first orbital incident.",
       "unresolved_threads": [
-        "尚未解决的问题一",
-        "尚未解决的问题二"
+        "The primary anomaly remains unresolved."
       ]
     },
     "story_context": {
-      "core_event": "核心事件",
-      "irreplaceable_part": "不可替代部分",
+      "core_event": "Core event",
+      "irreplaceable_part": "Irreplaceable part",
       "primary_anomaly": "WEATHER_UPDATE_DELAY"
     },
     "known_to_user": [
-      "截至当前节点已经确认的事实"
+      "Facts confirmed through the first orbital question."
     ]
   },
   "ending_context_example": {
     "current_node": {
-      "node_id": "node_09",
+      "node_id": "node_05",
       "task_type": "STORY_ENDING",
-      "summary": "使用 Outline 中 node_09 的原始 summary",
-      "entry_condition": "使用 Outline 中 node_09 的原始 entry_condition"
+      "summary": "Use the immutable node_05 summary from the Outline.",
+      "entry_condition": "All six orbital questions have been committed."
     },
     "selected_ending": {
       "ending_id": "ending_02",
-      "outcome": "核心约定得以实现，但关键物件与最终画面留下无法完全修复的缺口。"
+      "outcome": "The core commitment is fulfilled, with an irreversible visible cost."
     },
     "previous_handoff": {
-      "current_situation": "node_08 结束后的最新状态。",
+      "current_situation": "node_04 has reached its validated continuity handoff.",
       "unresolved_threads": [
-        "结局需要回收的问题"
+        "The ending must close the remaining central question."
       ]
     },
     "story_context": {
-      "core_event": "核心事件",
-      "user_expectation": "用户期待",
-      "irreplaceable_part": "不可替代部分",
+      "core_event": "Core event",
+      "user_expectation": "User expectation",
+      "irreplaceable_part": "Irreplaceable part",
       "primary_anomaly": "WEATHER_UPDATE_DELAY"
     },
     "story_state": {
@@ -79,15 +82,15 @@
     },
     "active_consequences": [
       {
-        "consequence_id": "visible_object_damage",
-        "description": "关键物件保留下来，但存在可见且无法在结局前修复的缺口。"
+        "consequence_id": "visible_irreplaceable_loss",
+        "description": "A visible and irreversible loss remains."
       }
     ],
     "key_outcomes": [
-      "此前真正影响结局的关键结果"
+      "All six orbital answers contribute to the final accumulated outcome."
     ],
     "known_to_user": [
-      "结局前已经确认的事实"
+      "Facts confirmed before the ending."
     ]
   }
 }

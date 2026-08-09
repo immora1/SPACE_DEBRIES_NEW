@@ -37,56 +37,26 @@
     {
       "node_id": "node_02",
       "task_type": "STORY_CONTINUE",
-      "summary": "南枝进一步确认现场天气与提示不一致，准备时间开始变得不可靠。",
-      "entry_condition": "开场已完成，南枝已察觉零星水点。"
+      "summary": "承接真实材料选择的影响，让未完成的灯诗与灯片安装受到更具体的保护条件约束。",
+      "entry_condition": "材料选择已由后端确认并提交。"
     },
     {
       "node_id": "node_03",
       "task_type": "STORY_CONTINUE",
-      "summary": "风和湿度继续变化，未完成的灯诗与灯片安装受到更明显的时间压力。",
-      "entry_condition": "天气提示仍未更新，准备继续。"
+      "summary": "根据真实任务选择收束接下来的行动目标，让任务约束进入生活线索。",
+      "entry_condition": "卫星任务已由后端确认并提交。"
     },
     {
       "node_id": "node_04",
-      "task_type": "STORY_BRANCH",
-      "summary": "根据当前限制规划不同应对方向，使不同操作产生不同实际后果。",
-      "entry_condition": "天气风险已经实际影响准备窗口。"
+      "task_type": "STORY_CONTINUE",
+      "summary": "把六次连续决策视为同一事件过程，以第一道答案后已经成立的局面推进结局前关键时刻，不预判后续答案。",
+      "entry_condition": "轨道事件游戏已经开始，第一道答案已由后端确认。"
     },
     {
       "node_id": "node_05",
-      "task_type": "STORY_CONTINUE",
-      "summary": "承接第一次分支结果，推进物件保护、准备进度与人物配合。",
-      "entry_condition": "第一次分支操作已由后端确定。"
-    },
-    {
-      "node_id": "node_06",
-      "task_type": "STORY_BRANCH",
-      "summary": "在临近点灯时规划第二次具有不同代价的行动方向。",
-      "entry_condition": "剩余准备窗口进一步缩短。"
-    },
-    {
-      "node_id": "node_07",
-      "task_type": "STORY_CONTINUE",
-      "summary": "承接第二次分支结果，确定灯诗、灯片和灯架的最后准备状态。",
-      "entry_condition": "第二次分支操作已由后端确定。"
-    },
-    {
-      "node_id": "node_08",
-      "task_type": "STORY_CONTINUE",
-      "summary": "进入点灯前后的关键时刻，让此前累计结果影响共同点灯能否完整发生。",
-      "entry_condition": "走马灯已进入可点亮或替代展示状态。"
-    },
-    {
-      "node_id": "node_09",
       "task_type": "STORY_ENDING",
       "summary": "根据后端已选定的结局方向完成核心事件。",
-      "entry_condition": "核心事件结果已经由累计状态确定。"
-    },
-    {
-      "node_id": "node_10",
-      "task_type": "KNOWLEDGE_REVEAL",
-      "summary": "在结局后解释天气信息更新滞后与空间基础设施风险的知识范围，不在大纲中展开完整技术说明。",
-      "entry_condition": "结局正文已经完成。"
+      "entry_condition": "第六道轨道事件已提交，核心事件结果已经由后端规则确定。"
     }
   ],
   "reachable_endings": [

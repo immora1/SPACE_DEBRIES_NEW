@@ -19,6 +19,7 @@ import {
   Telescope,
 } from 'lucide-react'
 import useI18n from '../../i18n/useI18n'
+import { missionControlId } from '../../services/storySiteInteractions'
 import './mission-selection-deck.css'
 
 const EASE = [0.16, 1, 0.3, 1]
@@ -62,9 +63,12 @@ function MissionCardContent({ mission }) {
 export default function MissionSelectionDeck({
   missions,
   selectedMissionId,
+  confirmedMissionId,
   aiState,
+  error,
   story,
   satelliteName,
+  onSelect,
   onConfirm,
 }) {
   const { language, pick } = useI18n()
@@ -82,6 +86,7 @@ export default function MissionSelectionDeck({
 
   const activeMission = missions[activeIndex]
   const selectedMission = selectedIndex >= 0 ? missions[selectedIndex] : null
+  const confirmedMission = missions.find((mission) => mission.id === confirmedMissionId) || null
   const interactionLocked = aiState === 'loading' || aiState === 'done'
   const controlsLocked = resolving || interactionLocked
 
@@ -98,6 +103,7 @@ export default function MissionSelectionDeck({
 
   async function transitionMission(nextIndex, direction) {
     if (resolvingRef.current || interactionLocked) return
+    onSelect?.(missions[nextIndex].id)
     resolvingRef.current = true
     setResolving(true)
     const duration = reduceMotion ? 0.01 : 0.28
@@ -136,14 +142,17 @@ export default function MissionSelectionDeck({
   }
 
   function selectMission(index) {
-    if (index === activeIndex) return
+    if (index === activeIndex) {
+      onSelect?.(missions[index].id)
+      return
+    }
     const forwardDistance = wrapIndex(index - activeIndex, missions.length)
     const backwardDistance = wrapIndex(activeIndex - index, missions.length)
     transitionMission(index, forwardDistance <= backwardDistance ? 1 : -1)
   }
 
   async function assignMission() {
-    if (resolvingRef.current || interactionLocked) return
+    if (resolvingRef.current || interactionLocked || !selectedMission) return
     resolvingRef.current = true
     setResolving(true)
     setDragging(false)
@@ -156,7 +165,7 @@ export default function MissionSelectionDeck({
       animate(cardOpacity, 0.72, { duration }),
     ])
 
-    onConfirm(activeMission.id)
+    onConfirm(selectedMission.id)
     cardX.set(0)
     cardRotate.set(0)
     await Promise.all([
@@ -205,14 +214,17 @@ export default function MissionSelectionDeck({
           {missions.map((mission, index) => {
             const MissionIcon = MISSION_ICONS[mission.id] ?? Orbit
             const active = index === activeIndex
-            const assigned = mission.id === selectedMissionId
+            const selected = mission.id === selectedMissionId
+            const assigned = mission.id === confirmedMissionId
             return (
               <button
                 key={mission.id}
+                id={missionControlId(mission.id)}
+                data-story-control-id={missionControlId(mission.id)}
                 type="button"
                 role="tab"
                 aria-selected={active}
-                className={`${active ? 'is-active' : ''}${assigned ? ' is-assigned' : ''}`}
+                className={`${active ? 'is-active' : ''}${selected ? ' is-selected' : ''}${assigned ? ' is-assigned' : ''}`}
                 disabled={controlsLocked}
                 onClick={() => selectMission(index)}
               >
@@ -236,6 +248,9 @@ export default function MissionSelectionDeck({
             dragMomentum={false}
             onDragStart={() => setDragging(true)}
             onDragEnd={handleDragEnd}
+            onClick={() => {
+              if (!dragging && !controlsLocked) onSelect?.(activeMission.id)
+            }}
           >
             <MissionCardContent mission={activeMission} />
           </motion.article>
@@ -244,16 +259,26 @@ export default function MissionSelectionDeck({
         <div className="m3-mission-assign-row">
           <button
             type="button"
-            className={selectedMission ? 'is-assigned' : ''}
-            disabled={controlsLocked}
+            className={confirmedMission ? 'is-assigned' : selectedMission ? 'is-ready' : ''}
+            disabled={controlsLocked || !selectedMission}
             onClick={assignMission}
-            aria-label={selectedMission
-              ? pick(`已指派${selectedMission.label}`, `${selectedMission.labelEn} assigned`)
-              : pick(`指派${activeMission.label}`, `Assign ${activeMission.labelEn}`)}
+            aria-label={confirmedMission
+              ? pick(`已指派${confirmedMission.label}`, `${confirmedMission.labelEn} assigned`)
+              : aiState === 'error'
+                ? pick('重试生成任务故事', 'Retry mission story generation')
+              : selectedMission
+                ? pick(`确认${selectedMission.label}`, `Confirm ${selectedMission.labelEn}`)
+                : pick('请先选择任务', 'Select a mission first')}
           >
-            {selectedMission ? <Check size={17} strokeWidth={1.8} /> : null}
-            <span>{selectedMission ? pick('任务已分配', 'Mission assigned') : pick('指派此任务', 'Assign this mission')}</span>
-            {selectedMission ? null : <ArrowRight size={17} strokeWidth={1.6} />}
+            {confirmedMission ? <Check size={17} strokeWidth={1.8} /> : null}
+            <span>{confirmedMission
+              ? pick('任务已分配', 'Mission assigned')
+              : aiState === 'error'
+                ? pick('重试生成', 'Retry generation')
+              : selectedMission
+                ? pick('确认任务', 'Confirm mission')
+                : pick('请先选择任务', 'Select a mission first')}</span>
+            {confirmedMission ? null : <ArrowRight size={17} strokeWidth={1.6} />}
           </button>
         </div>
 
@@ -305,9 +330,10 @@ export default function MissionSelectionDeck({
                 <b>{pick('任务尚未提交', 'Mission not committed')}</b>
               </div>
               <p>{pick(
-                '叙事生成失败，故事状态没有推进。请再次点击“指派此任务”重试。',
-                'Narrative generation failed and the story did not advance. Click “Assign this mission” to retry.',
+                '叙事生成暂时失败，故事状态没有推进。无需重新拖动或选择，直接点击“重试生成”即可。',
+                'Narrative generation temporarily failed and the story did not advance. No reselection or dragging is needed; click “Retry generation”.',
               )}</p>
+              {error?.code ? <footer>{error.code} · {error.message}</footer> : null}
             </motion.article>
           ) : null}
         </AnimatePresence>

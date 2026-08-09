@@ -37,12 +37,12 @@ const DEFAULT_CONTINUE_OUTPUT = {
 function defaultEndingOutput(endingId) {
   return {
     task_type: 'STORY_ENDING',
-    node_id: 'node_09',
+    node_id: 'node_05',
     selected_ending_id: endingId,
     story_text: ENDING_PARAGRAPHS,
     ending_summary: '走马灯在一个可见缺口下完成点亮，灯诗和共同动作得以保留。你与外婆共同看完灯片转过一圈，关系停在明确而真实的共同记忆上。',
     next_node_context: '现场天气变化早于信息提示，压缩了准备窗口并影响修补结果。异常为何造成这段短暂的信息偏差仍未解释。',
-    next_node_id: 'node_10',
+    next_node_id: null,
   }
 }
 
@@ -69,8 +69,47 @@ const DEFAULT_KNOWLEDGE_OUTPUT = {
       point_text: '故事里的天气提示落后于现场变化，使你和外婆误判了可用时间。它没有决定所有结果，却让修补、分工和共同点灯承受了额外压力。',
     },
   ],
+  material_insights: [],
+  mission_insights: [],
+  cleanup_insights: [],
   reality_note: '现实中的影响通常局部、短暂且因系统冗余而不一致，并不等于整套服务完全失效。具体异常需要结合地面站、载荷和服务日志继续确认。',
   story_completed: true,
+}
+
+function defaultKnowledgeOutput(input) {
+  const output = clone(DEFAULT_KNOWLEDGE_OUTPUT)
+  const selected = input.selected_site_options || []
+  output.material_insights = selected
+    .filter((option) => option.section_id !== 'mission_candidates')
+    .slice(0, 2)
+    .map((option) => ({
+      option_id: option.option_id,
+      option_name: option.option_name,
+      insight_title: `${option.option_name}的设计权衡`,
+      insight_text: option.knowledge_profile.safe_facts[0],
+    }))
+  output.mission_insights = selected
+    .filter((option) => option.section_id === 'mission_candidates')
+    .slice(0, 1)
+    .map((option) => ({
+      option_id: option.option_id,
+      option_name: option.option_name,
+      insight_title: `${option.option_name}的任务关联`,
+      insight_text: option.knowledge_profile.mission_relevance[0]
+        || option.knowledge_profile.safe_facts[0],
+    }))
+  output.cleanup_insights = (input.cleanup_game_result?.matches || [])
+    .slice(0, 1)
+    .map((match) => ({
+      cleanup_target_id: match.cleanup_target_id,
+      cleanup_target_name: match.cleanup_target_name,
+      cleanup_method_id: match.cleanup_method_id,
+      cleanup_method_name: match.cleanup_method_name,
+      insight_title: `${match.cleanup_method_name}与${match.cleanup_target_name}`,
+      insight_text: match.mechanism_profile.safe_facts[0]
+        || match.explanation_profile.why_suitable[0],
+    }))
+  return output
 }
 
 export function createFixtureStoryGenerator(options = {}) {
@@ -104,7 +143,7 @@ export function createFixtureStoryGenerator(options = {}) {
     } else if (taskType === TASK_TYPE.ENDING) {
       value = defaultEndingOutput(input.selected_ending.ending_id)
     } else if (taskType === TASK_TYPE.KNOWLEDGE_REVEAL) {
-      value = clone(DEFAULT_KNOWLEDGE_OUTPUT)
+      value = defaultKnowledgeOutput(input)
     } else {
       throw new StoryError(
         'STORY_TASK_NOT_IMPLEMENTED',

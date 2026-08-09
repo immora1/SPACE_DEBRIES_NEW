@@ -97,9 +97,9 @@
       },
       "story_nodes": {
         "type": "array",
-        "description": "严格按 node_01 至 node_10 顺序排列的内部节点规划。",
-        "minItems": 10,
-        "maxItems": 10,
+        "description": "固定五个故事节点；网站子操作数量不决定故事节点数量，Knowledge Reveal 不计入其中。",
+        "minItems": 5,
+        "maxItems": 5,
         "items": {
           "type": "object",
           "properties": {
@@ -110,23 +110,16 @@
                 "node_02",
                 "node_03",
                 "node_04",
-                "node_05",
-                "node_06",
-                "node_07",
-                "node_08",
-                "node_09",
-                "node_10"
+                "node_05"
               ],
-              "description": "节点唯一 ID。"
+              "description": "固定故事节点 ID。"
             },
             "task_type": {
               "type": "string",
               "enum": [
                 "STORY_OPENING",
                 "STORY_CONTINUE",
-                "STORY_BRANCH",
-                "STORY_ENDING",
-                "KNOWLEDGE_REVEAL"
+                "STORY_ENDING"
               ],
               "description": "节点任务类型。"
             },

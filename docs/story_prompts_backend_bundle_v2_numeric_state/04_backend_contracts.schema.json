@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "story-backend-contracts-v2",
-  "title": "Story backend numeric-state contracts",
+  "$id": "story-backend-contracts-v2.2",
+  "title": "Story backend numeric-state and site-interaction contracts",
   "$defs": {
     "stateMetrics": {
       "type": "object",
@@ -144,6 +144,148 @@
       ],
       "additionalProperties": false
     },
+    "storyInteractionMode": {
+      "type": "string",
+      "enum": [
+        "SITE_SINGLE",
+        "SITE_GROUP_SINGLE",
+        "SITE_COMPOSITE",
+        "SITE_GAME_RESULT",
+        "LEGACY_STORY_OPTION"
+      ]
+    },
+    "materialKnowledgeProfile": {
+      "type": "object",
+      "properties": {
+        "keywords": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "safe_facts": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "design_tradeoffs": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "debris_relevance": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      },
+      "required": ["keywords", "safe_facts", "design_tradeoffs", "debris_relevance"],
+      "additionalProperties": false
+    },
+    "missionKnowledgeProfile": {
+      "type": "object",
+      "properties": {
+        "keywords": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "safe_facts": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "mission_relevance": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "debris_relevance": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "operational_tradeoffs": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      },
+      "required": ["keywords", "safe_facts", "mission_relevance", "debris_relevance", "operational_tradeoffs"],
+      "additionalProperties": false
+    },
+    "taskProfile": {
+      "type": "object",
+      "properties": {
+        "objective_summary": { "type": "string", "minLength": 1 },
+        "task_description": { "type": "string", "minLength": 1 },
+        "orbit_or_range": { "type": "string", "minLength": 1 },
+        "related_satellite": { "type": "string", "minLength": 1 },
+        "related_payload": { "type": "string", "minLength": 1 }
+      },
+      "required": ["objective_summary"],
+      "additionalProperties": false
+    },
+    "siteStoryBinding": {
+      "type": "object",
+      "properties": {
+        "binding_id": { "type": "string", "minLength": 1 },
+        "module_id": { "type": "string", "minLength": 1 },
+        "section_id": { "type": "string", "minLength": 1 },
+        "control_id": { "type": "string", "minLength": 1 },
+        "target_node_id": { "type": "string", "minLength": 1 },
+        "interaction_mode": { "$ref": "#/$defs/storyInteractionMode" },
+        "display_snapshot": {
+          "type": "object",
+          "properties": {
+            "section_name": { "type": "string", "minLength": 1 },
+            "option_name": { "type": "string", "minLength": 1 }
+          },
+          "required": ["section_name", "option_name"],
+          "additionalProperties": false
+        },
+        "effect_summary": { "type": "string", "minLength": 1 },
+        "state_delta": { "$ref": "#/$defs/stateDelta" },
+        "add_consequence_ids": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "resolve_consequence_ids": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "key_outcome": { "type": "string" },
+        "knowledge_profile": {
+          "oneOf": [
+            { "$ref": "#/$defs/materialKnowledgeProfile" },
+            { "$ref": "#/$defs/missionKnowledgeProfile" }
+          ]
+        },
+        "task_id": { "type": "string", "minLength": 1 },
+        "task_name": { "type": "string", "minLength": 1 },
+        "task_profile": { "$ref": "#/$defs/taskProfile" }
+      },
+      "required": [
+        "binding_id", "module_id", "section_id", "control_id", "target_node_id",
+        "interaction_mode", "display_snapshot", "effect_summary", "state_delta",
+        "add_consequence_ids", "resolve_consequence_ids", "key_outcome"
+      ],
+      "additionalProperties": false
+    },
+    "siteInteractionRequestItem": {
+      "type": "object",
+      "properties": {
+        "section_id": { "type": "string", "minLength": 1 },
+        "control_id": { "type": "string", "minLength": 1 },
+        "option_id": { "type": "string", "minLength": 1 }
+      },
+      "required": ["section_id", "control_id", "option_id"],
+      "additionalProperties": false
+    },
+    "selectedSiteOptionSnapshot": {
+      "type": "object",
+      "properties": {
+        "binding_id": { "type": "string", "minLength": 1 },
+        "module_id": { "type": "string", "minLength": 1 },
+        "section_id": { "type": "string", "minLength": 1 },
+        "section_name": { "type": "string", "minLength": 1 },
+        "control_id": { "type": "string", "minLength": 1 },
+        "option_id": { "type": "string", "minLength": 1 },
+        "option_name": { "type": "string", "minLength": 1 },
+        "task_id": { "type": "string", "minLength": 1 },
+        "task_name": { "type": "string", "minLength": 1 },
+        "target_node_id": { "type": "string", "minLength": 1 },
+        "effect_summary": { "type": "string", "minLength": 1 },
+        "state_delta": { "$ref": "#/$defs/stateDelta" },
+        "add_consequence_ids": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "resolve_consequence_ids": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "key_outcome": { "type": "string" },
+        "knowledge_profile": {
+          "oneOf": [
+            { "$ref": "#/$defs/materialKnowledgeProfile" },
+            { "$ref": "#/$defs/missionKnowledgeProfile" }
+          ]
+        },
+        "task_profile": { "$ref": "#/$defs/taskProfile" },
+        "selected_at": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "binding_id", "module_id", "section_id", "section_name", "control_id",
+        "option_id", "option_name", "target_node_id", "effect_summary", "state_delta",
+        "add_consequence_ids", "resolve_consequence_ids", "key_outcome", "selected_at"
+      ],
+      "additionalProperties": false
+    },
+    "siteInteractionOutcome": {
+      "type": "object",
+      "properties": {
+        "module_id": { "type": "string", "minLength": 1 },
+        "section_id": { "type": "string", "minLength": 1 },
+        "control_id": { "type": "string", "minLength": 1 },
+        "option_id": { "type": "string", "minLength": 1 },
+        "option_name": { "type": "string", "minLength": 1 },
+        "outcome": { "type": "string", "minLength": 1 }
+      },
+      "required": ["module_id", "section_id", "control_id", "option_id", "option_name", "outcome"],
+      "additionalProperties": false
+    },
     "handoff": {
       "type": "object",
       "properties": {
@@ -167,7 +309,7 @@
       ],
       "additionalProperties": false
     },
-    "continueContext": {
+    "legacyOptionContinueContext": {
       "type": "object",
       "properties": {
         "current_node": {
@@ -177,17 +319,12 @@
               "enum": [
                 "node_02",
                 "node_03",
-                "node_04",
-                "node_05",
-                "node_06",
-                "node_07",
-                "node_08"
+                "node_04"
               ]
             },
             "task_type": {
               "enum": [
-                "STORY_CONTINUE",
-                "STORY_BRANCH"
+                "STORY_CONTINUE"
               ]
             },
             "summary": {
@@ -284,6 +421,23 @@
             "type": "string",
             "minLength": 1
           }
+        },
+        "selected_game_answers": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "items": {
+            "type": "object",
+            "properties": {
+              "question_id": { "type": "string", "minLength": 1 },
+              "question_order": { "type": "integer", "minimum": 1, "maximum": 6 },
+              "answer_id": { "type": "string", "minLength": 1 },
+              "answer_name": { "type": "string", "minLength": 1 },
+              "effect_summary": { "type": "string", "minLength": 1 }
+            },
+            "required": ["question_id", "question_order", "answer_id", "answer_name", "effect_summary"],
+            "additionalProperties": false
+          }
         }
       },
       "required": [
@@ -292,9 +446,103 @@
         "state_transition",
         "previous_handoff",
         "story_context",
+        "known_to_user",
+        "selected_game_answers"
+      ],
+      "additionalProperties": false
+    },
+    "siteInteractionContinueContext": {
+      "type": "object",
+      "properties": {
+        "current_node": {
+          "type": "object",
+          "properties": {
+            "node_id": {
+              "enum": [
+                "node_02",
+                "node_03",
+                "node_04"
+              ]
+            },
+            "task_type": {
+              "enum": [
+                "STORY_CONTINUE"
+              ]
+            },
+            "summary": { "type": "string", "minLength": 1 },
+            "entry_condition": { "type": "string", "minLength": 1 }
+          },
+          "required": ["node_id", "task_type", "summary", "entry_condition"],
+          "additionalProperties": false
+        },
+        "site_interactions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "properties": {
+              "section_id": { "type": "string", "minLength": 1 },
+              "option_id": { "type": "string", "minLength": 1 },
+              "effect_summary": { "type": "string", "minLength": 1 }
+            },
+            "required": [
+              "section_id",
+              "option_id",
+              "effect_summary"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "state_transition": {
+          "type": "object",
+          "properties": {
+            "before": { "$ref": "#/$defs/stateMetrics" },
+            "combined_delta": { "$ref": "#/$defs/stateDelta" },
+            "after": { "$ref": "#/$defs/stateMetrics" },
+            "active_consequences": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/consequence" }
+            }
+          },
+          "required": [
+            "before",
+            "combined_delta",
+            "after",
+            "active_consequences"
+          ],
+          "additionalProperties": false
+        },
+        "previous_handoff": { "$ref": "#/$defs/handoff" },
+        "story_context": {
+          "type": "object",
+          "properties": {
+            "core_event": { "type": "string", "minLength": 1 },
+            "irreplaceable_part": { "type": "string", "minLength": 1 },
+            "primary_anomaly": { "type": "string", "minLength": 1 }
+          },
+          "required": ["core_event", "irreplaceable_part", "primary_anomaly"],
+          "additionalProperties": false
+        },
+        "known_to_user": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      },
+      "required": [
+        "current_node",
+        "site_interactions",
+        "state_transition",
+        "previous_handoff",
+        "story_context",
         "known_to_user"
       ],
       "additionalProperties": false
+    },
+    "continueContext": {
+      "oneOf": [
+        { "$ref": "#/$defs/legacyOptionContinueContext" },
+        { "$ref": "#/$defs/siteInteractionContinueContext" }
+      ]
     },
     "endingContext": {
       "type": "object",
@@ -303,7 +551,7 @@
           "type": "object",
           "properties": {
             "node_id": {
-              "const": "node_09"
+              "const": "node_05"
             },
             "task_type": {
               "const": "STORY_ENDING"
@@ -386,8 +634,10 @@
         "key_outcomes": {
           "type": "array",
           "items": {
-            "type": "string",
-            "minLength": 1
+            "oneOf": [
+              { "type": "string", "minLength": 1 },
+              { "$ref": "#/$defs/siteInteractionOutcome" }
+            ]
           }
         },
         "known_to_user": {
@@ -534,6 +784,134 @@
             "type": "string",
             "minLength": 1
           }
+        },
+        "selected_site_options": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "module_id": { "type": "string", "minLength": 1 },
+              "section_id": { "type": "string", "minLength": 1 },
+              "section_name": { "type": "string", "minLength": 1 },
+              "option_id": { "type": "string", "minLength": 1 },
+              "option_name": { "type": "string", "minLength": 1 },
+              "knowledge_profile": {
+                "type": "object",
+                "properties": {
+                  "keywords": { "type": "array", "items": { "type": "string" } },
+                  "safe_facts": { "type": "array", "items": { "type": "string" } },
+                  "design_tradeoffs": { "type": "array", "items": { "type": "string" } },
+                  "debris_relevance": { "type": "array", "items": { "type": "string" } }
+                },
+                "required": ["keywords", "safe_facts", "design_tradeoffs", "debris_relevance"],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "module_id",
+              "section_id",
+              "section_name",
+              "option_id",
+              "option_name",
+              "knowledge_profile"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "selected_game_answers": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "type": "object",
+            "properties": {
+              "question_id": { "type": "string", "minLength": 1 },
+              "question_order": { "type": "integer", "minimum": 1, "maximum": 6 },
+              "answer_id": { "type": "string", "minLength": 1 },
+              "answer_name": { "type": "string", "minLength": 1 },
+              "knowledge_profile": {
+                "type": "object",
+                "properties": {
+                  "keywords": { "type": "array", "items": { "type": "string" } },
+                  "safe_facts": { "type": "array", "items": { "type": "string" } },
+                  "decision_tradeoffs": { "type": "array", "items": { "type": "string" } },
+                  "debris_relevance": { "type": "array", "items": { "type": "string" } },
+                  "operational_relevance": { "type": "array", "items": { "type": "string" } }
+                },
+                "required": ["keywords", "safe_facts", "decision_tradeoffs", "debris_relevance", "operational_relevance"],
+                "additionalProperties": false
+              }
+            },
+            "required": ["question_id", "question_order", "answer_id", "answer_name", "knowledge_profile"],
+            "additionalProperties": false
+          }
+        },
+        "cleanup_game_result": {
+          "type": "object",
+          "properties": {
+            "module_id": { "const": "M6_CLEANUP_MATCHING" },
+            "completed": { "const": true },
+            "total_targets": { "type": "integer", "minimum": 1 },
+            "allowed_matches": { "type": "integer", "minimum": 0 },
+            "preferred_matches": { "type": "integer", "minimum": 0 },
+            "matches": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "cleanup_target_id": { "type": "string", "minLength": 1 },
+                  "cleanup_target_name": { "type": "string", "minLength": 1 },
+                  "cleanup_method_id": { "type": "string", "minLength": 1 },
+                  "cleanup_method_name": { "type": "string", "minLength": 1 },
+                  "is_allowed_match": { "type": "boolean" },
+                  "is_preferred_match": { "type": "boolean" },
+                  "target_profile": {
+                    "type": "object",
+                    "properties": {
+                      "target_type": { "type": "string", "minLength": 1 },
+                      "size": { "type": "string" },
+                      "mass": { "type": "string" },
+                      "motion_state": { "type": "string" },
+                      "orbit_or_context": { "type": "string" },
+                      "structural_traits": { "type": "array", "items": { "type": "string" } },
+                      "risk_traits": { "type": "array", "items": { "type": "string" } },
+                      "safe_facts": { "type": "array", "items": { "type": "string" } }
+                    },
+                    "required": ["target_type", "size", "mass", "motion_state", "orbit_or_context", "structural_traits", "risk_traits", "safe_facts"],
+                    "additionalProperties": false
+                  },
+                  "mechanism_profile": {
+                    "type": "object",
+                    "properties": {
+                      "mechanism_summary": { "type": "string", "minLength": 1 },
+                      "suitable_target_traits": { "type": "array", "items": { "type": "string" } },
+                      "unsuitable_target_traits": { "type": "array", "items": { "type": "string" } },
+                      "operational_tradeoffs": { "type": "array", "items": { "type": "string" } },
+                      "safety_constraints": { "type": "array", "items": { "type": "string" } },
+                      "debris_relevance": { "type": "array", "items": { "type": "string" } },
+                      "safe_facts": { "type": "array", "items": { "type": "string" } }
+                    },
+                    "required": ["mechanism_summary", "suitable_target_traits", "unsuitable_target_traits", "operational_tradeoffs", "safety_constraints", "debris_relevance", "safe_facts"],
+                    "additionalProperties": false
+                  },
+                  "explanation_profile": {
+                    "type": "object",
+                    "properties": {
+                      "why_suitable": { "type": "array", "items": { "type": "string" } },
+                      "tradeoffs": { "type": "array", "items": { "type": "string" } },
+                      "why_other_methods_may_be_limited": { "type": "array", "items": { "type": "string" } }
+                    },
+                    "required": ["why_suitable", "tradeoffs", "why_other_methods_may_be_limited"],
+                    "additionalProperties": false
+                  }
+                },
+                "required": ["cleanup_target_id", "cleanup_target_name", "cleanup_method_id", "cleanup_method_name", "is_allowed_match", "is_preferred_match", "target_profile", "mechanism_profile", "explanation_profile"],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": ["module_id", "completed", "total_targets", "allowed_matches", "preferred_matches", "matches"],
+          "additionalProperties": false
         }
       },
       "required": [
@@ -542,7 +920,9 @@
         "hidden_facts",
         "ending_summary",
         "next_node_context",
-        "story_anomaly_effects"
+        "story_anomaly_effects",
+        "selected_site_options",
+        "selected_game_answers"
       ],
       "additionalProperties": false
     }

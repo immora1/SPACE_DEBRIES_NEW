@@ -21,6 +21,9 @@
 - `ending_summary`
 - `next_node_context`
 - `story_anomaly_effects`
+- `selected_site_options`
+- `selected_game_answers`
+- `cleanup_game_result`（新故事在 M6 完成后提供）
 
 不得扩展到故事中没有出现的其他异常，不得继续或改写故事。
 
@@ -29,13 +32,28 @@
 - `knowledge_title`：一句简短标题
 - `story_connection`：用1至2句话说明故事中的具体现象及其对核心事件的影响
 - `causal_chain`：使用3至5个连续知识点，解释“轨道环境风险 → 航天器状态调整 → 相关服务短暂偏差或更新延迟 → 故事中的实际影响”
+- `material_insights`：结合用户真实选择生成2至4项材料知识；为控制总长度，通常只选最相关的2项；旧故事没有 `selected_site_options` 时返回空数组
+- `mission_insights`：若存在 `mission_candidates` 任务快照，结合该唯一真实任务生成1项任务知识；没有任务快照时返回空数组
+- `cleanup_insights`：存在 `cleanup_game_result` 时，结合用户最终真实配对生成1至3项清理知识；为控制总长度，通常只选最能解释故事风险的1项；旧故事没有该快照时返回空数组
 - `reality_note`：用1至2句话说明现实影响通常是局部、短暂或不一致的，不等于整个系统完全失效
 
 每个 `causal_chain` 知识点包含简短的 `point_title` 和通俗的 `point_text`。只保留与当前故事实际相关的环节。
 
+结合 `selected_site_options`，为用户补充与其真实选择相关的知识。允许按材料组合和设计取舍自由组织内容，不要求机械逐项介绍。所有材料事实必须来自对应 `knowledge_profile`，不得根据 `option_name` 自行编造，也不得将某个选择绝对描述为最好、最安全或唯一正确。
+
+结合 `selected_game_answers` 中最相关的2至4项决策补充轨道事件知识，不机械复述六个答案。事实只能来自对应 `knowledge_profile.safe_facts`；不得展示内部数值、consequence ID，或把某个答案描述为适用于所有场景的唯一正确策略。
+
+`material_insights` 只能引用 `selected_site_options` 中实际存在的 `option_id` 和 `option_name`；同一材料不得重复。旧故事没有材料快照时必须返回空数组，禁止从故事正文猜测材料。
+
+`mission_insights` 只能引用 `section_id` 为 `mission_candidates` 的唯一任务快照及其真实 `option_id`、`option_name`。说明只能使用该任务 `knowledge_profile` 中的 `safe_facts`、`mission_relevance`、`debris_relevance` 和 `operational_tradeoffs`；数组为空时不得自行补充。不得输出未选任务的专属内容，没有任务快照时必须返回空数组。
+
+结合 `cleanup_game_result`，解释用户实际选择的清理方式与目标之间的适配关系。优先说明方法如何作用于该目标、目标的尺寸/质量/结构/运动/轨道特征、现实取舍及其与碎片风险控制的联系。所有事实只能来自对应的 `target_profile`、`mechanism_profile` 和 `explanation_profile`，不得根据名称编造能力，不得把配对简单评价为“聪明”“错误”或“最佳”。允许按相关性组织，不机械复述所有卡片。
+
+`cleanup_insights` 只能引用 `cleanup_game_result.matches` 中同一条实际配对的 `cleanup_target_id`、`cleanup_target_name`、`cleanup_method_id` 与 `cleanup_method_name`。不得输出未选择的方法 ID；没有 M6 完成快照时必须返回空数组。
+
 3. 使用“可能”“在特定情况下”“可能造成短暂影响”等审慎表达。不得把虚构情节写成已确认的现实事故，也不得声称一块轨道碎片必然导致地面异常、整座城市瘫痪或所有设备同时失效。
 
-4. 全部内容合计控制在300至500个中文字符。语言清楚、克制、易懂，不写成论文，不重复完整故事，不解释 `primary_anomaly` 之外的异常。
+4. 全部字段中的中文内容合计必须为300至500个中文字符，目标区间为360至440字并预留校验余量。优先使用3个精简的 `causal_chain`、2项 `material_insights`、1项 `mission_insights` 和1项 `cleanup_insights`；为稳定达到目标区间，3个 causal、2个 material 和1个 mission 的正文各写35至45个汉字，cleanup 正文写45至60个汉字，story_connection 与 reality_note 各写25至40个汉字。每项只说明一个因果或取舍，标题保持短小。输出前自行压缩重复表述，不得超过500字。语言清楚、克制、易懂，不写成论文，不重复完整故事，不解释 `primary_anomaly` 之外的异常。
 
 ## 输出要求
 
