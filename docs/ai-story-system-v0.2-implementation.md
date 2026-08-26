@@ -56,15 +56,17 @@ Migration 建立三张表：
 - `story_stages`
 - `story_interactions`
 
-并建立 expiry、stage 和 interaction 索引、外键及级联删除。`wrangler.toml` 已增加 `STORY_DB` binding 和 migrations 目录。
+并建立 expiry、stage 和 interaction 索引、外键及级联删除。迁移文件保存在仓库的 `migrations` 目录；生产 `STORY_DB` binding 由 Cloudflare Pages 控制台管理。
 
-当前 `database_id` 与 `preview_database_id` 是明确的全零占位符，只用于完成本地 D1 验证；部署前必须替换为真实 Cloudflare D1 ID。
+生产与预览环境的 `STORY_DB` 通过 Cloudflare Pages 控制台绑定，仓库中的
+`wrangler.toml` 不保存账户专属数据库 UUID，也不得加入全零占位符。全零 UUID
+会在 Functions 发布阶段触发 Cloudflare `8000022 Invalid database UUID` 错误。
 
 本地已执行并验证：
 
 ```powershell
-npx.cmd wrangler d1 migrations apply STORY_DB --local
-npx.cmd wrangler d1 execute STORY_DB --local --command "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'story_%' ORDER BY name;"
+npx.cmd wrangler d1 migrations apply space-debris-stories --local
+npx.cmd wrangler d1 execute space-debris-stories --local --command "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'story_%' ORDER BY name;"
 ```
 
 查询确认三张表均存在。
@@ -131,7 +133,7 @@ npm.cmd run dev
 如需验证本地 D1：
 
 ```powershell
-npx.cmd wrangler d1 migrations apply STORY_DB --local
+npx.cmd wrangler d1 migrations apply space-debris-stories --local
 npm.cmd run dev:client
 npm.cmd run dev:pages
 ```
@@ -144,10 +146,12 @@ npm.cmd run dev:pages
 npx.cmd wrangler d1 create space-debris-stories
 ```
 
-把返回的真实 ID 写入 `wrangler.toml` 的 `database_id` 和 `preview_database_id`，然后：
+在 Cloudflare Pages 项目的 **Settings > Bindings** 中，为 Production 和 Preview
+分别添加变量名为 `STORY_DB` 的 D1 database binding，选择
+`space-debris-stories`。远程迁移仍使用真实数据库名或 ID 执行：
 
 ```powershell
-npx.cmd wrangler d1 migrations apply STORY_DB --remote
+npx.cmd wrangler d1 migrations apply space-debris-stories --remote
 npx.cmd wrangler pages secret put OPENAI_API_KEY --project-name space-debries
 npm.cmd run build
 npx.cmd wrangler pages deploy dist --project-name space-debries
