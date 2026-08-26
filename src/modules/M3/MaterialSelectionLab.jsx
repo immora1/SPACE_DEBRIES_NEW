@@ -10,25 +10,30 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { GLBSatelliteModel } from '../M1/SatelliteModel'
-import { materialControlId } from '../../services/storySiteInteractions'
 import useI18n from '../../i18n/useI18n'
 import { CanvasErrorBoundary, PARTS, PART_ACCENT } from './SceneMaterial'
 import './material-selection-lab.css'
 
 const EASE = [0.16, 1, 0.3, 1]
 
-const RISK_META = {
-  low: { label: '较低', labelEn: 'LOW', level: 1 },
-  medium: { label: '中等', labelEn: 'MEDIUM', level: 2 },
-  high: { label: '较高', labelEn: 'HIGH', level: 3 },
+const TRADEOFF_META = {
+  very_low: { label: '很低', labelEn: 'VERY LOW', level: 1 },
+  low: { label: '低', labelEn: 'LOW', level: 1 },
+  medium: { label: '中', labelEn: 'MEDIUM', level: 2 },
+  high: { label: '高', labelEn: 'HIGH', level: 3 },
+}
+
+const PROFILE_META = {
+  low: { label: '较低', labelEn: 'LOW' },
+  medium: { label: '中等', labelEn: 'MEDIUM' },
+  high: { label: '较高', labelEn: 'HIGH' },
 }
 
 export default function MaterialSelectionLab({
   materials,
   allDone,
   aiState,
-  feedback,
-  error,
+  materialAnalysis,
   onSelect,
   onAnalyze,
   onContinue,
@@ -44,6 +49,9 @@ export default function MaterialSelectionLab({
   const selectedOptionId = materials[activePart.id]
   const interactionLocked = aiState === 'loading' || aiState === 'done'
   const controlsLocked = interactionLocked
+  const analysisAvailable = Number.isFinite(materialAnalysis?.fuel)
+    && Number.isFinite(materialAnalysis?.armor)
+    && materialAnalysis?.profiles
 
   useEffect(() => {
     const element = modelRef.current
@@ -87,8 +95,8 @@ export default function MaterialSelectionLab({
     <section className="m3-material-lab">
       <header className="m3-material-heading">
         <span>03 · MATERIAL SELECTION</span>
-        <h3>{pick('为卫星选择材料', 'Choose satellite materials')}</h3>
-        <p>{pick('四个关键部件的材料将共同决定卫星再入时的碎片特征与地面风险。这是全站第一个有后果的选择。', 'Materials across four critical components determine re-entry fragmentation and ground risk. This is the first choice with lasting consequences.')}</p>
+        <h3>{pick('为卫星选择材料', 'Choose Materials for Your Satellite')}</h3>
+        <p>{pick('不同材料会改变卫星的重量和耐受能力，也会影响后续任务中的燃料与防护表现。完成选择后，你还会看到这些材料在卫星报废后的另一面。', 'Different materials change the satellite’s mass and structural resilience, which will affect its starting fuel and armor in the later mission. After completing the build, you will also see what these choices could mean when the satellite eventually re-enters the atmosphere.')}</p>
       </header>
 
       <div className="m3-material-workspace">
@@ -158,13 +166,12 @@ export default function MaterialSelectionLab({
                   <legend>{pick(`${activePart.label}材料选项`, `${activePart.labelEn} material options`)}</legend>
                   {activePart.options.map((option, optionIndex) => {
                     const selected = selectedOptionId === option.id
-                    const risk = RISK_META[option.risk]
+                    const mass = TRADEOFF_META[option.massBurden]
+                    const resilience = TRADEOFF_META[option.resilience]
 
                     return (
                       <label key={option.id} className={`m3-material-radio-option${selected ? ' is-selected' : ''}`}>
                         <input
-                          id={materialControlId(activePart.id, option.id)}
-                          data-story-control-id={materialControlId(activePart.id, option.id)}
                           type="radio"
                           name={`material-${activePart.id}`}
                           value={option.id}
@@ -177,15 +184,22 @@ export default function MaterialSelectionLab({
                           <b>{pick(option.label, option.en)}</b>
                           <span>{pick(option.shortFeature ?? option.feature, option.shortFeatureEn ?? option.featureEn)}</span>
                         </span>
-                        <span className="m3-material-radio-risk">
-                          <small>{pick('再入风险', 'RE-ENTRY RISK')}</small>
-                          <b>{pick(risk.label, risk.labelEn)}</b>
-                          <span className="m3-material-risk-meter" aria-label={pick(`再入风险${risk.label}`, `Re-entry risk ${risk.labelEn}`)}>
-                            {[1, 2, 3].map((level) => (
-                              <i key={level} className={level <= risk.level ? 'is-filled' : ''} />
-                            ))}
+                        <span className="m3-material-radio-metrics">
+                          {[
+                            { label: pick('质量负担', 'Mass burden'), meta: mass },
+                            { label: pick('结构耐受', 'Structural resilience'), meta: resilience },
+                          ].map((metric) => (
+                            <span key={metric.label} className="m3-material-tradeoff">
+                              <small>{metric.label}</small>
+                              <b>{pick(metric.meta.label, metric.meta.labelEn)}</b>
+                              <span className="m3-material-risk-meter" aria-label={`${metric.label} ${pick(metric.meta.label, metric.meta.labelEn)}`}>
+                                {[1, 2, 3].map((level) => (
+                                  <i key={level} className={level <= metric.meta.level ? 'is-filled' : ''} />
+                                ))}
+                              </span>
+                            </span>
+                          ))}
                           </span>
-                        </span>
                       </label>
                     )
                   })}
@@ -206,7 +220,7 @@ export default function MaterialSelectionLab({
               >
                 <span>
                   <Sparkles size={17} strokeWidth={1.5} />
-                  <span><b>{pick('材料组合已完成', 'Material set complete')}</b><small>{pick('生成这组材料的再入风险分析', 'Generate a re-entry risk analysis')}</small></span>
+                  <span><b>{pick('材料组合已完成', 'Material set complete')}</b><small>{pick('查看工程状态与材料后果', 'Review build status and material outcomes')}</small></span>
                 </span>
                 <button type="button" onClick={onAnalyze}>{pick('生成材料分析', 'Analyze materials')} <ArrowRight size={16} strokeWidth={1.6} /></button>
               </motion.div>
@@ -221,7 +235,7 @@ export default function MaterialSelectionLab({
                 exit={{ opacity: 0, y: -10 }}
               >
                 <span aria-hidden="true"><i /><i /><i /></span>
-                <div><b>{pick('正在计算再入剖面', 'Analyzing re-entry profile')}</b><small>ANALYZING RE-ENTRY PROFILE</small></div>
+                <div><b>{pick('正在计算材料剖面', 'Analyzing material profile')}</b><small>ANALYZING MATERIAL PROFILE</small></div>
               </motion.div>
             ) : null}
 
@@ -234,16 +248,52 @@ export default function MaterialSelectionLab({
                 transition={{ duration: 0.55, ease: EASE }}
               >
                 <div className="m3-material-report-head">
-                  <span>RE-ENTRY PROFILE · 03</span>
+                  <span>BUILD &amp; RE-ENTRY PROFILE · 03</span>
                   <b>{pick('材料分析', 'Material analysis')}</b>
                 </div>
-                <p>{aiState === 'done' ? feedback : pick(
-                  '材料分析暂时失败，故事状态尚未推进。你的选择仍保留在当前页面，可直接重试。',
-                  'Material analysis failed and the story did not advance. Your current selections remain available for a retry.',
-                )}</p>
-                {aiState === 'error' && error?.code ? (
-                  <footer>{error.code} · {error.message}</footer>
-                ) : null}
+                {aiState === 'done' && analysisAvailable ? (
+                  <div className="m3-material-report-body">
+                    <div className="m3-material-report-metrics">
+                      <div>
+                        <span>{pick('初始燃料', 'Initial Fuel')}</span>
+                        <strong>{materialAnalysis.fuel}</strong>
+                      </div>
+                      <div>
+                        <span>{pick('初始护甲', 'Initial Armor')}</span>
+                        <strong>{materialAnalysis.armor}</strong>
+                      </div>
+                    </div>
+                    <p>{pick(
+                      '这两个数值会作为后续轨道游戏的初始状态。',
+                      'These values will be used as the starting state for the later orbital game.',
+                    )}</p>
+                    <div className="m3-material-profile-head">
+                      <b>{pick('残片留下的可能性', 'Likelihood of surviving fragments')}</b>
+                      <p>{pick(
+                        '指卫星重返大气层后，部件留下未完全烧蚀残片的相对可能性。',
+                        'A qualitative indication of how likely a component is to leave surviving fragments after atmospheric re-entry.',
+                      )}</p>
+                    </div>
+                    <div className="m3-material-profile-grid">
+                      {PARTS.map((part) => {
+                        const option = part.options.find((item) => item.id === materials[part.id])
+                        const profile = PROFILE_META[materialAnalysis.profiles[part.id]]
+                        return (
+                          <div key={part.id}>
+                            <span>{pick(part.label, part.labelEn)}</span>
+                            <small>{pick(option?.label, option?.en)}</small>
+                            <b>{pick(profile?.label, profile?.labelEn)}</b>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="m3-material-report-error">{pick(
+                    '材料分析暂时失败，故事状态尚未推进。你的选择仍保留在当前页面，可直接重试。',
+                    'Material analysis failed and the story did not advance. Your current selections remain available for a retry.',
+                  )}</p>
+                )}
                 <button type="button" onClick={aiState === 'done' ? onContinue : onAnalyze}>
                   {aiState === 'done' ? pick('进入任务选择', 'Continue to mission') : pick('重试材料分析', 'Retry analysis')}
                   {' '}

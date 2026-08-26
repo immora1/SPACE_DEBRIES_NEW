@@ -32,8 +32,8 @@ async function promptFromMarkdown(relativePath) {
   return match[1].replace(/\r\n/g, '\n')
 }
 
-test('本地 Prompt 继续使用单一生成源并固定为五节点故事蓝图', async () => {
-  assert.equal(STORY_SPEC_VERSION, '4.0-five-stage-v1')
+test('Opening 保持 v0.4 冻结文本，v2 Prompt 读取增量包单一来源', async () => {
+  assert.equal(STORY_SPEC_VERSION, '2.0-numeric-state')
   assert.equal(STORY_OPENING_SPEC_VERSION, '0.4')
   assert.equal(
     STORY_OPENING_PROMPT_TEMPLATE,
@@ -54,22 +54,12 @@ test('本地 Prompt 继续使用单一生成源并固定为五节点故事蓝图
     (await readFile(resolve(numericRoot, '03_knowledge_reveal.prompt.txt'), 'utf8'))
       .replace(/\r\n/g, '\n'),
   )
-  assert.match(STORY_OUTLINE_PROMPT_TEMPLATE, /后端可直接执行的 `state_rule`/)
-  assert.match(STORY_OUTLINE_PROMPT_TEMPLATE, /不得生成 `POSITIVE`、`PARTIAL`、`NEGATIVE`/)
-  assert.match(STORY_OUTLINE_PROMPT_TEMPLATE, /隐藏事实不得进入 Opening 或普通故事正文/)
-  assert.match(STORY_OUTLINE_PROMPT_TEMPLATE, /每个故事必须且只能存在一个 `fallback = true`/)
-  assert.match(STORY_OUTLINE_PROMPT_TEMPLATE, /node_01 = STORY_OPENING/)
-  assert.match(STORY_OUTLINE_PROMPT_TEMPLATE, /node_05 = STORY_ENDING/)
-  assert.doesNotMatch(STORY_OUTLINE_PROMPT_TEMPLATE, /SITE_GROUP_SINGLE/)
-  assert.doesNotMatch(STORY_OUTLINE_PROMPT_TEMPLATE, /"option_id":"weather"/)
-  assert.match(STORY_OUTLINE_PROMPT_TEMPLATE, /后续所有数值变化由后端/)
-  assert.match(STORY_OUTLINE_PROMPT_TEMPLATE, /只规划一个故事阶段/)
-  assert.match(STORY_CONTINUE_PROMPT_TEMPLATE, /current_node/)
-  assert.match(STORY_CONTINUE_PROMPT_TEMPLATE, /generation_source/)
-  assert.ok(outlineSchemaEnvelope.schema.properties.story_nodes)
-  assert.equal(outlineSchemaEnvelope.schema.properties.story_stages, undefined)
-  assert.match(STORY_OPENING_PROMPT_TEMPLATE, /\{\{opening_context\}\}/)
-  assert.doesNotMatch(STORY_OPENING_PROMPT_TEMPLATE, /\{\{story_outline\}\}/)
+  assert.match(STORY_OUTLINE_PROMPT_TEMPLATE, /结构化 `state_rule`/)
+  assert.match(STORY_OUTLINE_PROMPT_TEMPLATE, /不得生成旧 ending_type 字段/)
+  assert.match(STORY_OUTLINE_PROMPT_TEMPLATE, /至少一条必须是与 `primary_anomaly` 直接相关/)
+  assert.match(STORY_OUTLINE_PROMPT_TEMPLATE, /不能被更高优先级规则完全遮蔽/)
+  assert.match(STORY_OUTLINE_PROMPT_TEMPLATE, /prepare_reversible_backup/)
+  assert.match(STORY_OUTLINE_PROMPT_TEMPLATE, /delta 数组依次为 event_integrity/)
 })
 
 test('Opening Schema 未改变，v2 输出 Schema 直接读取增量包', async () => {
@@ -118,12 +108,4 @@ test('校验重试只追加简洁反馈，不修改冻结 Prompt 主体', () => 
   assert.ok(retry.startsWith(base))
   assert.match(retry, /后端校验反馈：/)
   assert.match(retry, /OPENING_SCHEMA_INVALID/)
-})
-
-test('Outline 可达性定向重试保留完整后端规则，不被普通反馈长度截断', () => {
-  const marker = 'ending_04_complete_rule_marker'
-  const reason = `OUTLINE_ENDING_UNREACHABLE:${'x'.repeat(600)}${marker}`
-  const prompt = buildStoryPrompt('STORY_OUTLINE', userInputFixture, reason)
-
-  assert.match(prompt, new RegExp(marker))
 })

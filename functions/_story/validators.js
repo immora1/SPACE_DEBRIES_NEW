@@ -1,9 +1,5 @@
 import Ajv from 'ajv'
-import {
-  STORY_SCHEMA_VALIDATION_METADATA,
-  StoryError,
-  TASK_TYPE,
-} from './constants.js'
+import { StoryError, TASK_TYPE } from './constants.js'
 import {
   continueSchemaEnvelope,
   endingSchemaEnvelope,
@@ -26,18 +22,20 @@ const validateOpeningJson = ajv.compile(openingSchemaEnvelope.schema)
 const validateContinueJson = ajv.compile(continueSchemaEnvelope.schema)
 const validateEndingJson = ajv.compile(endingSchemaEnvelope.schema)
 const validateKnowledgeJson = ajv.compile(knowledgeSchemaEnvelope.schema)
-const schemaValidationMetadata = new WeakMap()
-const EXPECTED_NODES = Object.freeze([
-  { node_id: 'node_01', task_type: TASK_TYPE.OPENING },
-  { node_id: 'node_02', task_type: TASK_TYPE.CONTINUE },
-  { node_id: 'node_03', task_type: TASK_TYPE.CONTINUE },
-  { node_id: 'node_04', task_type: TASK_TYPE.CONTINUE },
-  { node_id: 'node_05', task_type: TASK_TYPE.ENDING },
-])
+const EXPECTED_NODES = validationRules.outline.expected_node_sequence
+
+function schemaPath(error) {
+  const path = error.instancePath ?? error.dataPath ?? ''
+  if (!path.startsWith('.')) return path
+  return path
+    .replace(/^\./, '/')
+    .replace(/\[(?:'|")?([^\]'"\]]+)(?:'|")?\]/g, '/$1')
+    .replaceAll('.', '/')
+}
 
 function schemaDetails(errors = []) {
   return errors.slice(0, 8).map((error) => ({
-    path: error.instancePath || '/',
+    path: schemaPath(error) || '/',
     keyword: error.keyword,
     property: error.params?.additionalProperty,
   }))
@@ -52,12 +50,12 @@ function outlineSchemaCode(errors = []) {
     return 'OUTLINE_ADDITIONAL_FIELD_INVALID'
   }
   if (errors.some((error) => (
-    error.instancePath === '/story_nodes'
+    schemaPath(error) === '/story_nodes'
     && ['minItems', 'maxItems'].includes(error.keyword)
   ))) {
-    return 'OUTLINE_STAGE_COUNT_INVALID'
+    return 'OUTLINE_NODE_COUNT_INVALID'
   }
-  if (errors.some((error) => error.instancePath.startsWith('/initial_story_state/'))) {
+  if (errors.some((error) => schemaPath(error).startsWith('/initial_story_state/'))) {
     return 'OUTLINE_INITIAL_STATE_INVALID'
   }
   return 'OUTLINE_SCHEMA_INVALID'
@@ -158,7 +156,7 @@ function validateOutlineSemantics(outline) {
 
   if (outline.story_nodes.length !== EXPECTED_NODES.length) {
     throw new StoryError(
-      'OUTLINE_STAGE_COUNT_INVALID',
+      'OUTLINE_NODE_COUNT_INVALID',
       `story_nodes must contain exactly ${EXPECTED_NODES.length} items.`,
       502,
     )
@@ -166,23 +164,23 @@ function validateOutlineSemantics(outline) {
   ensureUniqueBy(
     outline.story_nodes,
     (node) => node.node_id,
-    'OUTLINE_STAGE_ID_DUPLICATE',
+    'OUTLINE_NODE_ID_DUPLICATE',
     '/story_nodes',
   )
   outline.story_nodes.forEach((node, index) => {
     const expected = EXPECTED_NODES[index]
     if (node.node_id !== expected.node_id || node.task_type !== expected.task_type) {
       throw new StoryError(
-        'OUTLINE_STAGE_SEQUENCE_INVALID',
+        'OUTLINE_NODE_SEQUENCE_INVALID',
         `story_nodes[${index}] must be ${expected.node_id}/${expected.task_type}.`,
         502,
         [{ path: `/story_nodes/${index}` }],
       )
     }
-    ensureNonEmpty(node.summary, 'OUTLINE_STAGE_CONTENT_INVALID', `/story_nodes/${index}/summary`)
+    ensureNonEmpty(node.summary, 'OUTLINE_NODE_CONTENT_INVALID', `/story_nodes/${index}/summary`)
     ensureNonEmpty(
       node.entry_condition,
-      'OUTLINE_STAGE_CONTENT_INVALID',
+      'OUTLINE_NODE_CONTENT_INVALID',
       `/story_nodes/${index}/entry_condition`,
     )
   })
@@ -292,100 +290,19 @@ function validateOutlineSemantics(outline) {
         unreachable_ending_ids: reachability.unreachable_non_fallback_ids,
         reachable_metric_ranges: reachability.reachable_metric_ranges,
         selected_ending_ids: reachability.selected_ending_ids,
-        ending_rule_guidance: reachability.ending_rule_guidance,
       }],
     )
   }
 }
 
-function validationNow() {
-  return globalThis.performance?.now?.() ?? Date.now()
-}
-
-function schemaValidator(taskType) {
-  if (taskType === TASK_TYPE.OUTLINE) return validateOutlineJson
-  if (taskType === TASK_TYPE.OPENING) return validateOpeningJson
-  if (taskType === TASK_TYPE.CONTINUE || taskType === TASK_TYPE.BRANCH) {
-    return validateContinueJson
-  }
-  if (taskType === TASK_TYPE.ENDING) return validateEndingJson
-  if (taskType === TASK_TYPE.KNOWLEDGE_REVEAL) return validateKnowledgeJson
-  return null
-}
-
-function schemaError(taskType, validator) {
-  if (taskType === TASK_TYPE.OUTLINE) {
-    return [
-      outlineSchemaCode(validator.errors),
+export function validateStoryOutline(value) {
+  if (!validateOutlineJson(value)) {
+    schemaFailure(
+      outlineSchemaCode(validateOutlineJson.errors),
       'Story outline failed JSON Schema validation.',
-    ]
-  }
-  if (taskType === TASK_TYPE.OPENING) {
-    return [
-      openingSchemaCode(validator.errors),
-      'Story opening failed JSON Schema validation.',
-    ]
-  }
-  if (taskType === TASK_TYPE.CONTINUE || taskType === TASK_TYPE.BRANCH) {
-    return ['CONTINUE_SCHEMA_INVALID', 'Story continuation failed JSON Schema validation.']
-  }
-  if (taskType === TASK_TYPE.ENDING) {
-    return ['ENDING_SCHEMA_INVALID', 'Story ending failed JSON Schema validation.']
-  }
-  return ['KNOWLEDGE_SCHEMA_INVALID', 'Knowledge reveal failed JSON Schema validation.']
-}
-
-export function validateStorySchema(taskType, value) {
-  const existing = value && typeof value === 'object'
-    ? schemaValidationMetadata.get(value)
-      || value[STORY_SCHEMA_VALIDATION_METADATA]
-    : null
-  const existingFamily = [TASK_TYPE.CONTINUE, TASK_TYPE.BRANCH].includes(
-    existing?.task_type,
-  )
-  const requestedFamily = [TASK_TYPE.CONTINUE, TASK_TYPE.BRANCH].includes(taskType)
-  if (existing?.task_type === taskType || (existingFamily && requestedFamily)) {
-    return existing
-  }
-  const validator = schemaValidator(taskType)
-  if (!validator) {
-    throw new StoryError(
-      'STORY_TASK_NOT_IMPLEMENTED',
-      `No JSON Schema validator exists for ${taskType}.`,
-      501,
+      validateOutlineJson.errors,
     )
   }
-  const startedAt = validationNow()
-  if (!validator(value)) {
-    const [code, message] = schemaError(taskType, validator)
-    schemaFailure(code, message, validator.errors)
-  }
-  const metadata = Object.freeze({
-    task_type: taskType,
-    schema_validation_duration_ms: Math.max(0, validationNow() - startedAt),
-  })
-  if (value && typeof value === 'object') {
-    schemaValidationMetadata.set(value, metadata)
-    if (Object.isExtensible(value)) {
-      Object.defineProperty(value, STORY_SCHEMA_VALIDATION_METADATA, {
-        value: metadata,
-        enumerable: false,
-        configurable: true,
-      })
-    }
-  }
-  return metadata
-}
-
-export function getStorySchemaValidationMetadata(value) {
-  if (!value || typeof value !== 'object') return null
-  return schemaValidationMetadata.get(value)
-    || value[STORY_SCHEMA_VALIDATION_METADATA]
-    || null
-}
-
-export function validateStoryOutline(value) {
-  validateStorySchema(TASK_TYPE.OUTLINE, value)
   validateOutlineSemantics(value)
   return value
 }
@@ -434,7 +351,13 @@ function leaksHiddenFact(text, hiddenFacts) {
 }
 
 export function validateStoryOpening(value, runtimeState) {
-  validateStorySchema(TASK_TYPE.OPENING, value)
+  if (!validateOpeningJson(value)) {
+    schemaFailure(
+      openingSchemaCode(validateOpeningJson.errors),
+      'Story opening failed JSON Schema validation.',
+      validateOpeningJson.errors,
+    )
+  }
 
   const textRules = validationRules.opening.story_text
   const storyText = value.story_text
@@ -650,7 +573,13 @@ function validateNarrativeHandoff(value, runtimeState, prefix) {
 }
 
 export function validateStoryContinue(value, runtimeState) {
-  validateStorySchema(TASK_TYPE.CONTINUE, value)
+  if (!validateContinueJson(value)) {
+    schemaFailure(
+      'CONTINUE_SCHEMA_INVALID',
+      'Story continuation failed JSON Schema validation.',
+      validateContinueJson.errors,
+    )
+  }
   validateNarrativeText({
     storyText: value.story_text,
     code: 'CONTINUE_STORY_TEXT_INVALID',
@@ -685,11 +614,17 @@ export function validateStoryEnding(value, {
   selectedEndingId,
   hiddenFacts = [],
 }) {
-  validateStorySchema(TASK_TYPE.ENDING, value)
+  if (!validateEndingJson(value)) {
+    schemaFailure(
+      'ENDING_SCHEMA_INVALID',
+      'Story ending failed JSON Schema validation.',
+      validateEndingJson.errors,
+    )
+  }
   if (
     value.task_type !== TASK_TYPE.ENDING
-    || value.node_id !== 'node_05'
-    || value.next_node_id !== null
+    || value.node_id !== 'node_09'
+    || value.next_node_id !== 'node_10'
     || value.selected_ending_id !== selectedEndingId
   ) {
     throw new StoryError(
@@ -722,11 +657,14 @@ export function validateStoryEnding(value, {
   return value
 }
 
-export function validateKnowledgeReveal(value, {
-  selectedSiteOptions = [],
-  cleanupMatches = [],
-} = {}) {
-  validateStorySchema(TASK_TYPE.KNOWLEDGE_REVEAL, value)
+export function validateKnowledgeReveal(value) {
+  if (!validateKnowledgeJson(value)) {
+    schemaFailure(
+      'KNOWLEDGE_SCHEMA_INVALID',
+      'Knowledge reveal failed JSON Schema validation.',
+      validateKnowledgeJson.errors,
+    )
+  }
   if (
     value.task_type !== TASK_TYPE.KNOWLEDGE_REVEAL
     || value.node_id !== 'node_10'
@@ -738,146 +676,10 @@ export function validateKnowledgeReveal(value, {
       502,
     )
   }
-
-  const selectedMaterials = selectedSiteOptions.filter(
-    (option) => option.section_id !== 'mission_candidates',
-  )
-  const selectedMissions = selectedSiteOptions.filter(
-    (option) => option.section_id === 'mission_candidates',
-  )
-  const selectedMaterialsById = new Map(
-    selectedMaterials.map((option) => [option.option_id, option]),
-  )
-  const insights = value.material_insights
-  if (selectedMaterials.length === 0 && insights.length !== 0) {
-    throw new StoryError(
-      'KNOWLEDGE_MATERIAL_INSIGHTS_INVALID',
-      'Legacy stories without material snapshots must return no material insights.',
-      502,
-      [{ path: '/material_insights' }],
-    )
-  }
-  if (selectedMaterials.length > 0 && (insights.length < 2 || insights.length > 4)) {
-    throw new StoryError(
-      'KNOWLEDGE_MATERIAL_INSIGHTS_INVALID',
-      'Stories with material snapshots must return 2 to 4 material insights.',
-      502,
-      [{ path: '/material_insights', selected_count: selectedMaterials.length }],
-    )
-  }
-  ensureUniqueBy(
-    insights,
-    (insight) => insight.option_id,
-    'KNOWLEDGE_MATERIAL_INSIGHTS_INVALID',
-    '/material_insights',
-  )
-  for (const [index, insight] of insights.entries()) {
-    const selected = selectedMaterialsById.get(insight.option_id)
-    if (!selected || selected.option_name !== insight.option_name) {
-      throw new StoryError(
-        'KNOWLEDGE_MATERIAL_INSIGHTS_INVALID',
-        'Material insights may only reference exact backend-selected material snapshots.',
-        502,
-        [{ path: `/material_insights/${index}`, option_id: insight.option_id }],
-      )
-    }
-  }
-  const missionInsights = value.mission_insights
-  if (selectedMissions.length === 0 && missionInsights.length !== 0) {
-    throw new StoryError(
-      'KNOWLEDGE_MISSION_INSIGHTS_INVALID',
-      'Stories without a mission snapshot must return no mission insights.',
-      502,
-      [{ path: '/mission_insights' }],
-    )
-  }
-  if (selectedMissions.length > 0 && missionInsights.length !== 1) {
-    throw new StoryError(
-      'KNOWLEDGE_MISSION_INSIGHTS_INVALID',
-      'Stories with a mission snapshot must return exactly one mission insight.',
-      502,
-      [{ path: '/mission_insights', selected_count: selectedMissions.length }],
-    )
-  }
-  ensureUniqueBy(
-    missionInsights,
-    (insight) => insight.option_id,
-    'KNOWLEDGE_MISSION_INSIGHTS_INVALID',
-    '/mission_insights',
-  )
-  for (const [index, insight] of missionInsights.entries()) {
-    const selected = selectedMissions.find(
-      (option) => option.option_id === insight.option_id,
-    )
-    if (!selected || selected.option_name !== insight.option_name) {
-      throw new StoryError(
-        'KNOWLEDGE_MISSION_INSIGHTS_INVALID',
-        'Mission insights may only reference the exact backend-selected mission snapshot.',
-        502,
-        [{ path: `/mission_insights/${index}`, option_id: insight.option_id }],
-      )
-    }
-  }
-  const cleanupInsights = value.cleanup_insights
-  if (cleanupMatches.length === 0 && cleanupInsights.length !== 0) {
-    throw new StoryError(
-      'KNOWLEDGE_CLEANUP_INSIGHTS_INVALID',
-      'Legacy stories without M6 snapshots must return no cleanup insights.',
-      502,
-      [{ path: '/cleanup_insights' }],
-    )
-  }
-  if (
-    cleanupMatches.length > 0
-    && (cleanupInsights.length < 1 || cleanupInsights.length > cleanupMatches.length)
-  ) {
-    throw new StoryError(
-      'KNOWLEDGE_CLEANUP_INSIGHTS_INVALID',
-      'Stories with M6 snapshots must return 1 to the actual target count cleanup insights.',
-      502,
-      [{ path: '/cleanup_insights', matched_target_count: cleanupMatches.length }],
-    )
-  }
-  ensureUniqueBy(
-    cleanupInsights,
-    (insight) => `${insight.cleanup_target_id}:${insight.cleanup_method_id}`,
-    'KNOWLEDGE_CLEANUP_INSIGHTS_INVALID',
-    '/cleanup_insights',
-  )
-  for (const [index, insight] of cleanupInsights.entries()) {
-    const selected = cleanupMatches.find((match) => (
-      match.cleanup_target_id === insight.cleanup_target_id
-      && match.cleanup_method_id === insight.cleanup_method_id
-    ))
-    if (
-      !selected
-      || selected.cleanup_target_name !== insight.cleanup_target_name
-      || selected.cleanup_method_name !== insight.cleanup_method_name
-    ) {
-      throw new StoryError(
-        'KNOWLEDGE_CLEANUP_INSIGHTS_INVALID',
-        'Cleanup insights may only reference exact backend-frozen M6 match snapshots.',
-        502,
-        [{ path: `/cleanup_insights/${index}` }],
-      )
-    }
-  }
   const combined = [
     value.knowledge_title,
     value.story_connection,
     ...value.causal_chain.flatMap((point) => [point.point_title, point.point_text]),
-    ...value.material_insights.flatMap((insight) => [
-      insight.insight_title,
-      insight.insight_text,
-    ]),
-    ...value.mission_insights.flatMap((insight) => [
-      insight.insight_title,
-      insight.insight_text,
-    ]),
-    ...value.cleanup_insights.flatMap((insight) => [
-      insight.insight_title,
-      insight.insight_text,
-    ]),
     value.reality_note,
   ].join('')
   const chineseCharacters = chineseCharacterCount(combined)

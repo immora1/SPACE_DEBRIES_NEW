@@ -7,12 +7,14 @@ import gsap from 'gsap'
 import * as THREE from 'three'
 import useAppStore from '../../store/useAppStore'
 import useI18n from '../../i18n/useI18n'
+import { submitOrbitalEventStoryAction } from '../../services/ai'
 import {
-  processQueuedStoryJobs,
-  submitOrbitalEventStoryAction,
-} from '../../services/ai'
-import { getCurrentOrbitalStoryPanelText } from '../../services/aiTimeline'
-import { calcInitialArmor, evaluateResult, localizeThreatEvent, pickEvents } from './gameData'
+  evaluateResult,
+  localizeThreatEvent,
+  pickEvents,
+  resolveInitialGameStatus,
+  resolveMissionEnvironment,
+} from './gameData'
 import { commitOrbitDragProgress, shouldStartOrbitMission } from './orbitControl'
 import ReflectionPage from './ReflectionPage'
 
@@ -161,78 +163,88 @@ const THREAT_LABELS = {
 const RECOVERY_STEPS = [
   {
     title: '任务结束',
-    titleEn: 'Mission complete',
-    label: 'MISSION END',
-    body: '卫星完成工作，进入退役状态。',
-    bodyEn: 'The satellite completes its work and enters retirement status.',
+    titleEn: 'Mission Complete',
+    label: '任务完成',
+    labelEn: 'MISSION COMPLETE',
+    body: '卫星完成既定的观测、通信或科学任务后，会停止正常任务运行并进入退役流程。任务数据完成回传后，卫星开始按照预定方案进行后续处置。',
+    bodyEn: 'After completing its planned observation, communication, or scientific mission, the satellite stops normal mission operations and enters its end-of-life phase. Once the required mission data has been transmitted, the planned disposal sequence begins.',
     img: '/任务结束.png',
   },
   {
-    title: '关闭载荷',
-    titleEn: 'Payload shutdown',
-    label: 'SYSTEM SHUTDOWN',
-    body: '关闭相机、通信设备、科学载荷等主要功能。',
-    bodyEn: 'Cameras, communication systems, and science payloads are switched off.',
+    title: '关闭主要设备',
+    titleEn: 'Shut Down Major Equipment',
+    label: '系统关闭',
+    labelEn: 'SYSTEM SHUTDOWN',
+    body: '卫星会按照控制指令关闭已经完成任务的相机、科学仪器等设备，同时保留通信、姿态控制和后续退役操作需要使用的系统。',
+    bodyEn: 'The satellite shuts down cameras, scientific instruments, and other equipment that has completed its mission, while keeping the communication, attitude-control, and other systems needed for the remaining end-of-life operations active.',
     img: '/关闭载荷.png',
   },
   {
     title: '钝化处理',
     titleEn: 'Passivation',
-    label: 'PASSIVATION',
-    body: '释放剩余燃料、电池能量和高压气体，避免在轨爆炸。',
-    bodyEn: 'Residual propellant, battery energy, and pressurized gas are released to prevent an orbital explosion.',
+    label: '钝化',
+    labelEn: 'PASSIVATION',
+    body: '卫星会处理剩余推进剂、高压气体和电池中的残余能量，使内部储能系统进入安全状态，降低退役后发生爆炸或解体、继续产生新碎片的可能。',
+    bodyEn: 'The satellite removes or secures remaining propellant, pressurized gases, and stored battery energy so that its energy-storage systems are left in a safer state. This reduces the chance of a later explosion or breakup creating additional orbital debris.',
+    highlight: '钝化处理可以降低退役卫星发生爆炸或解体、继续产生新碎片的可能。',
+    highlightEn: 'Passivation reduces the chance that a retired satellite will later explode or break apart and create new debris.',
     img: '/钝化处理.png',
   },
   {
-    title: '降轨减速',
-    titleEn: 'Deorbit burn',
-    label: 'DEORBIT BURN',
-    body: '通过发动机点火或自然阻力降低轨道，逐渐靠近大气层。',
-    bodyEn: 'Engine burns or natural drag lower the orbit toward the atmosphere.',
+    title: '降低轨道',
+    titleEn: 'Lower the Orbit',
+    label: '离轨',
+    labelEn: 'ORBIT LOWERING',
+    body: '完成退役准备后，卫星会通过轨道机动逐渐降低运行高度；部分卫星也会利用轨道自然衰减继续下降，最终离开原来的工作轨道并接近地球大气层。',
+    bodyEn: 'After end-of-life preparations are complete, the satellite gradually lowers its orbital altitude through orbital maneuvers. Some satellites may also continue descending through natural orbital decay until they leave their former operational orbit and approach Earth\'s atmosphere.',
     img: '/降轨减速.png',
   },
   {
-    title: '再入烧蚀',
-    titleEn: 'Atmospheric re-entry',
-    label: 'ATMOSPHERIC REENTRY',
-    body: '卫星高速进入大气层，受到空气阻力和高温影响。',
-    bodyEn: 'The satellite enters the atmosphere at high speed and encounters drag and extreme heat.',
+    title: '进入大气层',
+    titleEn: 'Enter the Atmosphere',
+    label: '大气层进入',
+    labelEn: 'ATMOSPHERIC ENTRY',
+    body: '随着轨道高度继续降低，卫星会高速进入越来越稠密的地球大气层。强烈的气动加热会使卫星结构逐渐破裂、解体和烧蚀，大部分材料会在这一过程中被消耗。',
+    bodyEn: 'As its orbital altitude continues to decrease, the satellite enters progressively denser layers of Earth\'s atmosphere at high speed. Intense aerodynamic heating causes the structure to break apart and ablate, consuming most of the spacecraft material during the descent.',
     img: '/再入烧蚀.png',
   },
   {
-    title: '残骸处置',
-    titleEn: 'Breakup and impact',
-    label: 'BREAKUP / IMPACT',
-    body: '大部分结构在大气层中烧蚀，少量耐高温残骸可能落入海洋或地面。',
-    bodyEn: 'Most structures ablate; a small amount of heat-resistant debris may reach ocean or land.',
+    title: '残片存留',
+    titleEn: 'Surviving Fragments',
+    label: '烧蚀结果',
+    labelEn: 'REENTRY OUTCOME',
+    body: '大部分卫星结构会在进入大气层后烧蚀，但一些耐高温、熔点较高或结构较致密的部件可能没有完全烧毁，并继续向地球坠落，因此还需要评估这些残片可能带来的地面风险。',
+    bodyEn: 'Most of the satellite structure ablates during atmospheric entry, but some heat-resistant, high-melting-point, or structurally dense components may survive and continue toward Earth. These surviving fragments must therefore be considered when assessing potential risk to people and property on the ground.',
+    highlight: '进入大气层并不能保证所有卫星部件都会完全烧毁。',
+    highlightEn: 'Atmospheric entry does not guarantee that every satellite component will burn up completely.',
     img: '/残骸处置.png',
   },
 ]
 const MATERIAL_PART_META = {
   frame: {
-    label: '主框架结构',
-    labelEn: 'PRIMARY STRUCTURE',
+    label: '主体结构',
+    labelEn: 'MAIN STRUCTURE',
     accent: '#6b7fff',
     fallback: '铝合金',
     note: '承力骨架决定大块残骸的存活概率。',
   },
   solar: {
-    label: '太阳能电池板',
+    label: '太阳能阵列',
     labelEn: 'SOLAR ARRAY',
     accent: '#38bdf8',
-    fallback: '硅基电池板',
+    fallback: '硅基刚性电池板',
     note: '外露面积最大，解体时会形成大量薄片碎屑。',
   },
   insulation: {
-    label: '隔热 / 防护层',
-    labelEn: 'THERMAL LAYER',
+    label: '外部隔热层',
+    labelEn: 'EXTERNAL THERMAL LAYER',
     accent: '#fbbf24',
     fallback: '多层隔热膜',
     note: '包覆层在冷热循环和再入烧蚀中更容易剥离。',
   },
   propulsion: {
-    label: '推进贮箱',
-    labelEn: 'PROPULSION TANK',
+    label: '推进剂贮箱',
+    labelEn: 'PROPELLANT TANK',
     accent: '#34d399',
     fallback: '铝合金贮箱',
     note: '厚壁贮箱是最可能保留形体的残骸之一。',
@@ -245,14 +257,14 @@ const MATERIAL_OPTIONS = {
     cfrp: { label: '碳纤维复合材料', summary: '会分解成纤维状碎片，分布范围更广。', risk: 'MED' },
   },
   solar: {
-    silicon: { label: '硅基电池板', summary: '玻璃盖片碎裂成粉尘，地面存活率低。', risk: 'LOW' },
-    gaas: { label: '砷化镓电池板', summary: '电池层可能形成熔滴，部分材料残留。', risk: 'MED' },
-    flexible: { label: '柔性薄膜电池板', summary: '薄膜更易卷曲烧蚀，残留较少。', risk: 'LOW' },
+    silicon: { label: '硅基刚性电池板', summary: '玻璃盖片和刚性结构在高温中碎裂烧蚀。', risk: 'MED' },
+    gaas: { label: '砷化镓多结电池板', summary: '复杂电池层可能形成熔滴，部分材料残留。', risk: 'MED' },
+    flexible: { label: '柔性薄膜阵列', summary: '薄膜更易卷曲烧蚀，残留较少。', risk: 'LOW' },
   },
   insulation: {
-    kapton: { label: '聚酰亚胺薄膜', summary: '轻薄隔热层通常会快速烧蚀。', risk: 'LOW' },
-    ceramic: { label: '陶瓷隔热片', summary: '耐高温，小块陶瓷可能继续下落。', risk: 'HIGH' },
-    aluminized: { label: '镀铝薄膜', summary: '面积大、质量小，多数在再入中烧蚀。', risk: 'MED' },
+    kapton: { label: '镀铝聚酰亚胺薄膜', summary: '轻薄隔热层通常会快速烧蚀。', risk: 'LOW' },
+    ceramic: { label: '玻璃纤维外层材料', summary: '耐热外层在高温中逐步破裂和烧蚀。', risk: 'MED' },
+    aluminized: { label: '镀铝聚酯薄膜', summary: '面积大、质量小，多数在再入中烧蚀。', risk: 'LOW' },
     mli: { label: '多层隔热膜', summary: '常见热控碎片，通常完全烧蚀。', risk: 'LOW' },
     honeycomb: { label: '铝蜂窝板', summary: '碰撞后产生规则碎片，综合风险中等。', risk: 'MED' },
     kevlar: { label: '凯夫拉防护层', summary: '厚层残片可能继续下落。', risk: 'HIGH' },
@@ -260,7 +272,7 @@ const MATERIAL_OPTIONS = {
   propulsion: {
     'aluminum-tank': { label: '铝合金贮箱', summary: '壁薄，大部分会在再入时燃烧。', risk: 'LOW' },
     'titanium-tank': { label: '钛合金贮箱', summary: '高密度厚壁，完整落地概率最高。', risk: 'HIGH' },
-    'composite-tank': { label: '复合材料贮箱', summary: '外层燃烧后，金属内衬仍可能存活。', risk: 'MED' },
+    'composite-tank': { label: '复合材料缠绕贮箱', summary: '外层燃烧后，金属内衬仍可能存活。', risk: 'MED' },
     ti_tank: { label: '钛合金球形贮箱', summary: '高密度厚壁，完整落地概率最高。', risk: 'HIGH' },
     al_tank: { label: '铝合金贮箱', summary: '壁薄，大部分会在再入时燃烧。', risk: 'LOW' },
     copv: { label: '复合缠绕贮箱', summary: '外层燃烧后，金属内衬仍可能存活。', risk: 'MED' },
@@ -271,9 +283,9 @@ const MATERIAL_RESIDUE_CATALOG = [
     key: 'frame',
     id: 'frame-selected',
     label: '结构主体',
-    labelEn: 'M2 STRUCTURE',
+    labelEn: 'M3 STRUCTURE',
     source: 'selected',
-    note: '来自 M2 主框架选择',
+    note: '来自 M3 主体结构选择',
   },
   {
     key: 'frame',
@@ -289,9 +301,9 @@ const MATERIAL_RESIDUE_CATALOG = [
     key: 'solar',
     id: 'solar-selected',
     label: '太阳翼材料',
-    labelEn: 'M2 SOLAR',
+    labelEn: 'M3 SOLAR',
     source: 'selected',
-    note: '来自 M2 太阳能电池板选择',
+    note: '来自 M3 太阳能阵列选择',
   },
   {
     key: 'solar',
@@ -317,9 +329,9 @@ const MATERIAL_RESIDUE_CATALOG = [
     key: 'insulation',
     id: 'insulation-selected',
     label: '防护层材料',
-    labelEn: 'M2 THERMAL',
+    labelEn: 'M3 THERMAL',
     source: 'selected',
-    note: '来自 M2 隔热 / 防护层选择',
+    note: '来自 M3 外部隔热层选择',
   },
   {
     key: 'insulation',
@@ -335,9 +347,9 @@ const MATERIAL_RESIDUE_CATALOG = [
     key: 'propulsion',
     id: 'propulsion-selected',
     label: '推进部件',
-    labelEn: 'M2 PROPULSION',
+    labelEn: 'M3 PROPULSION',
     source: 'selected',
-    note: '来自 M2 推进贮箱选择',
+    note: '来自 M3 推进剂贮箱选择',
   },
   {
     key: 'propulsion',
@@ -1300,6 +1312,14 @@ const GAME_STYLES = `
     line-height: 1.62;
   }
 
+  .m4-recovery-step-highlight {
+    display: block;
+    margin-top: 8px;
+    color: rgba(21,21,29,0.96);
+    font-weight: 650;
+    opacity: 1;
+  }
+
   .m4-recovery-step-media {
     min-width: 0;
     overflow: hidden;
@@ -1648,7 +1668,7 @@ const GAME_STYLES = `
 `
 
 
-function StartGuide({ opacity, progress, onJumpToRecovery }) {
+function StartGuide({ opacity, progress, missionEnvironment, onJumpToRecovery }) {
   const { pick } = useI18n()
   const guideOpacity = opacity * Math.max(0, 1 - progress * 2.8)
 
@@ -1675,8 +1695,8 @@ function StartGuide({ opacity, progress, onJumpToRecovery }) {
         </div>
         <div className="m4-guide-rule" />
         <div className="m4-guide-orbit-data">
-          <span><small>{pick('轨道类型', 'ORBIT TYPE')}</small><b>LOW EARTH ORBIT</b></span>
-          <span><small>{pick('任务模式', 'MISSION MODE')}</small><b>DEBRIS RESPONSE</b></span>
+          <span><small>{pick('轨道类型', 'ORBIT TYPE')}</small><b>{pick(missionEnvironment.orbitLabel, missionEnvironment.orbitLabelEn)}</b></span>
+          <span><small>{pick('代表高度', 'ALTITUDE')}</small><b>{pick(missionEnvironment.altitudeLabel, missionEnvironment.altitudeLabelEn)}</b></span>
         </div>
       </aside>
 
@@ -1691,7 +1711,10 @@ function StartGuide({ opacity, progress, onJumpToRecovery }) {
           <span className="m4-guide-card-index">04</span>
         </div>
         <h2 className="m4-guide-card-title">{pick('在碎片风暴中生存', 'Survive the debris storm')}</h2>
-        <p className="m4-guide-card-copy">{pick('接管一颗受损卫星，在十二个月的近地轨道任务中躲避碎片。每一次判断都会消耗燃料或护甲，也会改变最终结局。', 'Take control of a damaged satellite through twelve months in low Earth orbit. Every decision consumes fuel or armor and changes the final outcome.')}</p>
+        <p className="m4-guide-card-copy">{pick(
+          `接管一颗执行${missionEnvironment.missionLabel}的受损卫星，在${missionEnvironment.orbitLabel}完成十二个月任务。每一次判断都会消耗燃料或护甲，也会改变最终结局。`,
+          `Take control of a damaged satellite assigned to ${missionEnvironment.missionLabelEn} and complete twelve months in ${missionEnvironment.orbitLabelEn}. Every decision consumes fuel or armor and changes the final outcome.`,
+        )}</p>
         <div className="m4-guide-metrics">
           <span className="m4-guide-metric">
             <CalendarDays size={17} strokeWidth={1.4} aria-hidden="true" />
@@ -1886,7 +1909,7 @@ function RecoveryIntroPanel({ expanded, onBackToResult }) {
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
-      aria-label={pick('太空卫星回收', 'Satellite recovery')}
+      aria-label={pick('卫星退役流程', 'Satellite End-of-Life Process')}
     >
       <style>{GAME_STYLES}</style>
       <div className="m4-recovery-header">
@@ -1902,7 +1925,7 @@ function RecoveryIntroPanel({ expanded, onBackToResult }) {
           <span>{pick('返回结算', 'Back to result')}</span>
         </button>
       </div>
-      <h2>{pick('太空卫星回收', 'Satellite recovery')}</h2>
+      <h2>{pick('卫星退役流程', 'Satellite End-of-Life Process')}</h2>
       {expanded && (
         <MotionDiv
           initial={{ opacity: 0, y: 10 }}
@@ -1913,8 +1936,8 @@ function RecoveryIntroPanel({ expanded, onBackToResult }) {
           <p>
 
             {pick(
-              '每一颗卫星都有生命尽头。任务结束后，它们面临两种命运：受控离轨，或等待轨道衰减。无论哪种，再入大气层的过程都在地球上留下了痕迹。',
-              'Every satellite reaches the end of its life. After the mission it must either deorbit under control or wait for orbital decay. In both cases, atmospheric re-entry can leave traces on Earth.',
+              '下面以常见的无人卫星为例，了解一颗卫星完成任务后的退役过程。卫星会依次停止任务运行、关闭主要设备、处理内部残余能量，并逐步离开原来的工作轨道。轨道高度持续降低后，卫星最终进入地球大气层，大部分结构会在这一过程中解体和烧蚀，少数部件仍可能继续坠向地球。',
+              'The following sequence shows a typical end-of-life process for an uncrewed satellite. After completing its mission, the satellite stops normal operations, shuts down major mission equipment, removes or secures stored energy, and gradually leaves its operational orbit. As its altitude decreases, it eventually enters Earth\'s atmosphere, where most of its structure breaks apart and ablates, although some components may survive and continue toward the surface.',
             )}
 
           </p>
@@ -2006,11 +2029,18 @@ function RecoveryStepsPanel({ activeStepIndex, onActiveStepChange }) {
         >
           <div className="m4-recovery-step-copy">
             <div className="m4-recovery-step-kicker">
-              <span>{step.label}</span>
+              <span>{pick(step.label, step.labelEn)}</span>
               <span className="m4-recovery-step-index">{String(index + 1).padStart(2, '0')}</span>
             </div>
             <h3>{pick(step.title, step.titleEn)}</h3>
-            <p>{pick(step.body, step.bodyEn)}</p>
+            <p>
+              {pick(step.body, step.bodyEn)}
+              {step.highlight && (
+                <strong className="m4-recovery-step-highlight">
+                  {pick(step.highlight, step.highlightEn)}
+                </strong>
+              )}
+            </p>
           </div>
           <div className="m4-recovery-step-media" aria-hidden="true">
             <img src={step.img} alt="" />
@@ -3023,7 +3053,7 @@ function SatelliteBreakupEffects({ recoveryStep }) {
   )
 }
 
-function resolveMaterialResidueItem(item, materials) {
+function resolveMaterialResidueItem(item, materials, materialProfiles) {
   const part = MATERIAL_PART_META[item.key]
   const selected = materials?.[item.key]
   const option = MATERIAL_OPTIONS[item.key]?.[selected]
@@ -3032,12 +3062,21 @@ function resolveMaterialResidueItem(item, materials) {
     ? option?.summary || '未在材料板块中选择时，使用默认卫星材料进行演示。'
     : item.summary
 
+  const trustedProfile = materialProfiles?.[item.key]
+  const trustedRisk = {
+    low: 'LOW',
+    medium: 'MED',
+    high: 'HIGH',
+  }[trustedProfile]
+
   return {
     ...item,
     accent: part.accent,
     label: item.source === 'selected' ? part.label : item.label,
     material: item.source === 'selected' ? selectedLabel : item.material,
-    risk: item.risk || option?.risk || 'SIM',
+    risk: item.source === 'selected'
+      ? trustedRisk || option?.risk || 'SIM'
+      : item.risk || 'SIM',
     summary: typeof summarySource === 'function'
       ? summarySource({ selectedLabel, option, part })
       : summarySource,
@@ -3052,8 +3091,10 @@ function getHighestMaterialRisk(items) {
   ), 'LOW')
 }
 
-function getMaterialResidueCards(materials) {
-  const resolvedItems = MATERIAL_RESIDUE_CATALOG.map((item) => resolveMaterialResidueItem(item, materials))
+function getMaterialResidueCards(materials, materialProfiles) {
+  const resolvedItems = MATERIAL_RESIDUE_CATALOG.map(
+    (item) => resolveMaterialResidueItem(item, materials, materialProfiles),
+  )
   const itemMap = new Map(resolvedItems.map((item) => [item.id, item]))
 
   return MATERIAL_RESIDUE_GROUPS.map((group, index) => {
@@ -3075,9 +3116,12 @@ function getMaterialResidueCards(materials) {
   })
 }
 
-function BreakupMaterialBoard({ recoveryStep, materials, anchor }) {
+function BreakupMaterialBoard({ recoveryStep, materials, materialProfiles, anchor }) {
   const { language, pick } = useI18n()
-  const cards = useMemo(() => getMaterialResidueCards(materials), [materials])
+  const cards = useMemo(
+    () => getMaterialResidueCards(materials, materialProfiles),
+    [materialProfiles, materials],
+  )
   const isBreakup = recoveryStep === RECOVERY_ANIMATION_STEP.BREAKUP
 
   if (!isBreakup) return null
@@ -3151,7 +3195,7 @@ function BreakupMaterialBoard({ recoveryStep, materials, anchor }) {
                 <span>{pick(card.label, card.labelEn)}</span>
               </h4>
               <p>{pick(card.summary, 'Representative remnants from the selected materials after breakup and atmospheric heating.')}</p>
-              <div className="m4-material-card-note">{pick(`${card.materialDetail} · ${card.note}`, 'M2 MATERIAL PROFILE · RE-ENTRY RESIDUE')}</div>
+              <div className="m4-material-card-note">{pick(`${card.materialDetail} · ${card.note}`, 'M3 MATERIAL PROFILE · RE-ENTRY RESIDUE')}</div>
             </article>
           ))}
         </div>
@@ -3841,7 +3885,7 @@ function OrbitalDebrisCloud({ earthRadius, damageLevel }) {
 
 function EarthScene({
   proxy,
-  satellite,
+  missionEnvironment,
   damageLevel,
   showPersonalOrbit,
   recoveryStep,
@@ -3879,8 +3923,8 @@ function EarthScene({
       {showPersonalOrbit && (
         <Suspense fallback={null}>
           <PersonalSatelliteOrbit
-            altitudeKm={satellite?.altitudeKm}
-            inclinationDeg={satellite?.inclination}
+            altitudeKm={missionEnvironment.altitudeKm}
+            inclinationDeg={missionEnvironment.inclinationDeg}
             earthRadius={earthMetrics.radius}
             recoveryStep={recoveryStep}
             focusRef={satelliteFocusRef}
@@ -4143,7 +4187,10 @@ export default function M4New({ onComplete = () => {} }) {
   const storyId = useAppStore((state) => state.storyId)
   const publicGameState = useAppStore((state) => state.publicGameState)
   const storyTimeline = useAppStore((state) => state.storyTimeline)
-  const gameStorySync = useAppStore((state) => state.gameStorySync)
+  const missionEnvironment = useMemo(
+    () => resolveMissionEnvironment(publicGameState?.mission, satellite),
+    [publicGameState?.mission, satellite],
+  )
   const proxy = useRef({ scale: MIN_EARTH_SCALE, orbitOpacity: 1, x: 0 })
   const satelliteFocusRef = useRef(new THREE.Vector3())
   const started = useRef(false)
@@ -4152,12 +4199,18 @@ export default function M4New({ onComplete = () => {} }) {
   const progressRef = useRef(0)
   const moduleRef = useRef(null)
   const [isModuleInView, setIsModuleInView] = useState(false)
-  const [events] = useState(() => pickEvents(damageLevel, clickedHistoryEvents || [], TOTAL_ROUNDS))
-  const [gameStatus, setGameStatus] = useState(() => ({
-    fuel: 100,
-    armor: calcInitialArmor(damageLevel),
-    missionProgress: 0,
-  }))
+  const events = useMemo(
+    () => pickEvents(
+      damageLevel,
+      clickedHistoryEvents || [],
+      TOTAL_ROUNDS,
+      publicGameState?.mission,
+    ),
+    [clickedHistoryEvents, damageLevel, publicGameState?.mission],
+  )
+  const [gameStatus, setGameStatus] = useState(() => (
+    resolveInitialGameStatus(publicGameState?.technical_metrics, damageLevel)
+  ))
   const [orbitProgress, setOrbitProgress] = useState(0)
   const [orbitOpacity, setOrbitOpacity] = useState(1)
   const [orbitLocked, setOrbitLocked] = useState(false)
@@ -4177,37 +4230,19 @@ export default function M4New({ onComplete = () => {} }) {
   const initialStory = storyChapters?.m3
     || storyChapters?.opening
     || pick(
-      `${satellite?.name || '卫星'}进入近地轨道。监测系统开始记录每一次微小偏移。`,
-      `${satellite?.name || 'The satellite'} enters low Earth orbit. The monitoring system begins recording every small deviation.`,
+      `${satellite?.name || '卫星'}进入${missionEnvironment.orbitLabel}执行${missionEnvironment.missionLabel}。监测系统开始记录每一次微小偏移。`,
+      `${satellite?.name || 'The satellite'} enters ${missionEnvironment.orbitLabelEn} for ${missionEnvironment.missionLabelEn}. The monitoring system begins recording every small deviation.`,
     )
   const [storyThread, setStoryThread] = useState([initialStory])
-  const orbitalStoryStages = useMemo(
-    () => storyTimeline.filter(
-      (stage) => stage.input_action?.module === 'M4_ORBITAL_EVENTS'
-        && stage.display_content?.story_text,
-    ),
-    [storyTimeline],
-  )
-  const orbitalStoryBeats = useMemo(
-    () => orbitalStoryStages.map((stage) => stage.display_content.story_text),
-    [orbitalStoryStages],
-  )
+  useEffect(() => {
+    if (!gameStarted) setStoryThread([initialStory])
+  }, [gameStarted, initialStory])
   const currentEvent = useMemo(
     () => localizeThreatEvent(events[round] || null, language),
     [events, language, round],
   )
   const currentMonth = GAME_MONTHS[round] || GAME_MONTHS[GAME_MONTHS.length - 1]
-  const currentQuestionNodeId = round < TOTAL_ROUNDS
-    ? `node_${String(round + 4).padStart(2, '0')}`
-    : null
-  const latestOrbitalStage = orbitalStoryStages.at(-1)
-  const latestStory = getCurrentOrbitalStoryPanelText({
-    currentNodeId: currentQuestionNodeId,
-    latestGeneratedNodeId: latestOrbitalStage?.node_id,
-    latestStory: storyThread.at(-1),
-    loading,
-    gameStorySync,
-  }, language)
+  const latestStory = storyThread[storyThread.length - 1]
   const recoveryStep = phase === GAME_PHASE.RECOVERY && recoveryStepsVisible
     ? activeRecoveryStepIndex === 0
       ? RECOVERY_ANIMATION_STEP.MISSION_END
@@ -4241,16 +4276,6 @@ export default function M4New({ onComplete = () => {} }) {
     moduleViewportObserver.observe(element)
     return () => moduleViewportObserver.disconnect()
   }, [])
-
-  useEffect(() => {
-    const synchronizedStories = [initialStory, ...orbitalStoryBeats].filter(Boolean)
-    setStoryThread((currentStories) => (
-      currentStories.length === synchronizedStories.length
-        && currentStories.every((story, index) => story === synchronizedStories[index])
-        ? currentStories
-        : synchronizedStories
-    ))
-  }, [initialStory, orbitalStoryBeats])
 
   useEffect(() => {
     if (!gameStarted) {
@@ -4295,7 +4320,10 @@ export default function M4New({ onComplete = () => {} }) {
       satFate: isSuccess
         ? pick('卫星完成任务并保留了离轨能力。', 'The satellite completes its mission and retains deorbit capability.')
         : pick('卫星失去控制，成为新的轨道碎片来源。', 'The satellite loses control and becomes a new source of orbital debris.'),
-      debrisDescription: pick(`${material}碎片，来源于受损卫星，残留于近地轨道。`, `${material} fragments from the damaged satellite remain in low Earth orbit.`),
+      debrisDescription: pick(
+        `${material}碎片，来源于受损卫星，残留于${missionEnvironment.orbitLabel}。`,
+        `${material} fragments from the damaged satellite remain in ${missionEnvironment.orbitLabelEn}.`,
+      ),
       storyEnding: finalStory,
     }
 
@@ -4326,6 +4354,8 @@ export default function M4New({ onComplete = () => {} }) {
     setGameResult,
     setStoryChapter,
     language,
+    missionEnvironment.orbitLabel,
+    missionEnvironment.orbitLabelEn,
     pick,
   ])
 
@@ -4362,7 +4392,11 @@ export default function M4New({ onComplete = () => {} }) {
         missionDelta: option?.missionDelta || 0,
       }
     })
-    const restoredStories = [initialStory, ...orbitalStoryBeats].filter(Boolean)
+    const restoredStoryBeats = storyTimeline
+      .filter((stage) => stage.input_action?.module === 'M4_ORBITAL_EVENTS')
+      .map((stage) => stage.display_content?.story_text)
+      .filter(Boolean)
+    const restoredStories = [initialStory, ...restoredStoryBeats].filter(Boolean)
     const restoredStatus = metrics
       ? {
           armor: metrics.armor,
@@ -4399,7 +4433,7 @@ export default function M4New({ onComplete = () => {} }) {
     language,
     publicGameState,
     storyId,
-    orbitalStoryBeats,
+    storyTimeline,
   ])
 
   const handleChoose = useCallback(async (option) => {
@@ -4426,17 +4460,14 @@ export default function M4New({ onComplete = () => {} }) {
     setDecisionError('')
     let storySnapshot
     try {
-      storySnapshot = await submitOrbitalEventStoryAction(
-        currentEvent.id,
-        option.id,
-        round + 1,
-      )
+      storySnapshot = await submitOrbitalEventStoryAction(currentEvent.id, option.id)
     } catch (error) {
-      setDecisionError(error?.message || pick('答案确认失败，请重试。', 'Answer confirmation failed. Please retry.'))
+      setDecisionError(error?.message || pick('任务日志生成失败，请重试。', 'Mission log generation failed. Please retry.'))
       setLoading(false)
       return
     }
 
+    const storyUpdate = storySnapshot.current_stage?.display_content?.story_text || ''
     const metrics = storySnapshot.public_game_state?.technical_metrics
     const resolvedStatus = metrics
       ? {
@@ -4445,28 +4476,38 @@ export default function M4New({ onComplete = () => {} }) {
           missionProgress: metrics.mission_progress,
         }
       : nextStatus
-    const nextStories = storyThread
+    const nextStories = storyUpdate
+      ? [...storyThread, storyUpdate]
+      : storyThread
     const nextDecisions = [...decisions, decision]
+    const feedbackColor = option.outcome === 'correct'
+      ? '#16835d'
+      : option.outcome === 'partial'
+        ? '#b66b16'
+        : '#b13b32'
 
     setGameStatus(resolvedStatus)
     setDecisions(nextDecisions)
     setStoryThread(nextStories)
+    setFeedback({
+      ...option,
+      title: option.outcome === 'correct'
+        ? pick('机动执行完成', 'Maneuver complete')
+        : option.outcome === 'partial'
+          ? pick('风险仍未完全解除', 'Risk remains')
+          : pick('轨道状态继续恶化', 'Orbit continues to degrade'),
+      aiLog: storyUpdate || storySnapshot.current_stage?.stage_summary || option.techNote,
+      color: feedbackColor,
+      nextDecisions,
+      nextStories,
+      nextStatus: resolvedStatus,
+    })
     setLoading(false)
-    void processQueuedStoryJobs().catch(() => {})
-
-    if (round + 1 >= TOTAL_ROUNDS) {
-      await handleGameEnd(nextDecisions, resolvedStatus, nextStories)
-      return
-    }
-
-    setRound((value) => value + 1)
-    setFeedback(null)
-    setPhase(GAME_PHASE.EVENT)
+    setPhase(GAME_PHASE.FEEDBACK)
   }, [
     currentEvent,
     decisions,
     gameStatus,
-    handleGameEnd,
     loading,
     round,
     storyThread,
@@ -4632,7 +4673,7 @@ export default function M4New({ onComplete = () => {} }) {
         <Suspense fallback={null}>
           <EarthScene
             proxy={proxy}
-            satellite={satellite}
+            missionEnvironment={missionEnvironment}
             damageLevel={damageLevel}
             showPersonalOrbit={gameStarted}
             recoveryStep={recoveryStep}
@@ -4654,6 +4695,7 @@ export default function M4New({ onComplete = () => {} }) {
       <BreakupMaterialBoard
         recoveryStep={recoveryStep}
         materials={materials}
+        materialProfiles={publicGameState?.satellite_build?.material_profiles}
         anchor={materialBoardAnchor}
       />
 
@@ -4672,6 +4714,7 @@ export default function M4New({ onComplete = () => {} }) {
         <StartGuide
           opacity={orbitOpacity}
           progress={orbitProgress}
+          missionEnvironment={missionEnvironment}
           onJumpToRecovery={handleJumpToRecovery}
         />
       )}

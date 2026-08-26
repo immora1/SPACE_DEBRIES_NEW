@@ -1,34 +1,46 @@
 import { useState, useEffect, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { AnimateChars, ScrollReveal } from '../../animations'
 import useAppStore from '../../store/useAppStore'
 import {
   createStorySession,
   submitMaterialStoryAction,
   submitMissionStoryAction,
-  StoryAPIError,
 } from '../../services/ai'
-import { isStorySessionUnavailableError } from '../../services/storySessionRecovery'
 import OrbitGlobe from './OrbitGlobe'
 import OrbitClassification from './OrbitClassification'
 import IdentityDossier from './IdentityDossier'
 import MaterialSelectionLab from './MaterialSelectionLab'
 import MissionSelectionDeck from './MissionSelectionDeck'
-import { DEFAULT_MISSION_ID, MISSION_CANDIDATES } from './missionCandidates'
 import OrbitNarrative from './OrbitNarrative'
 import useI18n from '../../i18n/useI18n'
+import { MISSION_OPTIONS } from '../../../functions/_story/config/missions.js'
 import './orbit-classification.css'
-
-const EASE = [0.16, 1, 0.3, 1]
 
 const ORBITS = [
   {
     id: 'leo', name: 'LEO', full: '低地球轨道', fullEn: 'Low Earth Orbit',
-    alt: '200 – 2,000 km', period: '90 – 127 min',
-    use: '地球观测、空间站、星座互联网', useEn: 'Earth observation, space stations, internet constellations',
-    debris: 28000, debrisLabel: '28,000+', risk: '极高', riskEn: 'VERY HIGH', riskColor: '#7da7e8',
-    note: '最拥挤的轨道区域，铱星与 Cosmos-2251 碰撞发生于此。',
-    noteEn: 'The most crowded orbital region and the site of the Iridium–Cosmos collision.',
+    classification: {
+      count: '27,465',
+      countLabel: '编目在轨物体',
+      countLabelEn: 'Catalogued objects in orbit',
+      countNote: '这里的数字代表当前被编目、位于 LEO 区域中的在轨物体总数，不等同于全部都是太空垃圾。',
+      countNoteEn: 'This figure represents catalogued objects currently in LEO and does not mean that every object is space debris.',
+      fields: [
+        { label: '轨道高度', labelEn: 'Altitude', value: '约 180–2,000 km', valueEn: 'Approx. 180–2,000 km' },
+        { label: '轨道周期', labelEn: 'Orbital period', value: '约 90–127 min', valueEn: 'Approx. 90–127 min' },
+        { label: '代表任务', labelEn: 'Typical missions', value: '空间站 · 地球观测 · 通信星座', valueEn: 'Space stations · Earth observation · Communication constellations' },
+      ],
+      reference: { value: 'ISS ≈ 400 km', valueEn: 'ISS ≈ 400 km' },
+      riskLabel: '物体和碎片最密集',
+      riskLabelEn: 'Highest object and debris density',
+      riskDescription: '多数轨道碎片集中在低地球轨道。较低高度的碎片会受大气阻力影响逐渐再入，但高度增加后，碎片可能停留几十年至数百年。',
+      riskDescriptionEn: 'Most catalogued orbital debris is concentrated in low Earth orbit. Objects at lower altitudes gradually re-enter because of atmospheric drag, while debris at higher LEO altitudes can remain for decades or centuries.',
+      supporting: {
+        label: '补充数据', labelEn: 'Supporting data',
+        value: '750–1,000 km', valueEn: '750–1,000 km',
+        detail: '碎片密度较高的典型区域', detailEn: 'Typical region of high debris concentration',
+      },
+    },
     compositionEn: 'Defunct satellites, upper stages, collision fragments, aluminum, steel, titanium, carbon fiber, solar-cell glass, and insulation films dominate this region. Objects range from millimeter particles to complete rocket stages.',
     historyEn: 'In 2009, Iridium 33 and Cosmos-2251 collided near 790 km, creating more than 2,000 trackable fragments.',
     composition: {
@@ -57,11 +69,23 @@ const ORBITS = [
   },
   {
     id: 'meo', name: 'MEO', full: '中地球轨道', fullEn: 'Medium Earth Orbit',
-    alt: '2,000 – 35,786 km', period: '2 – 24 h',
-    use: 'GPS / GNSS 导航、部分气象', useEn: 'GPS / GNSS navigation and selected weather missions',
-    debris: 2000, debrisLabel: '~2,000', risk: '中等', riskEn: 'MEDIUM', riskColor: '#9fc4ff',
-    note: '导航星座密集，碎片少但单颗卫星价值极高。',
-    noteEn: 'Navigation constellations are dense; debris is less common, but each satellite is highly valuable.',
+    classification: {
+      count: '1,140+',
+      countLabel: 'MEO 编目物体',
+      countLabelEn: 'Catalogued MEO objects',
+      countNote: 'ESA 的轨道分类中，部分导航卫星轨道会单独统计，因此不要把这个数字解释为所有导航卫星和碎片的总量。',
+      countNoteEn: 'Some navigation-satellite orbital regions are counted separately in ESA classifications, so this number should not be described as the total number of all navigation satellites and debris.',
+      fields: [
+        { label: '轨道范围', labelEn: 'Orbital range', value: '约 2,000–31,570 km', valueEn: 'Approx. 2,000–31,570 km' },
+        { label: 'GPS 轨道周期', labelEn: 'GPS orbital period', value: '约 12 h', valueEn: 'Approx. 12 h' },
+        { label: '典型任务', labelEn: 'Typical missions', value: 'GPS · Galileo · 导航定位', valueEn: 'GPS · Galileo · Navigation' },
+      ],
+      reference: { value: 'GPS ≈ 20,200 km', valueEn: 'GPS ≈ 20,200 km' },
+      riskLabel: '数量较少，但长期留轨',
+      riskLabelEn: 'Lower density, long orbital lifetime',
+      riskDescription: 'MEO 已远离稠密大气层，大气阻力很弱。失效卫星和碎片很难像低轨物体一样自然降低轨道，因此可能长期留在空间中。',
+      riskDescriptionEn: 'Atmospheric drag is extremely weak at MEO altitudes. Inactive satellites and debris therefore do not naturally lose altitude as quickly as objects in lower orbits and may remain in orbit for long periods.',
+    },
     compositionEn: 'Retired navigation satellites and transfer-stage hardware dominate MEO, with aluminum honeycomb structures, titanium and steel pressure vessels, carbon fiber, and solar-cell glass.',
     historyEn: 'No catastrophic satellite collision has been confirmed here. The main risk comes from long-lived retired spacecraft crossing the GPS, Galileo, and BeiDou orbital bands.',
     composition: {
@@ -89,12 +113,32 @@ const ORBITS = [
     color: '#9fc4ff',
   },
   {
-    id: 'geo', name: 'GEO', full: '地球同步轨道', fullEn: 'Geosynchronous Orbit',
-    alt: '35,786 km', period: '24 h（静止）', periodEn: '24 h (geostationary)',
-    use: '广播电视、通信、气象（静止）', useEn: 'Broadcasting, communications, and geostationary weather monitoring',
-    debris: 900, debrisLabel: '~900', risk: '低·持久', riskEn: 'LOW · PERSISTENT', riskColor: 'rgba(159,196,255,0.55)',
-    note: '无大气阻力，碎片永久停留；坟墓轨道用于退役卫星。',
-    noteEn: 'With almost no atmospheric drag, debris persists; retired satellites are moved to graveyard orbits.',
+    id: 'geo', name: 'GEO', full: '地球静止轨道', fullEn: 'Geostationary Orbit',
+    classification: {
+      count: '951',
+      countLabel: '编目在轨物体',
+      countLabelEn: 'Catalogued objects in orbit',
+      countNote: '这里的数字代表 GEO 区域内被持续编目的在轨物体，并不等同于全部都是太空垃圾。',
+      countNoteEn: 'This figure represents catalogued objects in the GEO region and does not mean that every object is space debris.',
+      fields: [
+        { label: '轨道高度', labelEn: 'Altitude', value: '约 35,786 km', valueEn: 'Approx. 35,786 km' },
+        { label: '轨道周期', labelEn: 'Orbital period', value: '约 24 h', valueEn: 'Approx. 24 h' },
+        { label: '典型任务', labelEn: 'Typical missions', value: '通信 · 气象 · 数据中继', valueEn: 'Communications · Weather · Data relay' },
+      ],
+      reference: {
+        value: '35,786 km', valueEn: '35,786 km',
+        detail: '地球静止轨道典型高度', detailEn: 'Typical geostationary altitude',
+      },
+      riskLabel: '轨道位置有限，失效物体长期存在',
+      riskLabelEn: 'Limited orbital space, long-lived inactive objects',
+      riskDescription: 'GEO 的物体数量低于 LEO，但地球静止轨道是一种有限的轨道资源。失效卫星如果继续停留，会占据可用轨道位置。',
+      riskDescriptionEn: 'GEO contains fewer objects than LEO, but geostationary orbital positions are limited. Inactive satellites can occupy valuable orbital slots for long periods.',
+      supporting: {
+        label: '处置方式', labelEn: 'Disposal',
+        value: '任务结束后通常抬升约 300 km', valueEn: 'Typically raised by about 300 km after retirement',
+        detail: '进入墓地轨道', detailEn: 'Moved to a graveyard orbit',
+      },
+    },
     compositionEn: 'Retired communication and weather satellites, apogee motors, and breakup fragments dominate GEO. Objects range from centimeter fragments to multi-ton spacecraft.',
     historyEn: 'No catastrophic collision has been confirmed in GEO. Suspected debris near AMC-9 in 2017 showed how anomalies can leave threats in an orbit with almost no natural clearing.',
     composition: {
@@ -125,9 +169,13 @@ const ORBITS = [
   },
 ]
 
+const MISSIONS = MISSION_OPTIONS
+
 export default function M3({ onComplete }) {
-  const { pick } = useI18n()
-  const user            = useAppStore((s) => s.user)
+  const { language, pick } = useI18n()
+  const introFont = language === 'zh'
+    ? '"PingFang SC", "Microsoft YaHei", sans-serif'
+    : '"Lexend", sans-serif'
   const satellite       = useAppStore((s) => s.satellite)
   const materials       = useAppStore((s) => s.materials)
   const damageLevel     = useAppStore((s) => s.damageLevel)
@@ -149,41 +197,31 @@ export default function M3({ onComplete }) {
   const restoredMissionId = publicGameState?.mission?.action_id || null
   const restoredMaterialsCommitted = Object.keys(publicGameState?.satellite_build?.materials || {}).length === 4
   const restoredMaterialStage = [...(storyTimeline || [])].reverse().find(
-    (stage) => ['M2', 'M2_MATERIALS'].includes(stage.input_action?.module),
+    (stage) => stage.input_action?.module === 'M2_MATERIALS',
   )
   const restoredOpeningStage = [...(storyTimeline || [])].reverse().find(
     (stage) => stage.task_type === 'STORY_OPENING',
   )
-  const restoredMissionStage = [...(storyTimeline || [])].reverse().find(
-    (stage) => stage.node_id === 'node_03' && stage.input_action?.module === 'M3',
-  )
 
   const [mission,        setMissionLocal]  = useState(restoredMissionId)
-  const [missionCandidate, setMissionCandidate] = useState(
-    restoredMissionId || DEFAULT_MISSION_ID,
-  )
   const [aiState,        setAiState]       = useState(restoredMissionId ? 'done' : 'idle')
-  const [missionError,   setMissionError]  = useState(null)
-  const [story,          setStory]         = useState(restoredOpeningStage?.display_content?.story_text || '')
+  const [story,          setStory]         = useState(
+    language === 'en'
+      ? publicGameState?.mission?.mission_effect_en || ''
+      : publicGameState?.mission?.mission_effect || '',
+  )
   const [currentStep,    setCurrentStep]   = useState(0)
   const [activeOrbit, setActiveOrbit] = useState('leo')
   const [pinnedOrbit, setPinnedOrbit] = useState('leo')
   const [matAiState,     setMatAiState]    = useState(restoredMaterialsCommitted ? 'done' : 'idle')
   const [matFeedback,    setMatFeedback]   = useState(restoredMaterialStage?.display_content?.story_text || '')
-  const [matError,       setMatError]      = useState(null)
 
   const [formStep,       setFormStep]      = useState(storyId && satellite ? 'result' : 'form')
-  const [form,           setForm]          = useState({
-    name: user?.name || '',
-    city: user?.city || '',
-    importantEvent: user?.importantEvent || '',
-  })
+  const [form,           setForm]          = useState({ name: '', city: '', importantEvent: '' })
   const [openingStory,   setOpeningStory]  = useState(restoredOpeningStage?.display_content?.story_text || '')
   const [formError,      setFormError]     = useState(null)
 
   const onCompleteRef = useRef(onComplete)
-  const materialActionRef = useRef(null)
-  const missionActionRef = useRef(null)
   const storyRestoreAppliedRef = useRef(false)
   useEffect(() => { onCompleteRef.current = onComplete }, [onComplete])
 
@@ -192,11 +230,6 @@ export default function M3({ onComplete }) {
   }, [aiState, mission])
 
   useEffect(() => {
-    if (!storyId && formStep !== 'form' && formStep !== 'generating') {
-      storyRestoreAppliedRef.current = false
-      setFormStep('form')
-    }
-
     if (
       !storyRestoreAppliedRef.current
       && storyId
@@ -217,18 +250,22 @@ export default function M3({ onComplete }) {
 
     if (restoredMissionId) {
       setMissionLocal(restoredMissionId)
-      setMissionCandidate(restoredMissionId)
       setAiState('done')
-      setMissionError(null)
-      setStory(restoredMissionStage?.display_content?.story_text || '')
+      setStory(
+        language === 'en'
+          ? publicGameState?.mission?.mission_effect_en || ''
+          : publicGameState?.mission?.mission_effect || '',
+      )
     }
   }, [
     formStep,
     restoredMaterialStage,
     restoredMaterialsCommitted,
     restoredMissionId,
-    restoredMissionStage,
     restoredOpeningStage,
+    language,
+    publicGameState?.mission?.mission_effect,
+    publicGameState?.mission?.mission_effect_en,
     satellite,
     storyCheckpoint,
     storyId,
@@ -441,166 +478,50 @@ export default function M3({ onComplete }) {
 
   const safeMatls  = materials ?? {}
   const matAllDone = Object.values(safeMatls).filter(Boolean).length === 4
+  const materialAnalysis = publicGameState ? {
+    fuel: publicGameState.technical_metrics?.fuel,
+    armor: publicGameState.technical_metrics?.armor,
+    profiles: publicGameState.satellite_build?.material_profiles || {},
+  } : null
 
   async function handleMatFeedback() {
-    if (!matAllDone || matAiState === 'loading' || matAiState === 'done') return
-    const fingerprint = JSON.stringify(materials)
-    const pendingAction = materialActionRef.current?.fingerprint === fingerprint
-      ? materialActionRef.current
-      : {
-          fingerprint,
-          clientActionId: globalThis.crypto.randomUUID(),
-        }
-    materialActionRef.current = pendingAction
-    setMatError(null)
+    if (!matAllDone || matAiState !== 'idle') return
     setMatAiState('loading')
     try {
-      const storySnapshot = await submitMaterialStoryAction(
-        materials,
-        pendingAction.clientActionId,
-      )
+      const storySnapshot = await submitMaterialStoryAction(materials)
       setMatFeedback(storySnapshot.current_stage?.display_content?.story_text || '')
       setMatAiState('done')
-      materialActionRef.current = null
-    } catch (error) {
-      if (error?.code === 'STORY_SESSION_EXPIRED') {
-        materialActionRef.current = null
-        setMatAiState('idle')
-        setMatError(null)
-        setFormError(error.message)
-        setFormStep('form')
-        return
-      }
-      setMatError({
-        code: error?.code || 'STORY_GENERATION_FAILED',
-        message: error?.message || pick('故事生成暂时失败，请重试。', 'Story generation temporarily failed. Please retry.'),
-      })
-      setMatAiState('error')
-    }
+    } catch { setMatAiState('error') }
   }
 
   function handleMaterialSelect(partId, optionId) {
     if (matAiState === 'done') return
-    materialActionRef.current = null
     setMaterialPart(partId, optionId)
     if (matAiState !== 'idle') {
       setMatAiState('idle')
       setMatFeedback('')
-      setMatError(null)
     }
-  }
-
-  function handleMissionCandidateSelect(missionId) {
-    if (aiState === 'loading' || aiState === 'done') return
-    missionActionRef.current = null
-    setMissionCandidate(missionId)
-    if (aiState === 'error') {
-      setAiState('idle')
-      setMissionError(null)
-    }
-  }
-
-  async function rebuildStorySessionToMissionNode() {
-    const recoveryIdentity = {
-      name: form.name.trim() || user?.name?.trim() || '',
-      city: form.city.trim() || user?.city?.trim() || '',
-      importantEvent: form.importantEvent.trim() || user?.importantEvent?.trim() || '',
-    }
-    const hasMaterials = Object.values(materials || {}).filter(Boolean).length === 4
-    if (
-      !recoveryIdentity.name
-      || !recoveryIdentity.city
-      || !recoveryIdentity.importantEvent
-      || !satellite
-      || !hasMaterials
-    ) {
-      throw new StoryAPIError(
-        'STORY_SESSION_RECOVERY_UNAVAILABLE',
-        pick(
-          '故事会话已丢失，且本地身份、卫星或四项材料信息不完整。请返回本模块的身份信息阶段重新建立故事。',
-          'The story session is missing and the saved identity, satellite, or four material selections are incomplete. Return to the identity section of this module to recreate the story.',
-        ),
-        409,
-      )
-    }
-
-    beginStorySession()
-    setForm(recoveryIdentity)
-    setFormError(null)
-    setFormStep('generating')
-    const createdStory = await createStorySession({
-      ...recoveryIdentity,
-      satellite,
-      damageLevel,
-      historyEventIds: (clickedHistoryEvents || []).map((event) => (
-        event?.id || event?.eventId || event?.name || event?.title || String(event)
-      )),
-    })
-    const recoveredOpening = createdStory.current_stage?.display_content?.story_text || ''
-    setOpeningStory(recoveredOpening)
-    setStoryChapter('opening', recoveredOpening)
-    setFormStep('result')
-
-    const materialStory = await submitMaterialStoryAction(
-      materials,
-      globalThis.crypto.randomUUID(),
-    )
-    setMatFeedback(materialStory.current_stage?.display_content?.story_text || '')
-    setMatAiState('done')
-    setMatError(null)
-    materialActionRef.current = null
   }
 
   async function handleMissionSelect(missionId) {
     if (aiState === 'loading' || aiState === 'done') return
-    if (!missionId) return
-    const pendingAction = missionActionRef.current?.missionId === missionId
-      ? missionActionRef.current
-      : {
-          missionId,
-          clientActionId: globalThis.crypto.randomUUID(),
-        }
-    missionActionRef.current = pendingAction
-    setMissionError(null)
     setAiState('loading')
     try {
-      let storySnapshot
-      try {
-        storySnapshot = await submitMissionStoryAction(
-          missionId,
-          pendingAction.clientActionId,
-        )
-      } catch (error) {
-        if (!isStorySessionUnavailableError(error)) throw error
-        await rebuildStorySessionToMissionNode()
-        storySnapshot = await submitMissionStoryAction(
-          missionId,
-          pendingAction.clientActionId,
-        )
-      }
-      const text = storySnapshot.current_stage?.display_content?.story_text || ''
-      setMissionLocal(missionId)
-      setMission(missionId)
+      const storySnapshot = await submitMissionStoryAction(missionId)
+      const resolvedMission = storySnapshot.public_game_state?.mission
+      const resolvedMissionId = resolvedMission?.mission_id || missionId
+      const text = language === 'en'
+        ? resolvedMission?.mission_effect_en || ''
+        : resolvedMission?.mission_effect || ''
+      setMissionLocal(resolvedMissionId)
+      setMission(resolvedMissionId)
       setStory(text)
       setStoryChapter('m3', text)
       setAiState('done')
-      setMissionError(null)
-      missionActionRef.current = null
-    } catch (error) {
-      setMissionError({
-        code: error?.code || 'STORY_GENERATION_FAILED',
-        message: error?.message || pick('故事生成暂时失败，请重试。', 'Story generation temporarily failed. Please retry.'),
-      })
+    } catch {
       setAiState('error')
-      if (isStorySessionUnavailableError(error)) {
-        setFormError(error.message)
-        setFormStep('form')
-      }
     }
   }
-
-  const alt       = satellite?.altitudeKm ?? 836
-  const orbitZone = alt < 2000 ? 'LEO' : alt < 35786 ? 'MEO' : 'GEO'
 
   // 章节容器通用样式
   const chapterWrap = (step) => ({
@@ -627,32 +548,35 @@ export default function M3({ onComplete }) {
     >
 
       {/* ── 顶部标题区 ─────────────────────────────────────── */}
-      <div style={{ padding: '44px 32px 40px', maxWidth: 640 }}>
+      <div style={{ padding: '44px 48px 40px', maxWidth: 1200, margin: '0 auto', textAlign: 'center' }}>
         <ScrollReveal>
           <div style={{
-            fontFamily: '"Space Mono", monospace', fontSize: 8,
+            fontFamily: introFont, fontSize: 8,
             color: '#5d78a8', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 16,
           }}>
-            {pick('02 · ORBIT · 轨道是什么', '02 · ORBIT · WHAT IS AN ORBIT')}
+            {pick('03 · ORBIT / 轨道环境', '03 · ORBIT / ORBITAL ENVIRONMENT')}
           </div>
         </ScrollReveal>
         <h2 style={{
-          fontFamily: '"Noto Serif SC", serif',
-          fontSize: 'clamp(22px, 2.6vw, 32px)',
-          fontWeight: 400, color: '#eef6ff', lineHeight: 1.55, marginBottom: 14, letterSpacing: '0.01em',
+          fontFamily: introFont,
+          fontSize: 'clamp(28px, 3vw, 36px)',
+          fontWeight: 700, color: '#eef6ff', lineHeight: 1.55, marginBottom: 14, letterSpacing: '0.01em',
         }}>
-          <AnimateChars text={pick('轨道不是一条路，', 'An orbit is not a road.')} as="span" style={{ display: 'block' }} delay={0.05} />
-          {' '}
-          <AnimateChars text={pick('是一个必须持续维护的状态。', 'It is a state that must be continuously maintained.')} as="span" style={{ display: 'block' }} delay={0.22} />
+          <AnimateChars
+            text={pick('太空垃圾，在不同轨道上的风险并不一样。', 'Space debris poses different risks in different orbits.')}
+            as="span"
+            style={{ display: 'block' }}
+            delay={0.05}
+          />
         </h2>
         <ScrollReveal delay={0.4}>
           <p style={{
-            fontFamily: '"Noto Sans SC", sans-serif',
-            fontSize: 13, color: 'rgba(238,246,255,0.5)', lineHeight: 1.9, maxWidth: 560, margin: 0,
+            fontFamily: introFont,
+            fontSize: 13, color: 'rgba(238,246,255,0.5)', lineHeight: 1.9, maxWidth: 560, margin: '0 auto',
           }}>
             {pick(
-              '卫星以 7–8 km/s 的速度持续下坠，恰好与地球曲率匹配，形成轨道。停下来就意味着坠落。三层轨道区域，碎片风险各不相同。',
-              'A satellite continually falls at 7–8 km/s while matching Earth’s curvature. Stopping means falling back to Earth. Each orbital regime has a different debris environment.',
+              '卫星运行在不同高度的轨道中，这些区域的环境并不相同。大气阻力、航天器密度和碎片停留时间都会随轨道而变化。下面从三类典型轨道开始了解它们的差异。',
+              'Satellites operate at different orbital altitudes, where conditions can vary significantly. Atmospheric drag, spacecraft density, and the time debris remains in orbit all change with altitude. The following three typical orbital regions show how these differences affect debris risk.',
             )}
           </p>
         </ScrollReveal>
@@ -768,7 +692,7 @@ export default function M3({ onComplete }) {
               allDone={matAllDone}
               aiState={matAiState}
               feedback={matFeedback}
-              error={matError}
+              materialAnalysis={materialAnalysis}
               onSelect={handleMaterialSelect}
               onAnalyze={handleMatFeedback}
               onContinue={() => chapterRef3.current?.scrollIntoView({ behavior: 'smooth' })}
@@ -780,14 +704,11 @@ export default function M3({ onComplete }) {
           ═══════════════════════════════════════════════ */}
           <div ref={chapterRef3} style={chapterWrap(3)}>
             <MissionSelectionDeck
-              missions={MISSION_CANDIDATES}
-              selectedMissionId={missionCandidate}
-              confirmedMissionId={mission}
+              missions={MISSIONS}
+              selectedMissionId={mission}
               aiState={aiState}
-              error={missionError}
               story={story}
               satelliteName={satellite?.name}
-              onSelect={handleMissionCandidateSelect}
               onConfirm={handleMissionSelect}
             />
           </div>
@@ -837,60 +758,6 @@ export default function M3({ onComplete }) {
               orbit={ORBITS.find((orbit) => orbit.id === pinnedOrbit)}
             />
           ) : null}
-
-          {/* 动态图例（随步骤切换） */}
-          <div style={{ width: '100%', marginTop: activeOrbit ? 8 : 14 }}>
-            <AnimatePresence mode="wait">
-              {currentStep === 2 && (
-                <motion.div
-                  key="leg-1"
-                  initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.3 }}
-                  style={{
-                    padding: '14px 18px', background: 'rgba(159,196,255,0.05)',
-                    border: '1px solid rgba(159,196,255,0.18)',
-                  }}
-                >
-                  <div style={{
-                    fontFamily: '"Space Mono", monospace', fontSize: 8,
-                    color: '#9fc4ff', letterSpacing: '0.14em', marginBottom: 8,
-                  }}>
-                    {satellite?.name ?? 'SATELLITE'} · {orbitZone}
-                  </div>
-                  <div style={{
-                    fontFamily: '"Space Mono", monospace', fontSize: 20,
-                    color: '#7da7e8', marginBottom: 4,
-                  }}>
-                    {alt} km
-                  </div>
-                  <div style={{
-                    fontFamily: '"Noto Sans SC", sans-serif',
-                    fontSize: 11, color: 'rgba(238,246,255,0.42)', lineHeight: 1.7,
-                  }}>
-                    {pick('倾角', 'INCLINATION')} {satellite?.inclination ?? '--'}° · {pick('周期', 'PERIOD')} {satellite?.periodMin ?? '--'} min
-                  </div>
-                </motion.div>
-              )}
-
-              {currentStep === 3 && (
-                <motion.div
-                  key="leg-2"
-                  className="m3-mission-globe-status"
-                  initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.3 }}
-                >
-                  <div className="m3-mission-globe-status-label">
-                    {mission ? 'MISSION ASSIGNED' : 'AWAITING ASSIGNMENT'}
-                  </div>
-                  <div className="m3-mission-globe-status-value">
-                    {mission
-                      ? MISSION_CANDIDATES.find((m) => m.id === mission)?.label ?? mission
-                      : pick('— 请从左侧选择任务 —', '— SELECT A MISSION ON THE LEFT —')}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
 
           </div>{/* 信息面板 end */}
         </div>

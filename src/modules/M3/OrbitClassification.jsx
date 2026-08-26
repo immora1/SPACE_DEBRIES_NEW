@@ -15,52 +15,10 @@ function createOrbitOrder(orbits, selectedOrbit) {
   return moveOrbitToFront(orbits.map((orbit) => orbit.id), selectedOrbit)
 }
 
-function getDebrisRating(density) {
-  return density >= 0.5 ? 5 : density >= 0.05 ? 3 : 2
-}
-
-function DebrisDensityMark({ density }) {
-  const activeBars = getDebrisRating(density)
-
-  return (
-    <span className="m3-orbit-card-density-mark" aria-hidden="true">
-      <small>DEBRIS LOAD</small>
-      <span className="m3-orbit-card-density-bars">
-        {Array.from({ length: 5 }, (_, index) => (
-          <i key={index} className={index < activeBars ? 'is-active' : ''} />
-        ))}
-      </span>
-      <b>{String(activeBars).padStart(2, '0')} / 05</b>
-    </span>
-  )
-}
-
-function OrbitDebrisRating({ density }) {
-  const { pick } = useI18n()
-  const rating = getDebrisRating(density)
-
-  return (
-    <span
-      className="m3-orbit-card-rating"
-      role="img"
-      aria-label={pick(`轨道碎片风险 ${rating} 星，共 5 星`, `Orbital debris risk: ${rating} out of 5`)}
-    >
-      <small>{pick('轨道碎片风险', 'DEBRIS RISK')}</small>
-      <span className="m3-orbit-card-rating-planets" aria-hidden="true">
-        {Array.from({ length: 5 }, (_, index) => (
-          <i key={index} className={index < rating ? 'is-active' : ''} />
-        ))}
-      </span>
-      <b>{String(rating).padStart(2, '0')} / 05</b>
-    </span>
-  )
-}
-
 function OrbitCard({
   orb,
   sourceIndex,
   depth,
-  maxDebris,
   isActive,
   isSelected,
   isFront,
@@ -72,7 +30,7 @@ function OrbitCard({
   onTransitionEnd,
 }) {
   const { pick } = useI18n()
-  const density = orb.debris / maxDebris
+  const content = orb.classification
   const className = [
     'm3-orbit-card',
     `is-depth-${depth}`,
@@ -116,37 +74,52 @@ function OrbitCard({
       </span>
 
       <span className="m3-orbit-card-body" aria-hidden={!isFront}>
-        <span className="m3-orbit-card-topline">
-          <span>CATALOGUED ORBITAL OBJECTS</span>
-          <span>{pick(orb.risk, orb.riskEn)} RISK</span>
-        </span>
-
         <span className="m3-orbit-card-summary">
           <span className="m3-orbit-card-count">
-            <b>{orb.debrisLabel}</b>
-            <small>{pick('已编目碎片', 'CATALOGUED DEBRIS')}</small>
+            <b>{content.count}</b>
+            <small>{pick(content.countLabel, content.countLabelEn)}</small>
           </span>
-          <DebrisDensityMark density={density} />
+          <span className="m3-orbit-card-risk-summary">
+            <small>{pick('风险特点', 'RISK PROFILE')}</small>
+            <b>{pick(content.riskLabel, content.riskLabelEn)}</b>
+          </span>
+        </span>
+
+        <span className="m3-orbit-card-count-note">
+          {pick(content.countNote, content.countNoteEn)}
         </span>
 
         <span className="m3-orbit-card-data">
-          <span>
-            <small>{pick('轨道高度', 'ALTITUDE')}</small>
-            <b>{orb.alt}</b>
-          </span>
-          <span>
-            <small>{pick('轨道周期', 'PERIOD')}</small>
-            <b>{pick(orb.period, orb.periodEn ?? orb.period)}</b>
-          </span>
-          <span>
-            <small>{pick('主要用途', 'PRIMARY USE')}</small>
-            <b>{pick(orb.use, orb.useEn)}</b>
-          </span>
+          {content.fields.map((field) => (
+            <span key={field.label}>
+              <small>{pick(field.label, field.labelEn)}</small>
+              <b>{pick(field.value, field.valueEn)}</b>
+            </span>
+          ))}
         </span>
 
         <span className="m3-orbit-card-footer">
-          <OrbitDebrisRating density={density} />
-          <span className="m3-orbit-card-note">{pick(orb.note, orb.noteEn)}</span>
+          <span className="m3-orbit-card-risk-detail">
+            <small>{pick('风险说明', 'RISK DESCRIPTION')}</small>
+            <span>{pick(content.riskDescription, content.riskDescriptionEn)}</span>
+          </span>
+
+          <span className={`m3-orbit-card-context ${content.supporting ? '' : 'is-single'}`}>
+            <span>
+              <small>{pick('代表数据', 'REFERENCE')}</small>
+              <b>{pick(content.reference.value, content.reference.valueEn)}</b>
+              {content.reference.detail ? (
+                <em>{pick(content.reference.detail, content.reference.detailEn)}</em>
+              ) : null}
+            </span>
+            {content.supporting ? (
+              <span>
+                <small>{pick(content.supporting.label, content.supporting.labelEn)}</small>
+                <b>{pick(content.supporting.value, content.supporting.valueEn)}</b>
+                <em>{pick(content.supporting.detail, content.supporting.detailEn)}</em>
+              </span>
+            ) : null}
+          </span>
         </span>
       </span>
     </button>
@@ -166,7 +139,6 @@ export default function OrbitClassification({
   const [shufflePhase, setShufflePhase] = useState('idle')
   const pendingTargetRef = useRef(null)
   const frontOrbitId = orbitOrder[0]
-  const maxDebris = Math.max(...orbits.map((orbit) => orbit.debris))
 
   useEffect(() => {
     if (shufflePhase !== 'idle') return
@@ -224,8 +196,11 @@ export default function OrbitClassification({
     >
       <header className="m3-orbit-classification-head">
         <span>01 · ORBIT CLASSIFICATION</span>
-        <h3>{pick('三层轨道分类', 'Three orbital regimes')}</h3>
-        <p>{pick('不同高度形成不同的任务密度、碎片环境与长期风险。', 'Different altitudes create different mission densities, debris environments, and long-term risks.')}</p>
+        <h3>{pick('三层轨道分类', 'Three Orbital Regions')}</h3>
+        <p>{pick(
+          '不同高度的轨道，在物体密度、运行环境和碎片停留时间上都有明显差异。',
+          'Orbital altitude affects object density, operating conditions, and how long debris can remain in space.',
+        )}</p>
       </header>
 
       <div className={`m3-orbit-card-stack is-${shufflePhase}`}>
@@ -247,7 +222,6 @@ export default function OrbitClassification({
               orb={orb}
               sourceIndex={sourceIndex}
               depth={depth}
-              maxDebris={maxDebris}
               isActive={activeOrbit === orb.id}
               isSelected={selectedOrbit === orb.id}
               isFront={isFront}

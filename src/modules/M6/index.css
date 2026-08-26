@@ -138,14 +138,14 @@
   max-width:520px;
   margin:20px 0 18px;
   font-family:Noto Serif SC,serif;
-  font-size:clamp(44px,4.3vw,72px);
+  font-size:clamp(32px,2.4vw,46px);
   font-weight:300;
-  line-height:1.04
+  line-height:1.08
 }
 
 .m6-hero-copy h2 span {
   display:block;
-  white-space:nowrap
+  white-space:normal
 }
 
 .m6-hero-rule {
@@ -174,6 +174,11 @@
   margin:0;
   font-size:14px;
   line-height:1.78
+}
+
+.m6-hero-copy p strong {
+  color:rgba(248, 248, 242, 0.94);
+  font-weight:600
 }
 
 .m6-section-heading {
@@ -388,10 +393,10 @@
 
 .m6-method-side-note {
   position:absolute;
-  top:39%;
+  top:6%;
   left:calc(50% + clamp(190px, 17vw, 238px));
   z-index:60;
-  width:clamp(286px, 21vw, 360px);
+  width:clamp(312px, 23vw, 360px);
   max-height:none;
   padding:0 0 0 clamp(30px, 2.4vw, 44px);
   overflow:visible;
@@ -451,6 +456,15 @@
   margin:0;
   color:rgba(232, 232, 248, 0.76);
   font-size:12px;
+  line-height:1.68
+}
+
+.m6-method-takeaway {
+  display:block;
+  margin-top:18px;
+  color:rgba(248, 248, 242, 0.94);
+  font-size:12px;
+  font-weight:600;
   line-height:1.68
 }
 
@@ -1140,7 +1154,7 @@
 
 .m6-pocket-meta {
   display:grid;
-  grid-template-columns:1fr 1fr;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
   gap:10px;
 }
 
@@ -1177,6 +1191,34 @@
   color:rgba(232, 232, 248, 0.36);
   font-size:9px;
   line-height:1.5;
+}
+
+.m6-pocket-confirm {
+  display:block;
+  width:fit-content;
+  min-width:168px;
+  min-height:42px;
+  margin:18px auto 0;
+  padding:0 20px;
+  border:1px solid rgba(232, 232, 248, 0.24);
+  border-radius:0;
+  background:rgba(255, 255, 255, 0.05);
+  color:rgba(245, 245, 248, 0.84);
+  font-family:'Noto Sans SC', sans-serif;
+  font-size:11px;
+  cursor:pointer;
+}
+
+.m6-pocket-confirm:hover:not(:disabled) {
+  border-color:rgba(232, 232, 248, 0.52);
+  background:rgba(255, 255, 255, 0.09);
+}
+
+.m6-pocket-confirm:disabled {
+  border-color:rgba(232, 232, 248, 0.10);
+  background:transparent;
+  color:rgba(232, 232, 248, 0.30);
+  cursor:not-allowed;
 }
 
 .m6-card-pocket.is-ready .m6-pocket-shell {
@@ -2090,4 +2132,9 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+.m6:lang(zh),
+.m6:lang(zh) * {
+  font-family:"PingFang FC", "PingFang SC", "Microsoft YaHei", sans-serif
 }

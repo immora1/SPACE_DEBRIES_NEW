@@ -27,12 +27,12 @@ const validationRules = STORY_VALIDATION_RULES
 
 const SPEC_BY_TASK = Object.freeze({
   [TASK_TYPE.OUTLINE]: Object.freeze({
-    variableName: 'user_input',
+    variableName: 'story_user_input',
     promptTemplate: STORY_OUTLINE_PROMPT_TEMPLATE,
     schemaEnvelope: outlineSchemaEnvelope,
   }),
   [TASK_TYPE.OPENING]: Object.freeze({
-    variableName: 'opening_context',
+    variableName: 'story_outline',
     promptTemplate: STORY_OPENING_PROMPT_TEMPLATE,
     schemaEnvelope: openingSchemaEnvelope,
   }),
@@ -76,7 +76,7 @@ export function getStorySpec(taskType) {
   return SPEC_BY_TASK[taskType] || null
 }
 
-export function buildStoryPrompt(taskType, input, retryReason = '', serializedInput = null) {
+export function buildStoryPrompt(taskType, input, retryReason = '') {
   const spec = getStorySpec(taskType)
   if (!spec) throw new Error(`Unsupported v0.4 task type: ${taskType}`)
 
@@ -85,20 +85,10 @@ export function buildStoryPrompt(taskType, input, retryReason = '', serializedIn
     throw new Error(`Prompt placeholder missing: ${placeholder}`)
   }
 
-  const rendered = spec.promptTemplate.replace(
-    placeholder,
-    serializedInput ?? stableStringify(input),
-  )
+  const rendered = spec.promptTemplate.replace(placeholder, stableStringify(input))
   if (!retryReason) return rendered
 
-  // Outline reachability feedback contains executable rules for every ending.
-  // Keep the ordinary validation feedback compact while allowing that one
-  // targeted retry to receive the complete backend-derived rule set.
-  const retryReasonLimit = taskType === TASK_TYPE.OUTLINE ? 2_000 : 320
-  const conciseReason = String(retryReason)
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, retryReasonLimit)
+  const conciseReason = String(retryReason).replace(/\s+/g, ' ').trim().slice(0, 320)
   return `${rendered}\n\n后端校验反馈：上一次输出未通过校验（${conciseReason}）。请只修正这些问题并重新输出完整 JSON。`
 }
 

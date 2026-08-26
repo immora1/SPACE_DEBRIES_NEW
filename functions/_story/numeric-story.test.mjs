@@ -7,18 +7,13 @@ import {
   resolveOptionsForNode,
   validateNodeOptions,
 } from './config/story-options.js'
-import {
-  ORBITAL_GAME_MODULE_ID,
-  orbitalAnswerControlId,
-  resolveQuestionForStoryNode,
-} from './config/game-story-bindings.js'
-import { ORBITAL_EVENTS } from './config/orbital-events.js'
 import { selectEnding } from './ending-selector.js'
 import {
   createFixtureStoryGenerator,
   DEFAULT_CONTINUE_OUTPUT,
   DEFAULT_KNOWLEDGE_OUTPUT,
   ENDING_PARAGRAPHS,
+  VALID_OPENING_FIXTURE,
 } from './fixtures.js'
 import { MemoryStoryRepository } from './repository.js'
 import {
@@ -58,121 +53,15 @@ function harness(generator = createFixtureStoryGenerator()) {
   return { repository, service, generator }
 }
 
-const MATERIAL_SELECTIONS = Object.freeze({
-  frame: 'aluminum',
-  solar: 'silicon',
-  insulation: 'kapton',
-  propulsion: 'aluminum-tank',
-})
-
-function materialSiteRequest(story, sessionId, overrides = {}) {
+function optionRequest(story, optionId = story.current_options[0].option_id, overrides = {}) {
   return {
-    session_id: sessionId,
+    session_id: overrides.session_id,
     version: story.version,
-    action_type: 'SITE_INTERACTION_COMMIT',
-    node_id: 'node_02',
-    module_id: 'M2',
-    interactions: Object.entries(MATERIAL_SELECTIONS).map(([sectionId, optionId]) => ({
-      section_id: sectionId,
-      control_id: `m2-material-${sectionId}-${optionId}`,
-      option_id: optionId,
-    })),
+    action_type: 'STORY_OPTION_SELECT',
+    node_id: story.current_node_id,
+    option_id: optionId,
     client_action_id: overrides.client_action_id || randomUUID(),
   }
-}
-
-function missionSiteRequest(story, sessionId, taskId = 'weather', overrides = {}) {
-  return {
-    session_id: sessionId,
-    version: story.version,
-    action_type: 'SITE_INTERACTION_COMMIT',
-    node_id: 'node_03',
-    module_id: 'M3',
-    interactions: [{
-      section_id: 'mission_candidates',
-      control_id: `m3-mission-${taskId}`,
-      option_id: taskId,
-    }],
-    client_action_id: overrides.client_action_id || randomUUID(),
-  }
-}
-
-async function confirmCurrentGameAnswer(service, story, sessionId, answerIndex = 0) {
-  const questionOrder = story.public_game_state.orbital_events.resolved.length + 1
-  const stage = resolveQuestionForStoryNode(story.current_node_id, questionOrder)
-  assert.ok(stage, `No orbital-event stage for ${story.current_node_id}`)
-  const answer = ORBITAL_EVENTS[stage.question_order - 1].options[answerIndex]
-  assert.ok(answer, `No answer ${answerIndex} for ${stage.question_id}`)
-  return service.advanceStory(story.story_id, {
-    session_id: sessionId,
-    version: story.version,
-    action_type: 'GAME_ANSWER_CONFIRM',
-    node_id: stage.target_node_id,
-    game_module_id: ORBITAL_GAME_MODULE_ID,
-    question_id: stage.question_id,
-    answer_id: answer.id,
-    control_id: orbitalAnswerControlId(stage.question_id, answer.id),
-    client_action_id: randomUUID(),
-  })
-}
-
-async function advanceCurrentNode(service, story, sessionId) {
-  let advanced
-  if (story.current_node_id === 'node_02') {
-    advanced = await service.advanceStory(
-      story.story_id,
-      materialSiteRequest(story, sessionId),
-    )
-  } else if (story.current_node_id === 'node_03') {
-    advanced = await service.advanceStory(
-      story.story_id,
-      missionSiteRequest(story, sessionId),
-    )
-  } else {
-    advanced = await confirmCurrentGameAnswer(service, story, sessionId)
-  }
-  return processAllStoryJobs(service, advanced, sessionId)
-}
-
-async function processAllStoryJobs(service, story, sessionId, limit = 20) {
-  let current = story
-  for (let index = 0; index < limit; index += 1) {
-    if (current.game_story_sync.queued_story_stages === 0) return current
-    current = await service.processNextStoryJob(current.story_id, sessionId)
-  }
-  assert.fail(`Story jobs did not drain after ${limit} attempts.`)
-}
-
-async function submitM6Completion(service, story, sessionId) {
-  let submitted = 0
-  for (const target of story.public_game_state.cleanup_test.target_set) {
-    story = await service.advanceStory(story.story_id, {
-      session_id: sessionId,
-      version: story.version,
-      action_type: 'M6_MATCH_UPDATE',
-      node_id: 'node_05',
-      module_id: 'M6_CLEANUP_MATCHING',
-      cleanup_target_id: target.cleanup_target_id,
-      cleanup_method_id: target.preferred_method_id,
-      client_action_id: randomUUID(),
-    })
-    submitted += 1
-    assert.equal(story.public_game_state.cleanup_test.matches.length, submitted)
-    assert.equal(
-      (await service.repository.getStory(story.story_id, sessionId)).game_state.cleanup_test.matches.length,
-      submitted,
-    )
-  }
-  const completionId = randomUUID()
-  return service.advanceStory(story.story_id, {
-    session_id: sessionId,
-    version: story.version,
-    action_type: 'M6_MATCH_COMPLETE',
-    node_id: 'node_05',
-    module_id: 'M6_CLEANUP_MATCHING',
-    completion_id: completionId,
-    client_action_id: completionId,
-  })
 }
 
 function choiceState(overrides = {}) {
@@ -383,40 +272,22 @@ test('Ending required/forbidden consequence 规则给出可审计的不命中原
   )
 })
 
-test('node_02 使用 Opening handoff 与站内材料快照，Continue context 不含旧等级字段', async () => {
+test('node_02 使用 Opening handoff，Continue context 不含 label 或旧等级字段', async () => {
   const { service, generator } = harness()
   const create = request()
   const story = await service.createStory(create)
   const advanced = await service.advanceStory(
     story.story_id,
-    materialSiteRequest(story, create.session_id),
+    optionRequest(story, undefined, { session_id: create.session_id }),
   )
   assert.equal(advanced.current_node_id, 'node_03')
-  assert.equal(generator.getCallCount(), 2)
-  const generated = await processAllStoryJobs(
-    service,
-    advanced,
-    create.session_id,
-  )
-  assert.equal(generated.artifact_progress.last_ready_artifact, 'STORY_STAGE_1')
-  const continueCall = generator.getCalls().at(-1)
+  const continueCall = generator.getCalls()[2]
   assert.equal(continueCall.taskType, 'STORY_CONTINUE')
   assert.equal(
-    continueCall.input.current_node.node_id,
-    'node_02',
+    continueCall.input.previous_handoff.current_situation,
+    VALID_OPENING_FIXTURE.continuity_handoff.current_situation,
   )
-  assert.equal(continueCall.input.generation_source.interaction_node_id, 'node_02')
-  assert.equal(
-    continueCall.input.generation_source.interaction_snapshot.selections.length,
-    4,
-  )
-  assert.equal(
-    Object.hasOwn(
-      continueCall.input.generation_source.interaction_snapshot.selections[0],
-      'knowledge_profile',
-    ),
-    false,
-  )
+  assert.equal(Object.hasOwn(continueCall.input.selected_option_effect, 'label'), false)
   const serialized = JSON.stringify(continueCall.input)
   assert.equal(serialized.includes('interaction_result'), false)
   assert.equal(serialized.includes('POSITIVE'), false)
@@ -438,22 +309,15 @@ test('Continue 正文过短时重试提示包含明确字符和段落目标', as
   const create = request()
   const story = await service.createStory(create)
 
-  let advanced = await service.advanceStory(
+  const advanced = await service.advanceStory(
     story.story_id,
-    materialSiteRequest(story, create.session_id),
+    optionRequest(story, undefined, { session_id: create.session_id }),
   )
-  advanced = await service.processNextStoryJob(story.story_id, create.session_id)
-  assert.equal(
-    advanced.artifact_progress.artifacts.find(
-      (artifact) => artifact.artifact_type === 'STORY_STAGE_1',
-    ).generation_status,
-    'QUEUED',
-  )
-  advanced = await service.processNextStoryJob(story.story_id, create.session_id)
+
   assert.equal(advanced.current_node_id, 'node_03')
   const reason = generator.getCalls()[3].context.retryReason
   assert.match(reason, /CONTINUE_STORY_TEXT_INVALID/)
-  assert.match(reason, /480-520 个汉字/)
+  assert.match(reason, /420-500 个汉字/)
   assert.match(reason, /3-5 段/)
   assert.match(reason, /第二人称“你”/)
 })
@@ -462,7 +326,8 @@ test('相同 client_action_id 幂等返回且不会重复累计状态或调用�
   const { service, repository, generator } = harness()
   const create = request()
   const story = await service.createStory(create)
-  const action = materialSiteRequest(story, create.session_id, {
+  const action = optionRequest(story, undefined, {
+    session_id: create.session_id,
     client_action_id: randomUUID(),
   })
   const first = await service.advanceStory(story.story_id, action)
@@ -474,153 +339,185 @@ test('相同 client_action_id 幂等返回且不会重复累计状态或调用�
   assert.equal(interactions.length, 1)
 })
 
-test('node_03 网站任务确认后，node_04 不再暴露旧故事选项', async () => {
-  const { service } = harness()
+test('四选项节点可真实提交第四项且按稳定 option_id 推进', async () => {
+  const { service, repository } = harness()
   const create = request()
   let story = await service.createStory(create)
   story = await service.advanceStory(
     story.story_id,
-    materialSiteRequest(story, create.session_id),
+    optionRequest(story, story.current_options[0].option_id, {
+      session_id: create.session_id,
+    }),
   )
   assert.equal(story.current_node_id, 'node_03')
-  assert.equal(story.current_options.length, 0)
+  assert.equal(story.current_options.length, 4)
+
+  const fourth = story.current_options[3]
   story = await service.advanceStory(
     story.story_id,
-    missionSiteRequest(story, create.session_id),
+    optionRequest(story, fourth.option_id, {
+      session_id: create.session_id,
+    }),
   )
+  assert.equal(fourth.option_id, 'prepare_reversible_backup')
   assert.equal(story.current_node_id, 'node_04')
-  assert.equal(story.current_options.length, 0)
-  assert.equal(story.current_interaction.interaction_mode, 'SITE_GAME_RESULT')
-  assert.equal(story.current_interaction.module_id, ORBITAL_GAME_MODULE_ID)
+  const interactions = await repository.getInteractions(story.story_id)
+  assert.equal(interactions.at(-1).action_id, fourth.option_id)
+  assert.deepEqual(interactions.at(-1).state_delta, {
+    event_integrity: 3,
+    relationship_connection: -3,
+    uncertainty: -4,
+  })
 })
 
-test('M2 node_02 与 M3 node_03 均由网站确认推进并更新各自 game_state', async () => {
+test('现有材料/任务动作继续确定性更新 game_state，不冒充故事节点', async () => {
   const { service, repository, generator } = harness()
   const create = request()
   let story = await service.createStory(create)
-  story = await service.advanceStory(
-    story.story_id,
-    materialSiteRequest(story, create.session_id),
-  )
-  assert.equal(story.current_node_id, 'node_03')
+  const initialCalls = generator.getCallCount()
+  story = await service.advanceStory(story.story_id, {
+    session_id: create.session_id,
+    version: story.version,
+    action_type: 'MATERIALS_COMMIT',
+    source_id: 'satellite_build',
+    action_id: 'materials_commit',
+    payload: {
+      selections: {
+        frame: 'aluminum',
+        solar: 'silicon',
+        insulation: 'kapton',
+        propulsion: 'aluminum-tank',
+      },
+    },
+  })
+  assert.equal(story.current_node_id, 'node_02')
   assert.equal(story.current_checkpoint, 'mission')
   assert.equal(story.timeline.length, 1)
-  assert.equal(generator.getCallCount(), 2)
+  assert.equal(generator.getCallCount(), initialCalls)
+  assert.deepEqual(story.public_game_state.satellite_build.material_profiles, {
+    frame: 'low',
+    solar: 'medium',
+    insulation: 'low',
+    propulsion: 'low',
+  })
+  assert.equal(story.public_game_state.technical_metrics.fuel, 100)
+  assert.equal(story.public_game_state.technical_metrics.armor, 100)
 
-  story = await service.advanceStory(
-    story.story_id,
-    missionSiteRequest(story, create.session_id),
-  )
+  story = await service.advanceStory(story.story_id, {
+    session_id: create.session_id,
+    version: story.version,
+    action_type: 'MISSION_SELECT',
+    source_id: 'mission',
+    action_id: 'weather',
+    payload: {},
+  })
   assert.equal(story.current_checkpoint, 'orbital_events')
-  assert.equal(story.current_node_id, 'node_04')
-  assert.equal(story.public_game_state.mission.action_id, 'weather')
+  assert.equal(story.public_game_state.mission.action_id, 'weather_monitoring')
+  assert.equal(story.public_game_state.mission.mission_id, 'weather_monitoring')
+  assert.equal(story.public_game_state.mission.orbit_profile.profile_id, 'sso_leo_800')
+  assert.equal(story.public_game_state.mission.orbit_profile.altitude_km, 800)
   assert.equal((await repository.getInteractions(story.story_id)).length, 2)
 })
 
-test('模型连续失败只标记 artifact，不回滚已提交的网站状态或重复消费 action', async () => {
+test('模型失败不会更新状态、消费选项或推进节点，同一 action 可重试', async () => {
   const generator = createFixtureStoryGenerator()
   const { service, repository } = harness(generator)
   const create = request()
   const story = await service.createStory(create)
   const before = structuredClone(repository.stories.get(story.story_id))
-  const action = materialSiteRequest(story, create.session_id, {
+  const action = optionRequest(story, undefined, {
+    session_id: create.session_id,
     client_action_id: randomUUID(),
   })
   generator.failTask = 'STORY_CONTINUE'
-  const committed = await service.advanceStory(story.story_id, action)
-  assert.equal(committed.current_node_id, 'node_03')
-  assert.equal(committed.version, before.version + 1)
-  assert.deepEqual(
-    committed.public_game_state.satellite_build.materials,
-    MATERIAL_SELECTIONS,
+  await assert.rejects(
+    service.advanceStory(story.story_id, action),
+    (error) => error.code === 'AI_REQUEST_FAILED',
   )
+  const failed = repository.stories.get(story.story_id)
+  assert.deepEqual(failed.story_state, before.story_state)
+  assert.equal(failed.version, before.version)
+  assert.equal((await repository.getStages(story.story_id)).length, 1)
 
-  await service.processNextStoryJob(story.story_id, create.session_id)
-  const failed = await service.processNextStoryJob(
-    story.story_id,
-    create.session_id,
-  )
-  const stage1 = failed.artifact_progress.artifacts.find(
-    (artifact) => artifact.artifact_type === 'STORY_STAGE_1',
-  )
-  assert.equal(stage1.generation_status, 'FAILED')
-  assert.equal(failed.current_node_id, 'node_03')
-  assert.equal(failed.version, committed.version)
-
-  const idempotent = await service.advanceStory(story.story_id, action)
-  assert.equal(idempotent.version, committed.version)
-  assert.equal((await repository.getInteractions(story.story_id)).length, 1)
+  generator.failTask = null
+  const retried = await service.advanceStory(story.story_id, action)
+  assert.equal(retried.current_node_id, 'node_03')
 })
 
-test('并发提交同一 interaction_version 只接受一个网站操作且不等待模型', async () => {
+test('并发提交同一 version 只有一个生成进入执行并成功推进', async () => {
   const base = createFixtureStoryGenerator()
-  const { service, repository, generator } = harness(base)
+  let release
+  const gate = new Promise((resolve) => { release = resolve })
+  const generator = async (taskType, input, context) => {
+    if (taskType === 'STORY_CONTINUE') await gate
+    return base(taskType, input, context)
+  }
+  const { service } = harness(generator)
   const create = request()
   const story = await service.createStory(create)
-  const firstAction = materialSiteRequest(story, create.session_id)
-  const secondAction = materialSiteRequest(story, create.session_id)
-  const settled = await Promise.allSettled([
-    service.advanceStory(story.story_id, firstAction),
+  const firstAction = optionRequest(story, story.current_options[0].option_id, {
+    session_id: create.session_id,
+  })
+  const secondAction = optionRequest(story, story.current_options[1].option_id, {
+    session_id: create.session_id,
+  })
+  const first = service.advanceStory(story.story_id, firstAction)
+  await new Promise((resolve) => setImmediate(resolve))
+  await assert.rejects(
     service.advanceStory(story.story_id, secondAction),
-  ])
-  const result = settled.find((entry) => entry.status === 'fulfilled').value
-  const rejected = settled.find((entry) => entry.status === 'rejected').reason
-  assert.equal(rejected.code, 'STALE_STORY_VERSION')
+    (error) => error.code === 'GENERATION_IN_PROGRESS',
+  )
+  release()
+  const result = await first
   assert.equal(result.version, story.version + 1)
   assert.equal(result.current_node_id, 'node_03')
-  assert.equal(generator.getCallCount(), 2)
-  assert.equal((await repository.getInteractions(story.story_id)).length, 1)
 })
 
-test('错误 selected_ending_id 只让 Ending artifact 失败，不回滚 Q6 操作', async () => {
+test('错误 selected_ending_id 被拒绝且 node_08 选择完全回滚', async () => {
   const wrongEnding = {
     task_type: 'STORY_ENDING',
-    node_id: 'node_05',
+    node_id: 'node_09',
     selected_ending_id: 'wrong-ending',
     story_text: ENDING_PARAGRAPHS,
     ending_summary: '核心事件完成，但模型故意返回错误的结局 ID。',
     next_node_context: '异常仍待解释。',
-    next_node_id: null,
+    next_node_id: 'node_10',
   }
   const generator = createFixtureStoryGenerator({ endingOutputs: [wrongEnding] })
   const { service, repository } = harness(generator)
   const create = request()
   let story = await service.createStory(create)
-  for (let index = 0; index < 7; index += 1) {
-    story = await advanceCurrentNode(service, story, create.session_id)
+  for (let index = 0; index < 6; index += 1) {
+    story = await service.advanceStory(
+      story.story_id,
+      optionRequest(story, undefined, { session_id: create.session_id }),
+    )
   }
-  assert.equal(story.current_node_id, 'node_04')
-  story = await confirmCurrentGameAnswer(service, story, create.session_id)
+  assert.equal(story.current_node_id, 'node_08')
   const before = structuredClone(repository.stories.get(story.story_id))
-  assert.equal(story.current_node_id, 'node_05')
-  await service.processNextStoryJob(story.story_id, create.session_id)
-  const failed = await service.processNextStoryJob(
-    story.story_id,
-    create.session_id,
+  await assert.rejects(
+    service.advanceStory(
+      story.story_id,
+      optionRequest(story, undefined, { session_id: create.session_id }),
+    ),
+    (error) => error.code === 'ENDING_ID_MISMATCH',
   )
   const after = repository.stories.get(story.story_id)
   assert.equal(after.version, before.version)
   assert.deepEqual(after.story_state, before.story_state)
-  assert.equal(after.current_node_id, 'node_05')
-  assert.equal(failed.artifact_progress.failed_artifact, 'ENDING')
-  assert.equal((await repository.getArtifactJobs(story.story_id)).at(-1).status, 'FAILED')
+  assert.equal((await repository.getStages(story.story_id)).at(-1).node_id, 'node_07')
 })
 
-test('完整 node_02..05 后按 Continue→Ending→Knowledge 原子完成', async () => {
+test('完整 node_02..08 后按 Continue→Ending→Knowledge 原子完成', async () => {
   const { service, repository, generator } = harness()
   const create = request()
   let story = await service.createStory(create)
   for (let index = 0; index < 7; index += 1) {
-    story = await advanceCurrentNode(service, story, create.session_id)
+    story = await service.advanceStory(
+      story.story_id,
+      optionRequest(story, undefined, { session_id: create.session_id }),
+    )
   }
-  story = await confirmCurrentGameAnswer(service, story, create.session_id)
-  story = await processAllStoryJobs(service, story, create.session_id)
-  assert.equal(story.current_node_id, 'node_05')
-  assert.equal(story.status, 'in_progress')
-  assert.equal(story.game_story_sync.queued_story_stages, 0)
-  story = await submitM6Completion(service, story, create.session_id)
-  assert.equal(story.game_story_sync.queued_story_stages, 1)
-  story = await processAllStoryJobs(service, story, create.session_id)
   assert.equal(story.status, 'completed')
   assert.equal(story.current_node_id, null)
   assert.equal(story.current_options.length, 0)
@@ -642,18 +539,17 @@ test('完整 node_02..05 后按 Continue→Ending→Knowledge 原子完成', asy
   }
 })
 
-test('Knowledge 只在 Ending 校验成功后生成，并接收六题快照和相关 hidden facts', async () => {
+test('Knowledge 只在 Ending 已写入私有 pending 后生成，并只接收相关 hidden facts', async () => {
   const repository = new MemoryStoryRepository()
   const fixture = createFixtureStoryGenerator()
-  let generatedEnding = null
-  let endingSeenBeforeKnowledge = false
+  let persistedEndingSeen = null
   const generator = async (taskType, input, context) => {
     if (taskType === 'KNOWLEDGE_REVEAL') {
-      endingSeenBeforeKnowledge = Boolean(generatedEnding)
+      const pending = [...repository.generations.values()]
+        .find((generation) => generation.status === 'pending')
+      persistedEndingSeen = structuredClone(pending?.validated_ending_output)
     }
-    const output = await fixture(taskType, input, context)
-    if (taskType === 'STORY_ENDING') generatedEnding = structuredClone(output)
-    return output
+    return fixture(taskType, input, context)
   }
   const service = new StoryService({
     repository,
@@ -663,14 +559,13 @@ test('Knowledge 只在 Ending 校验成功后生成，并接收六题快照和�
   const create = request()
   let story = await service.createStory(create)
   for (let index = 0; index < 7; index += 1) {
-    story = await advanceCurrentNode(service, story, create.session_id)
+    story = await service.advanceStory(
+      story.story_id,
+      optionRequest(story, undefined, { session_id: create.session_id }),
+    )
   }
-  story = await confirmCurrentGameAnswer(service, story, create.session_id)
-  story = await processAllStoryJobs(service, story, create.session_id)
-  story = await submitM6Completion(service, story, create.session_id)
-  story = await processAllStoryJobs(service, story, create.session_id)
 
-  assert.equal(endingSeenBeforeKnowledge, true)
+  assert.equal(persistedEndingSeen?.task_type, 'STORY_ENDING')
   const knowledgeCall = fixture.getCalls()
     .find((call) => call.taskType === 'KNOWLEDGE_REVEAL')
   assert.deepEqual(knowledgeCall.input.hidden_facts, [
@@ -678,15 +573,14 @@ test('Knowledge 只在 Ending 校验成功后生成，并接收六题快照和�
   ])
   assert.equal(
     knowledgeCall.input.story_anomaly_effects[0],
-    generatedEnding.next_node_context,
+    persistedEndingSeen.next_node_context,
   )
-  assert.equal(knowledgeCall.input.selected_game_answers.length, 6)
-  assert.equal(knowledgeCall.input.cleanup_game_result.matches.length, 3)
-  const completedJob = (await repository.getArtifactJobs(story.story_id)).at(-1)
-  assert.equal(completedJob.status, 'READY')
+  const completedGeneration = [...repository.generations.values()].at(-1)
+  assert.equal(completedGeneration.status, 'succeeded')
+  assert.equal(completedGeneration.validated_ending_output, null)
 })
 
-test('Knowledge 两次业务校验失败保留已提交的 node_05 Ending', async () => {
+test('Knowledge 两次业务校验失败会清空 pending Ending 并回滚 node_08 选择', async () => {
   const invalidKnowledge = structuredClone(DEFAULT_KNOWLEDGE_OUTPUT)
   invalidKnowledge.story_connection = '天气提示出现短暂延迟。'
   invalidKnowledge.causal_chain = [
@@ -694,26 +588,6 @@ test('Knowledge 两次业务校验失败保留已提交的 node_05 Ending', asyn
     { point_title: '状态调整', point_text: '航天器可能调整。' },
     { point_title: '局部影响', point_text: '更新可能延迟。' },
   ]
-  invalidKnowledge.material_insights = [
-    {
-      option_id: 'aluminum',
-      option_name: '铝合金',
-      insight_title: '框架材料',
-      insight_text: '再入烧蚀充分。',
-    },
-    {
-      option_id: 'silicon',
-      option_name: '硅基电池板',
-      insight_title: '电池板材料',
-      insight_text: '成熟可靠，残留较少。',
-    },
-  ]
-  invalidKnowledge.mission_insights = [{
-    option_id: 'weather',
-    option_name: '气象监测',
-    insight_title: '气象任务关联',
-    insight_text: '这项任务依赖持续产生并传回气象观测数据。',
-  }]
   invalidKnowledge.reality_note = '影响通常短暂。'
   const generator = createFixtureStoryGenerator({
     knowledgeOutputs: [invalidKnowledge, invalidKnowledge],
@@ -721,27 +595,28 @@ test('Knowledge 两次业务校验失败保留已提交的 node_05 Ending', asyn
   const { service, repository } = harness(generator)
   const create = request()
   let story = await service.createStory(create)
-  for (let index = 0; index < 7; index += 1) {
-    story = await advanceCurrentNode(service, story, create.session_id)
+  for (let index = 0; index < 6; index += 1) {
+    story = await service.advanceStory(
+      story.story_id,
+      optionRequest(story, undefined, { session_id: create.session_id }),
+    )
   }
-  story = await confirmCurrentGameAnswer(service, story, create.session_id)
-  story = await service.processNextStoryJob(story.story_id, create.session_id)
-  assert.equal(story.current_node_id, 'node_05')
-  story = await submitM6Completion(service, story, create.session_id)
   const before = structuredClone(repository.stories.get(story.story_id))
-  await service.processNextStoryJob(story.story_id, create.session_id)
-  const failed = await service.processNextStoryJob(
-    story.story_id,
-    create.session_id,
+  await assert.rejects(
+    service.advanceStory(
+      story.story_id,
+      optionRequest(story, undefined, { session_id: create.session_id }),
+    ),
+    (error) => error.code === 'KNOWLEDGE_TEXT_INVALID',
   )
 
   const after = repository.stories.get(story.story_id)
   assert.equal(after.version, before.version)
-  assert.equal(after.current_node_id, 'node_05')
+  assert.equal(after.current_node_id, 'node_08')
   assert.deepEqual(after.story_state, before.story_state)
-  assert.equal(failed.artifact_progress.failed_artifact, 'KNOWLEDGE_REVEAL')
-  const failedJob = (await repository.getArtifactJobs(story.story_id)).at(-1)
-  assert.equal(failedJob.status, 'FAILED')
+  const failedGeneration = [...repository.generations.values()].at(-1)
+  assert.equal(failedGeneration.status, 'failed')
+  assert.equal(failedGeneration.validated_ending_output, null)
   assert.equal(
     generator.getCalls().filter((call) => call.taskType === 'KNOWLEDGE_REVEAL').length,
     2,

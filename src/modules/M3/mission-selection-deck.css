@@ -111,10 +111,8 @@
   background: rgba(65, 111, 184, 0.075);
 }
 
-.m3-mission-tabs button.is-selected,
 .m3-mission-tabs button.is-assigned {
   color: #244f8b;
-  box-shadow: inset 0 -2px #416fb8;
 }
 
 .m3-mission-tabs button span {
@@ -132,7 +130,7 @@
 
 .m3-mission-card-stage {
   position: relative;
-  min-height: 220px;
+  min-height: 344px;
   isolation: isolate;
   border-bottom: 1px solid rgba(8, 11, 22, 0.1);
 }
@@ -151,7 +149,7 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  min-height: 220px;
+  min-height: 344px;
   padding: 18px 6px 14px;
   cursor: grab;
   touch-action: none;
@@ -204,13 +202,32 @@
   line-height: 1.2;
 }
 
-.m3-mission-card.is-current > p {
+.m3-mission-card-copy {
   position: relative;
   z-index: 1;
-  margin: 14px 0 0;
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.m3-mission-card-copy > span,
+.m3-mission-card-effect {
+  display: grid;
+  gap: 4px;
+}
+
+.m3-mission-card-copy small,
+.m3-mission-card-effect small {
+  color: rgba(8, 11, 22, 0.38);
+  font-size: 8px;
+}
+
+.m3-mission-card-copy p,
+.m3-mission-card-effect p {
+  margin: 0;
   color: rgba(8, 11, 22, 0.62);
   font-size: 12px;
-  line-height: 1.78;
+  line-height: 1.65;
 }
 
 .m3-mission-card-data {
@@ -240,6 +257,19 @@
   font-size: 10px;
   font-weight: 500;
   line-height: 1.55;
+}
+
+.m3-mission-card-effect {
+  position: relative;
+  z-index: 1;
+  margin-top: 12px;
+  padding-top: 11px;
+  border-top: 1px solid rgba(8, 11, 22, 0.12);
+}
+
+.m3-mission-card-effect p {
+  color: rgba(8, 11, 22, 0.76);
+  font-weight: 500;
 }
 
 .m3-mission-assign-row {
@@ -279,8 +309,7 @@
 }
 
 .m3-mission-assign-row button:disabled {
-  cursor: not-allowed;
-  opacity: 0.46;
+  cursor: wait;
 }
 
 .m3-mission-loading,
@@ -403,30 +432,6 @@
 
 .m3-mission-story footer svg:last-child {
   margin-left: auto;
-}
-
-.m3-mission-globe-status {
-  width: max-content;
-  max-width: min(360px, 100%);
-  margin-left: auto;
-  padding: 0 0 2px 18px;
-  border-left: 1px solid rgba(159, 196, 255, 0.36);
-  color: #eef6ff;
-  background: transparent;
-  text-align: right;
-  font-family: 'PingFang SC', 'Noto Sans SC', sans-serif;
-}
-
-.m3-mission-globe-status-label {
-  margin-bottom: 7px;
-  color: rgba(159, 196, 255, 0.58);
-  font: 8px/1.3 'Space Mono', monospace;
-}
-
-.m3-mission-globe-status-value {
-  color: rgba(238, 246, 255, 0.86);
-  font-size: 16px;
-  line-height: 1.4;
 }
 
 @keyframes m3-mission-pulse {

@@ -53,21 +53,66 @@ const DEBRIS_SLOT = { type: 'debris', vector: { x: 0, y: 1 } }
 const REQUIRED_FIELDS = [
   { id: 'time', label: '时间', hint: '例如 2026-05-02 21:37，尽量精确到分钟。', hintLines: ['2026-05-02 21:37', '精确到分钟'] },
   { id: 'location', label: '地点', hint: '城市、区县、经纬度或可复现的观测位置。', hintLines: ['城市 / 区县', '经纬度位置'] },
-  { id: 'direction', label: '方位', hint: '出现和消失的大致方位，如西南到东北。', hintLines: ['出现 / 消失方位', '如西南到东北'] },
+  { id: 'direction', label: '出现方位', hint: '出现和消失的大致方位，如西南到东北。', hintLines: ['出现 / 消失方位', '如西南到东北'] },
   { id: 'duration', label: '持续时间', hint: '几秒、几十秒，还是数分钟。', hintLines: ['持续几秒', '或数分钟'] },
   { id: 'motion', label: '运动特征', hint: '是否匀速、闪烁、分裂、拖尾、突然变亮。', hintLines: ['匀速 / 闪烁 / 分裂', '拖尾 / 突然变亮'] },
-  { id: 'evidence', label: '证据', hint: '照片、视频、截图、目击者或设备信息。', hintLines: ['照片 / 视频 / 截图', '设备或目击者'] },
+  { id: 'evidence', label: '影像证据', hint: '照片、视频、截图、目击者或设备信息。', hintLines: ['照片 / 视频 / 截图', '设备或目击者'] },
 ]
 
 const BAD_REPORT = {
-  text: '刚刚天上有一道很亮的东西飞过去，应该是太空垃圾，挺吓人的。',
-  missing: ['时间', '地点', '方位', '持续时间', '运动特征', '证据'],
+  text: '刚刚天上有一道很亮的东西飞过去，感觉像是太空垃圾，速度很快。',
+  missing: ['时间', '地点', '出现方位', '持续时间', '运动特征', '影像证据'],
 }
 
 const GOOD_REPORT = {
   text: '2026-05-02 21:37，在上海徐汇区向西南方向观测到一条橙白色亮迹，持续约 7 秒，从西南向东北移动，末段出现 2 次碎裂闪光并留下短暂烟迹。手机拍到 3 秒视频，未听到声响。',
-  fields: ['时间', '地点', '方位', '持续时间', '运动特征', '证据'],
+  fields: ['时间', '地点', '出现方位', '持续时间', '运动特征', '影像证据'],
 }
+
+const REPORT_RECORD_FIELDS = [
+  {
+    id: 'time',
+    label: '时间',
+    labelEn: 'TIME',
+    value: '2026-05-02 · 21:37',
+    valueEn: '2026-05-02 · 21:37',
+  },
+  {
+    id: 'location',
+    label: '地点',
+    labelEn: 'LOCATION',
+    value: '上海市徐汇区',
+    valueEn: 'Xuhui District, Shanghai',
+  },
+  {
+    id: 'direction',
+    label: '出现方位',
+    labelEn: 'VIEWING DIRECTION',
+    value: '西南方向 → 东北方向',
+    valueEn: 'Southwest → Northeast',
+  },
+  {
+    id: 'duration',
+    label: '持续时间',
+    labelEn: 'DURATION',
+    value: '约 7 秒',
+    valueEn: 'About 7 seconds',
+  },
+  {
+    id: 'motion',
+    label: '运动特征',
+    labelEn: 'MOTION CHARACTERISTICS',
+    value: '橙白色亮迹持续移动，末段出现 2 次碎裂闪光',
+    valueEn: 'Orange-white trail with two fragmentation flashes near the end',
+  },
+  {
+    id: 'evidence',
+    label: '影像证据',
+    labelEn: 'VISUAL EVIDENCE',
+    value: '手机拍摄 3 秒原始视频',
+    valueEn: '3-second original phone video',
+  },
+]
 
 const STANDARD_CARDS = [
   {
@@ -149,10 +194,10 @@ const FLOW_LABEL_EN = {
 const FIELD_EN = {
   time: { label: 'Time', hint: 'Example: 2026-05-02 21:37. Record to the nearest minute when possible.', hintLines: ['2026-05-02 21:37', 'Nearest minute'] },
   location: { label: 'Location', hint: 'City, district, coordinates, or another reproducible observation point.', hintLines: ['City / district', 'Coordinates'] },
-  direction: { label: 'Direction', hint: 'Approximate appearance and disappearance direction, such as southwest to northeast.', hintLines: ['Entry / exit direction', 'SW to NE'] },
+  direction: { label: 'Viewing Direction', hint: 'Approximate appearance and disappearance direction, such as southwest to northeast.', hintLines: ['Entry / exit direction', 'SW to NE'] },
   duration: { label: 'Duration', hint: 'A few seconds, tens of seconds, or several minutes.', hintLines: ['A few seconds', 'Or several minutes'] },
-  motion: { label: 'Motion', hint: 'Steady speed, flicker, breakup, trail, or sudden brightening.', hintLines: ['Steady / flicker / breakup', 'Trail / brightening'] },
-  evidence: { label: 'Evidence', hint: 'Photo, video, screenshot, witness, or device information.', hintLines: ['Photo / video / screenshot', 'Device or witness'] },
+  motion: { label: 'Motion Characteristics', hint: 'Steady speed, flicker, breakup, trail, or sudden brightening.', hintLines: ['Steady / flicker / breakup', 'Trail / brightening'] },
+  evidence: { label: 'Visual Evidence', hint: 'Photo, video, screenshot, witness, or device information.', hintLines: ['Photo / video / screenshot', 'Device or witness'] },
 }
 
 const STANDARD_EN = {
@@ -338,17 +383,22 @@ const ReportComparison = memo(function ReportComparison() {
         onKeyDown={(event) => handleReportKeyDown(event, 'bad')}
         onTransitionEnd={handleReportTransitionEnd}
       >
-        <span>{pick('信息不足', 'INCOMPLETE REPORT')}</span>
-        <blockquote>{pick(BAD_REPORT.text, 'I just saw something bright cross the sky. It was probably space debris and looked alarming.')}</blockquote>
-        <div className="m8-report-flag-group is-missing">
-          <p>{pick('缺少', 'MISSING')}</p>
-          <ol className="m8-report-flags" aria-label={pick('这份记录缺少的信息', 'Information missing from this report')}>
-            {BAD_REPORT.missing.map((item, index) => (
-              <li key={item}>
-                <span>{String(index + 1).padStart(2, '0')}</span>
-                <b>{language === 'en' ? localizeField(REQUIRED_FIELDS[index], language).label : item}</b>
-              </li>
-            ))}
+        <span className="m8-report-card-kicker">{pick('信息不足', 'INCOMPLETE')}</span>
+        <h4>{pick('信息不足', 'Incomplete report')}</h4>
+        <blockquote>{pick(BAD_REPORT.text, 'A very bright object just crossed the sky. It felt like space debris and moved very fast.')}</blockquote>
+        <div className="m8-report-missing">
+          <p>{pick('缺少以下信息', 'MISSING INFORMATION')}</p>
+          <ol className="m8-report-missing-list" aria-label={pick('这份记录缺少的信息', 'Information missing from this report')}>
+            {BAD_REPORT.missing.map((item, index) => {
+              const field = localizeField(REQUIRED_FIELDS[index], language)
+              return (
+                <li key={item}>
+                  <span>{String(index + 1).padStart(2, '0')}</span>
+                  <b>{language === 'en' ? field.label : item}</b>
+                  <i aria-hidden="true">—</i>
+                </li>
+              )
+            })}
           </ol>
         </div>
       </article>
@@ -364,18 +414,18 @@ const ReportComparison = memo(function ReportComparison() {
         onKeyDown={(event) => handleReportKeyDown(event, 'good')}
         onTransitionEnd={handleReportTransitionEnd}
       >
-        <span>{pick('可复核记录', 'VERIFIABLE REPORT')}</span>
-        <blockquote>{pick(GOOD_REPORT.text, 'At 21:37 on 2026-05-02 in Xuhui, Shanghai, an orange-white trail appeared in the southwest and moved northeast for about seven seconds. It flashed twice while fragmenting and left a short trail. A phone captured three seconds of video; no sound was heard.')}</blockquote>
-        <div className="m8-report-flag-group is-included">
-          <p>{pick('包含', 'INCLUDES')}</p>
-          <ol className="m8-report-flags" aria-label={pick('这份记录包含的信息', 'Information included in this report')}>
-            {GOOD_REPORT.fields.map((item, index) => (
-              <li key={item}>
-                <span>{String(index + 1).padStart(2, '0')}</span>
-                <b>{language === 'en' ? localizeField(REQUIRED_FIELDS[index], language).label : item}</b>
-              </li>
-            ))}
-          </ol>
+        <span className="m8-report-card-kicker">{pick('可复核记录', 'VERIFIABLE')}</span>
+        <h4>{pick('可复核记录', 'Verifiable report')}</h4>
+        <div className="m8-report-record" aria-label={pick('可复核记录的六项观测信息', 'Six fields in the verifiable report')}>
+          {REPORT_RECORD_FIELDS.map((field, index) => (
+            <div className="m8-report-record-field" key={field.id}>
+              <span className="m8-report-record-index">{String(index + 1).padStart(2, '0')}</span>
+              <b>{language === 'en' ? field.labelEn : field.label}</b>
+              <strong className={field.id === 'motion' ? 'is-long' : ''}>
+                {language === 'en' ? field.valueEn : field.value}
+              </strong>
+            </div>
+          ))}
         </div>
       </article>
     </div>
@@ -843,7 +893,7 @@ export default function M8({ onComplete }) {
         entries.forEach((entry) => {
           if (!entry.isIntersecting) return
           const targets = entry.target.querySelectorAll(
-            '.m8-section-heading, .m8-report-compare, .m8-required-fields, .m8-standard-tabs, .m8-practice-head, .m8-card-game, .m8-workbench, .m8-community-layout, .m8-complete',
+            '.m8-section-heading, .m8-report-layout, .m8-required-fields, .m8-standard-tabs, .m8-practice-head, .m8-card-game, .m8-workbench, .m8-community-layout, .m8-complete',
           )
           gsap.fromTo(targets,
             { autoAlpha: 0, y: 30 },
@@ -1031,11 +1081,9 @@ export default function M8({ onComplete }) {
           <div className="m8-hero-composition">
             <div className="m8-header-copy">
               <h2 className="m8-reveal">
-                <span>{pick('先判断，', 'JUDGE FIRST,')}</span>
-                {' '}
-                <span>{pick('再记录。', 'THEN RECORD.')}</span>
+                <span>{pick('太空垃圾观测记录', 'Space Debris Observation Record')}</span>
               </h2>
-              <p className="m8-reveal">{pick('把一次目击压缩成六个可复核信息：时间、地点、方位、持续、运动、证据。', 'Turn one sighting into six verifiable facts: time, location, direction, duration, motion, and evidence.')}</p>
+              <p className="m8-reveal">{pick('发现疑似太空垃圾后，需要记录时间、地点、出现方位、持续时间、运动特征和影像证据。这些信息可以用于后续确认目标、比对运动轨迹，并判断这次观测是否可靠。', 'When a suspected piece of space debris is observed, record the time, location, viewing direction, duration, motion characteristics, and visual evidence. These details can later be used to verify the target, compare its trajectory, and assess whether the observation is reliable.')}</p>
             </div>
             <div ref={heroMarkRef} className="m8-hero-mark m8-reveal" aria-hidden="true">
               <span>6</span>
@@ -1043,33 +1091,24 @@ export default function M8({ onComplete }) {
               <i />
             </div>
           </div>
-        </header>
-
-      <section id="m8-compare" className="m8-band m8-compare m8-animate-section">
-        <div className="m8-section-heading m8-section-heading--tight">
-          <span>01 / REPORT ANATOMY</span>
-          <div><h3>{pick('报告对比。', 'Compare reports.')}</h3><p>{pick('对照主观感受与可验证信息，判断哪些内容应该写入报告。', 'Compare subjective impressions with verifiable evidence to decide what belongs in a report.')}</p></div>
-        </div>
-        <ReportComparison />
-        <div className="m8-required-fields" aria-label={pick('观测报告必须包含的信息', 'Required observation report information')}>
-          <div className="m8-required-intro">
-            <span>{pick('报告必须包含以下内容', 'A REPORT MUST INCLUDE')}</span>
-            <b><em>6</em> {pick('要素', 'FIELDS')}</b>
-            <p>{pick('缺少任意一项，记录都很难被他人复核。', 'Missing any one field makes independent verification difficult.')}</p>
-          </div>
-          <ol>
+          <ol className="m8-hero-fields m8-reveal" aria-label={pick('观测记录六要素', 'Six observation record fields')}>
             {requiredFields.map((field, index) => (
               <li key={field.id}>
-                <span>{String(index + 1).padStart(2, '0')}</span>
+                <small>{String(index + 1).padStart(2, '0')}</small>
                 <strong>{field.label}</strong>
-                <p>
-                  {field.hintLines.map((line) => (
-                    <span key={line}>{line}</span>
-                  ))}
-                </p>
               </li>
             ))}
           </ol>
+        </header>
+
+      <section id="m8-compare" className="m8-band m8-compare m8-animate-section">
+        <div className="m8-report-layout">
+          <aside className="m8-report-rail">
+            <span>01 / REPORT ANATOMY</span>
+            <h3>{pick('太空垃圾观测记录', 'SPACE DEBRIS OBSERVATION RECORD')}</h3>
+            <p>{pick('一次有效的观测需要留下能够被核查的信息。对比下面两份记录，看看哪些内容能够帮助后续确认目标和运动轨迹。', 'A useful observation record contains information that can be checked later. Compare the two reports to see which details make an observation verifiable.')}</p>
+          </aside>
+          <ReportComparison />
         </div>
       </section>
 

@@ -91,7 +91,7 @@ function useM1WordReveal(rootRef) {
           node => node.nodeType === Node.TEXT_NODE && node.textContent.trim(),
         )
         const onlyLineBreakChildren = [...element.children].every(child => child.tagName === 'BR')
-        if (!directText || (element.children.length > 0 && !onlyLineBreakChildren) || element.matches('.sh-char, .cet-c')) return
+      if (!directText || (element.children.length > 0 && !onlyLineBreakChildren) || element.matches('.sh-char')) return
 
         element.dataset.m1WordReveal = 'true'
         split = SplitText.create(element, {
@@ -191,18 +191,56 @@ const TREND = [
   { year: 2021, count: 36200 }, { year: 2026, count: 46000 },
 ]
 
-const TREND_EVENTS = {
-  2007: { label: '风云一号C', detail: '中国反卫星武器测试，单次制造碎片最多的人为事件。', delta: '+3,500' },
-  2009: { label: '铱星-33 × Cosmos-2251', detail: '首次大型卫星间高速碰撞，凯斯勒效应的现实验证。', delta: '+2,000' },
-}
-
 const TIMELINE_EVENTS = [
-  { year: 1978, label: 'Kosmos 954 坠落', delta: '首次核污染', color: '#fbbf24', raise: 0 },
-  { year: 1996, label: 'Cerise 首例碰撞', delta: '人类历史首次', color: '#a78bfa', raise: 0 },
-  { year: 2007, label: '风云一号C', delta: '+3,500', color: '#f87171', raise: 0 },
-  { year: 2009, label: '铱星-33 × Cosmos', delta: '+2,000', color: '#6b7fff', raise: 56 },
-  { year: 2021, label: 'Starlink 扩张', delta: '+4,000', color: '#34d399', raise: 0 },
+  {
+    year: 1961,
+    label: 'Ablestar 火箭级爆炸',
+    labelEn: 'Ablestar Rocket Stage Explosion',
+    result: '产生近 300 个已识别碎片',
+    resultEn: 'Nearly 300 identified fragments',
+    raise: 0,
+    align: 'start',
+  },
+  {
+    year: 2007,
+    label: '风云一号 C 被击毁',
+    labelEn: 'Fengyun-1C Destroyed',
+    result: '新增 3,300+ 个可追踪碎片',
+    resultEn: '3,300+ trackable fragments created',
+    raise: 0,
+    align: 'start',
+  },
+  {
+    year: 2009,
+    label: 'Iridium 33 与 Cosmos 2251 相撞',
+    labelEn: 'Iridium 33–Cosmos 2251 Collision',
+    result: '产生 2,000+ 个大型碎片',
+    resultEn: '2,000+ large fragments created',
+    raise: 72,
+    align: 'start',
+  },
+  {
+    year: 2021,
+    label: 'Cosmos 1408 被击毁',
+    labelEn: 'Cosmos 1408 Destroyed',
+    result: '产生 1,500+ 个可追踪碎片',
+    resultEn: '1,500+ trackable fragments created',
+    raise: 36,
+    align: 'end',
+  },
+  {
+    year: 2022,
+    label: 'CZ-6A 火箭上面级解体',
+    labelEn: 'CZ-6A Upper Stage Breakup',
+    result: '已编目 793 个大型碎片',
+    resultEn: '793 large fragments catalogued',
+    raise: 112,
+    connectorHeight: 8,
+    align: 'end',
+  },
 ]
+
+const timelineYearPct = year => (year - 1960) / (2026 - 1960) * 100
 
 const SIZE_TIERS = [
   {
@@ -227,24 +265,28 @@ const SIZE_TIERS = [
 
 const COUNTRIES = [
   {
-    name: 'USA', count: 25786,
-    detail: '含冷战时期大量测试碎片和现役商业卫星遗留',
-    detailEn: 'Includes Cold War test fragments and debris left by active commercial missions.',
+    name: '中国', nameEn: 'CHINA', count: 4471,
+    support: '编目在轨碎片', supportEn: 'Catalogued orbital debris',
+    detail: '2007 年风云一号 C 反卫星试验产生了大量长期在轨碎片，是目前最大的单一碎片来源之一。',
+    detailEn: 'The 2007 Fengyun-1C anti-satellite test created a large cloud of long-lived debris and remains one of the largest individual sources of orbital debris.',
   },
   {
-    name: 'RUSSIA / CIS', count: 25144,
-    detail: '苏联时代军事卫星残骸占主要来源',
-    detailEn: 'Soviet-era military spacecraft and upper stages remain the main source.',
+    name: '俄罗斯 / 前苏联', nameEn: 'RUSSIA / USSR', count: 4159,
+    support: '编目在轨碎片', supportEn: 'Catalogued orbital debris',
+    detail: '长期航天活动留下的废弃火箭级和航天器解体碎片，构成了重要的历史碎片来源。',
+    detailEn: 'Decades of space activity, including spent rocket stages and spacecraft breakups, account for a significant share of historical orbital debris.',
   },
   {
-    name: 'CHINA', count: 8774,
-    detail: '2007 年反卫星测试单次贡献约 3,500 块',
-    detailEn: 'The 2007 anti-satellite test added about 3,500 trackable fragments.',
+    name: '美国', nameEn: 'UNITED STATES', count: 3820,
+    support: '编目在轨碎片', supportEn: 'Catalogued orbital debris',
+    detail: '废弃火箭级、航天器解体和长期航天活动留下了大量仍在轨运行的碎片。',
+    detailEn: 'Spent rocket stages, spacecraft breakups, and debris accumulated over decades of space activity remain important sources of orbital debris.',
   },
   {
-    name: 'OTHERS', count: 6528,
-    detail: '欧洲、日本、印度等国家的卫星遗留',
-    detailEn: 'Includes objects left by European, Japanese, Indian, and other missions.',
+    name: '其他国家 / 机构', nameEn: 'OTHER COUNTRIES / ORGANIZATIONS', count: null,
+    support: '合计约占 5%', supportEn: 'About 5% combined',
+    detail: '法国、印度、日本、欧洲空间局等也产生了编目碎片，但总体数量明显少于前三个来源。',
+    detailEn: 'France, India, Japan, ESA, and other space actors also contribute catalogued debris, but in much smaller numbers.',
   },
 ]
 
@@ -252,44 +294,46 @@ const SOURCES = [
   {
     img: '/source_1.png',
     video: '/Vedio-卫星残骸.mp4',
-    title: '火箭残骸', titleEn: 'Rocket stages', label: '01 · ROCKET STAGE',
+    title: '碰撞、爆炸产生的碎片', titleEn: 'Fragments from collisions and explosions', label: '01 · ROCKET STAGE',
     meta: [
       { k: '在轨数量', kEn: 'IN ORBIT', v: '>2,000 件', vEn: '>2,000' },
       { k: '危害等级', kEn: 'RISK LEVEL', v: '极高', vEn: 'VERY HIGH', color: '#f87171' },
       { k: '轨道寿命', kEn: 'ORBITAL LIFE', v: '数十至数百年', vEn: 'DECADES–CENTURIES' },
     ],
-    desc: '每次发射后被抛弃的上面级火箭是单体最大的轨道碎片来源。残余推进剂遇热膨胀会引发在轨自爆，毫秒间释放数百件新弹片——碰撞与爆炸级联效应的主要触发机制正源于此。',
-    descEn: 'Discarded upper stages are among the largest individual debris objects. Residual propellant can heat, expand, and trigger an orbital explosion that releases hundreds of fragments in milliseconds.',
-    detail: '苏联 Zenit 上面级长达 9 米，至今漂浮于 LEO。2007 年中国反卫试验在 850 km 轨道带制造了超 3,500 件可追踪碎片，是史上最大单次人为增量事件，至今仍是 ISS 规避机动的主要威胁源之一。',
-    detailEn: 'A Soviet Zenit upper stage is nine meters long and still remains in LEO. China’s 2007 anti-satellite test created more than 3,500 trackable fragments near 850 km, still a major source of ISS avoidance alerts.',
+    desc: '卫星或火箭发生碰撞、爆炸或被击毁时，一个完整物体可能瞬间变成大量碎片。2007 年风云一号 C 被击毁后，就产生了 3,300 多个可追踪碎片。',
+    descEn: 'When a satellite or rocket collides, explodes, or is destroyed, one intact object can instantly break into many fragments. After Fengyun-1C was destroyed in 2007, more than 3,300 trackable fragments were created.',
+    emphasis: '这类碎裂事件最容易让轨道碎片数量在短时间内快速增加。',
+    emphasisEn: 'These fragmentation events are the most likely to cause a rapid increase in debris in a short period of time.',
+    detail: '',
+    detailEn: '',
   },
   {
     img: '/source_2.png',
     video: '/Video-报废卫星.mp4',
-    title: '废弃卫星', titleEn: 'Defunct satellites', label: '02 · DEFUNCT SAT',
+    title: '报废后留在轨道的卫星和火箭', titleEn: 'Retired satellites and rockets left in orbit', label: '02 · DEFUNCT SAT',
     meta: [
       { k: '在轨总量', kEn: 'IN ORBIT', v: '~3,000 颗', vEn: '~3,000' },
       { k: '危害等级', kEn: 'RISK LEVEL', v: '中等', vEn: 'MEDIUM', color: '#fbbf24' },
       { k: '主要分布', kEn: 'MAIN ORBITS', v: 'LEO · GEO', vEn: 'LEO · GEO' },
     ],
-    desc: '失去姿态控制的金属残骸在轨道上无序翻滚，无法操控，无法清除。大型废弃卫星本身就是潜在碰撞目标——2009 年铱星 33 与报废的 Cosmos 2251 相撞，单次产生超 2,000 件可追踪碎片。',
-    descEn: 'Without attitude control, defunct satellites tumble unpredictably and cannot maneuver. In 2009, Iridium 33 struck the retired Cosmos 2251 and created more than 2,000 trackable fragments.',
-    detail: '欧空局 Envisat 重达 8 吨，2012 年通讯中断后仍以 800 km 高度每 98 分钟绕地一周，无法机动规避。LEO 区域超过 3,000 颗已失效卫星中，数百颗体积超过一辆汽车，任何一次碰撞都可触发凯斯勒效应链式反应。',
-    detailEn: 'ESA’s eight-ton Envisat has orbited near 800 km without maneuvering capability since contact was lost in 2012. Hundreds of the more than 3,000 defunct satellites in LEO are larger than a car and could trigger a Kessler cascade.',
+    desc: '卫星失效、火箭完成任务后，如果没有及时离轨，就会继续以完整物体留在轨道中。它们通常不会一下产生大量碎片，但未来发生碰撞或解体时，还可能制造新的碎片。',
+    descEn: 'After a mission ends, inactive satellites and rocket stages may remain in orbit if they are not removed in time. They do not usually create many fragments at once, but they can become future sources of debris if they later collide or break apart.',
+    detail: '',
+    detailEn: '',
   },
   {
     img: '/source_3.png',
     video: '/Video-操作遗留.mp4',
-    title: '操作遗留', titleEn: 'Operational debris', label: '03 · LEGACY',
+    title: '任务中释放或遗落的零件', titleEn: 'Parts released or lost during missions', label: '03 · LEGACY',
     meta: [
       { k: '已编目遗留', kEn: 'CATALOGUED', v: '数万件', vEn: 'TENS OF THOUSANDS' },
       { k: '危害等级', kEn: 'RISK LEVEL', v: '低至中', vEn: 'LOW–MEDIUM', color: '#34d399' },
       { k: '增速', kEn: 'GROWTH', v: '每次任务 +数百', vEn: 'HUNDREDS / MISSION' },
     ],
-    desc: '丢失的手套、螺栓、镜头盖，乃至分离的火箭级段——人类每一次进入太空都会留下些什么。这不是事故，而是现有工程流程无法消除的结构性副产品，且随任务频率加速积累。',
-    descEn: 'Lost gloves, bolts, lens covers, and separation hardware make debris a structural by-product of spaceflight rather than a rare accident. The total grows as launch and servicing activity increases.',
-    detail: '1965 年 Ed White 太空行走时丢失一只手套，此类遗失至今仍在发生。ISS 各次 EVA 已记录逾 100 件工具及硬件遗失。油漆碎片以 7 km/s 撞击玻璃的冲击力等同于一颗子弹，是低轨航天器表面损伤的首要来源。',
-    detailEn: 'Ed White lost a glove during a 1965 spacewalk, and similar losses continue. More than 100 tools and hardware items have been recorded missing during ISS EVAs; even paint flakes striking at 7 km/s can damage spacecraft like a bullet.',
+    desc: '发射、卫星部署或舱外活动过程中，保护盖、适配器、工具等物体可能被释放或意外遗落。这类物体通常零散产生，单次数量较少，但随着任务不断进行，也会逐渐累积。',
+    descEn: 'During launch, satellite deployment, or spacewalks, objects such as covers, adapters, and tools may be released or accidentally lost. These objects are usually created in small numbers at a time, but they can still build up over time as more missions take place.',
+    detail: '',
+    detailEn: '',
   },
 ]
 
@@ -387,16 +431,16 @@ function SceneHero({ normX, normY }) {
           fontFamily: ZH, fontSize: 'var(--m1-hero-title-size)', fontWeight: 700,
           color: '#ffffff', lineHeight: 1.08, marginBottom: 2,
         }}>
-          {charSpans(pick('太空垃圾', 'SPACE DEBRIS'))}
+          {charSpans(pick('SPACE DEBRIS', 'SPACE DEBRIS'))}
         </span>
 
         {/* H1 第二行 */}
         <span className="sh-line2" style={{
           display: 'block', perspective: '600px',
-          fontFamily: ZH, fontSize: 'var(--m1-hero-title-size)', fontWeight: 700,
+          fontFamily: ZH, fontSize: 'var(--m1-hero-headline-size)', fontWeight: 700,
           color: '#ffffff', lineHeight: 1.08, marginBottom: 26,
         }}>
-          {charSpans(pick('不是比喻，', 'NOT A METAPHOR.'))}
+          {charSpans(pick('垃圾，其实已经包围了地球', 'Space debris has already surrounds the Earth.'))}
         </span>
 
         {/* 细线分割 */}
@@ -412,7 +456,7 @@ function SceneHero({ normX, normY }) {
           fontFamily: ZH, fontSize: 'var(--m1-hero-sub-size)', fontWeight: 700,
           color: '#ffffff', lineHeight: 1.6, marginBottom: 12,
         }}>
-          {charSpans(pick('是真实存在的物理威胁。', 'IT IS A PHYSICAL THREAT.'))}
+          {charSpans(pick('什么是太空垃圾？', 'What is space debris?'))}
         </span>
 
         {/* 正文 */}
@@ -421,8 +465,8 @@ function SceneHero({ normX, normY }) {
           color: 'rgba(232,232,248,0.48)', lineHeight: 1.9, marginBottom: 36,
         }}>
           {pick(
-            '自 1957 年第一颗卫星升空，人类已在轨道上累积了数以亿计的碎片。它们以超音速运行，无法回收，无法清除，且持续增加。',
-            'Since the first satellite launched in 1957, humanity has accumulated hundreds of millions of fragments in orbit. They move at extreme speed, cannot be recovered at scale, and continue to multiply.',
+            '太空垃圾，是仍留在地球轨道上的废弃人造物体，包括报废卫星、火箭部件和各种碎片。它们离我们并不遥远——国际空间站就在约 400 公里高的轨道上运行，而大量碎片也穿行在地球周围，威胁着仍在工作的航天器。',
+            'Space debris refers to defunct human-made objects left in Earth orbit, including retired satellites, rocket parts, and fragments. It is closer than it seems—the International Space Station orbits only about 400 km above Earth, while debris continues to travel around the planet, posing collision risks to active spacecraft.',
           )}
         </div>
       </div>
@@ -571,11 +615,17 @@ function SceneScale() {
       <div style={{
         position: 'absolute', left: '4%', top: '16%', width: '30%', zIndex: 10,
       }}>
-        <div data-m1-reveal-delay="0.06" style={{
-          fontFamily: ZH, fontSize: 'clamp(24px,2.8vw,38px)', fontWeight: 700,
-          color: '#e8e8f8', lineHeight: 1.22, marginBottom: 20,
-        }}>
-          {pick('轨道碎片不是假设，是已成事实的威胁。', 'Orbital debris is not hypothetical. It is an established threat.')}
+        <div
+          data-m1-reveal-delay="0.06"
+          aria-label={pick('轨道空间，正在变得越来越拥挤', "Earth's orbit is getting increasingly crowded")}
+          style={{
+            fontFamily: ZH, fontSize: 'clamp(24px,2.8vw,38px)', fontWeight: 700,
+            color: '#e8e8f8', lineHeight: 1.22, whiteSpace: 'pre-line', marginBottom: 20,
+          }}>
+          {pick(
+            '轨道空间，\n正在变得越来越拥挤',
+            "Earth's orbit is getting increasingly crowded",
+          )}
         </div>
         <div style={{
           height: 1, background: 'linear-gradient(to right, rgba(107,127,255,0.35), transparent)',
@@ -586,12 +636,13 @@ function SceneScale() {
           lineHeight: 2.0, marginBottom: 16,
         }}>
           {pick(
-            '速度让每次碰撞具有毁灭性，数量让规避几乎不可能，不可见性让预警成为奢望。',
-            'Speed makes every collision destructive. Quantity makes avoidance increasingly difficult. Invisibility makes warning a luxury.',
+            <>
+              地球轨道中的碎片还在持续积累。目前只有数万个空间物体能够被持续追踪，而 1 mm–1 cm 的小碎片估计已有约 1.4 亿个。地面雷达和光学设备可以观测这些物体，但<strong style={{ fontWeight: 800, color: 'rgba(232,232,248,0.72)' }}>碎片尺寸越小，产生的雷达回波和反射光就越弱，也越难稳定探测并持续确定其轨道。</strong>
+            </>,
+            <>
+              Debris continues to accumulate in Earth orbit. Only tens of thousands of space objects can currently be tracked continuously, while an estimated 140 million fragments measuring 1 mm–1 cm may already be in orbit. Ground-based radar and optical systems can observe these objects, but <strong style={{ fontWeight: 800, color: 'rgba(232,232,248,0.72)' }}>as fragments become smaller, their radar echoes and reflected light become weaker, making them increasingly difficult to detect reliably and track continuously.</strong>
+            </>,
           )}
-        </div>
-        <div data-m1-reveal-delay="0.34" style={{ fontFamily: ZH, fontSize: 11, color: '#484878', lineHeight: 1.75 }}>
-          {pick('自 1957 年持续累积，目前尚无有效的批量清除方案。', 'The debris population has grown since 1957, with no effective large-scale removal system yet available.')}
         </div>
       </div>
 
@@ -971,8 +1022,8 @@ function SceneSources() {
           )}
 
           {/* Category label */}
-          <div style={{
-            position: 'absolute', top: 18, left: 18,
+          <div className="m1-source-label" style={{
+            position: 'absolute', left: 18,
             fontFamily: LEX, fontSize: 7.5, fontWeight: 700,
             color: 'rgba(107,127,255,0.7)', border: '1px solid rgba(107,127,255,0.35)',
             padding: '3px 8px', letterSpacing: '0.14em', textTransform: 'uppercase',
@@ -982,9 +1033,10 @@ function SceneSources() {
 
           {/* Meta row — hidden by default, revealed on hover */}
           <div
+            className="m1-source-meta"
             ref={el => { metaRefs.current[i] = el }}
             style={{
-              position: 'absolute', top: 12, right: 18,
+              position: 'absolute', right: 18,
               display: 'flex', gap: 28, alignItems: 'flex-start',
               opacity: 0, transform: 'translateY(-4px)',
               transition: 'opacity 0.35s ease, transform 0.35s ease',
@@ -1029,7 +1081,18 @@ function SceneSources() {
                 transition: 'opacity 0.38s ease, transform 0.38s ease',
               }}
             >
-              {pick(src.desc, src.descEn)}
+              <span data-m1-no-reveal>{pick(src.desc, src.descEn)}</span>
+              {src.emphasis && (
+                <>
+                  {' '}
+                  <strong
+                    data-m1-no-reveal
+                    style={{ fontWeight: 700, color: 'rgba(232,232,248,0.96)' }}
+                  >
+                    {pick(src.emphasis, src.emphasisEn)}
+                  </strong>
+                </>
+              )}
             </div>
 
             {/* detail — staggered via transition-delay */}
@@ -1054,24 +1117,15 @@ function SceneSources() {
 
 /* ── Scene 3: COUNTRIES ── */
 const COUNTRY_COLORS = ['#f87171', '#6b7fff', '#fbbf24', '#8b9fff']
-const TOTAL_DEBRIS   = COUNTRIES.reduce((s, c) => s + c.count, 0)
-
-const RING_SEGS = (() => {
-  let cum = -Math.PI / 2
-  const gap = 0.028
-  return COUNTRIES.map((c, i) => {
-    const pct  = c.count / TOTAL_DEBRIS
-    const span = pct * 2 * Math.PI - gap
-    const mid  = cum + span / 2
-    const seg  = { ...c, pct, start: cum, end: cum + span, mid, color: COUNTRY_COLORS[i] }
-    cum += span + gap
-    return seg
-  })
-})()
+const COUNTRY_ROWS = COUNTRIES.map((country, i) => ({
+  ...country,
+  color: COUNTRY_COLORS[i],
+}))
+const TOTAL_CATALOGUED_DEBRIS = '≈ 13,100'
 
 
 function SceneCountries({ hovIdxRef }) {
-  const { pick } = useI18n()
+  const { language, pick } = useI18n()
   const detailRefs = useRef([null, null, null, null])
   const rowRefs    = useRef([null, null, null, null])
   const cNameRef   = useRef(null)
@@ -1084,27 +1138,29 @@ function SceneCountries({ hovIdxRef }) {
     detailRefs.current.forEach((el, j) => {
       if (!el) return
       const on = idx >= 0 && j === idx
-      el.style.opacity   = on ? '1'   : '0'
-      el.style.maxHeight = on ? '80px': '0'
+      el.style.opacity = on ? '1' : '0'
     })
     rowRefs.current.forEach((el, j) => {
       if (!el) return
-      const c  = RING_SEGS[j].color
+      const c  = COUNTRY_ROWS[j].color
       const on = idx >= 0 && j === idx
       el.style.background = on ? `${c}0d` : 'transparent'
       el.style.boxShadow  = on ? `inset 3px 0 0 ${c}` : 'none'
     })
+    const selected = idx < 0 ? null : COUNTRY_ROWS[idx]
     if (cNameRef.current)
-      cNameRef.current.textContent = idx < 0 ? 'TOTAL TRACKED' : RING_SEGS[idx].name
+      cNameRef.current.textContent = selected
+        ? pick(selected.name, selected.nameEn)
+        : pick('全球总量', 'GLOBAL TOTAL')
     if (cCountRef.current)
-      cCountRef.current.textContent = idx < 0
-        ? TOTAL_DEBRIS.toLocaleString()
-        : RING_SEGS[idx].count.toLocaleString()
+      cCountRef.current.textContent = selected
+        ? (selected.count ? selected.count.toLocaleString() : pick('约 5%', 'ABOUT 5%'))
+        : TOTAL_CATALOGUED_DEBRIS
     if (cPctRef.current)
-      cPctRef.current.textContent = idx < 0
-        ? 'OBJECTS IN ORBIT'
-        : `${(RING_SEGS[idx].pct * 100).toFixed(1)}% OF TOTAL`
-  }, [hovIdxRef])
+      cPctRef.current.textContent = selected && !selected.count
+        ? pick('合计', 'COMBINED')
+        : pick('编目在轨碎片', 'CATALOGUED ORBITAL DEBRIS')
+  }, [hovIdxRef, pick])
 
   return (
     <div style={{ position: 'absolute', inset: 0 }}>
@@ -1118,103 +1174,131 @@ function SceneCountries({ hovIdxRef }) {
         <div data-m1-reveal-delay="0.16" style={{
           fontFamily: LEX, fontSize: 8, fontWeight: 700,
           color: 'rgba(107,127,255,0.5)', letterSpacing: '0.18em',
-          textTransform: 'uppercase', marginBottom: 14, pointerEvents: 'none',
+          textTransform: 'uppercase', marginBottom: 10, pointerEvents: 'none',
         }}>
           {pick('02 · CONTRIBUTORS / 各国贡献', '02 · CONTRIBUTORS')}
         </div>
-        <div data-m1-reveal-delay="0.28" style={{
-          fontFamily: ZH, fontSize: 'clamp(22px,2.4vw,34px)', fontWeight: 700,
-          color: '#e8e8f8', lineHeight: 1.22, marginBottom: 8, pointerEvents: 'none',
-        }}>
-          {pick('三国贡献了全球 96% 的碎片。', 'Three countries account for 96% of catalogued debris.')}
+        <div
+          data-m1-reveal-delay="0.28"
+          aria-label={pick(
+            '全球大部分在轨碎片，来自少数几个航天国家',
+            'Most orbital debris comes from a small number of spacefaring nations',
+          )}
+          style={{
+            fontFamily: ZH, fontSize: 'clamp(20px,2vw,28px)', fontWeight: 700,
+            color: '#e8e8f8', lineHeight: 1.22, maxWidth: 360,
+            whiteSpace: 'pre-line', marginBottom: 8, pointerEvents: 'none',
+          }}>
+          {pick(
+            '全球大部分在轨碎片，\n来自少数几个航天国家',
+            'Most orbital debris comes from a small number of spacefaring nations',
+          )}
         </div>
-        <div data-m1-reveal-delay="0.42" style={{
-          fontFamily: ZH, fontSize: 13, color: '#b9b9d3',
-          lineHeight: 1.75, maxWidth: 320, marginBottom: 36, pointerEvents: 'none',
-        }}>
-          {pick('现行国际法律框架无法强制任何国家清理本国碎片。', 'Current international law cannot compel a state to remove its own debris.')}
+        <div
+          data-m1-reveal-delay="0.42"
+          aria-label={pick(
+            '中国、俄罗斯及前苏联和美国，是当前编目在轨碎片的三个主要来源。大量碎片来自废弃火箭级、失效航天器，以及历史上的解体、碰撞和反卫星试验。',
+            'China, Russia and the former Soviet Union, and the United States are the three largest sources of catalogued orbital debris. Much of it comes from spent rocket stages, defunct spacecraft, breakups, collisions, and past anti-satellite tests.',
+          )}
+          style={{
+            fontFamily: ZH, fontSize: 12, color: 'rgba(185,185,211,0.72)',
+            lineHeight: 1.65, maxWidth: 360,
+            whiteSpace: 'pre-line', marginBottom: 14, pointerEvents: 'none',
+          }}>
+          {pick(
+            '中国、俄罗斯及前苏联和美国，\n是当前编目在轨碎片的三个主要来源。\n大量碎片来自废弃火箭级、失效航天器，\n以及历史上的解体、碰撞和反卫星试验。',
+            'China, Russia and the former Soviet Union, and the United States are the three largest sources of catalogued orbital debris. Much of it comes from spent rocket stages, defunct spacecraft, breakups, collisions, and past anti-satellite tests.',
+          )}
         </div>
 
-        {/* Bar chart — all 4 rows share a common scale with vertical endpoint lines */}
-        <div style={{ position: 'relative' }}>
-
-          {/* Vertical line at each country's bar endpoint — spans all rows */}
-          {RING_SEGS.map((seg, i) => (
-            <div key={`vl-${i}`} style={{
-              position: 'absolute', zIndex: 1, pointerEvents: 'none',
-              left: `${(seg.count / RING_SEGS[0].count) * 100}%`,
-              top: 0, bottom: 32, width: 1,
-              background: `${seg.color}55`,
-            }} />
-          ))}
-
-          {RING_SEGS.map((seg, i) => (
-            <div key={seg.name}
+        {/* Compact country matrix */}
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+          borderTop: '1px solid rgba(107,127,255,0.08)',
+          borderBottom: '1px solid rgba(107,127,255,0.08)',
+        }}>
+          {COUNTRY_ROWS.map((seg, i) => (
+            <div key={seg.nameEn}
               data-m1-reveal-delay={0.52 + i * 0.1}
               ref={el => { rowRefs.current[i] = el }}
               style={{
-                paddingTop: 12, paddingBottom: 12, cursor: 'pointer',
-                borderTop: '1px solid rgba(107,127,255,0.10)',
-                borderBottom: i === RING_SEGS.length - 1 ? '1px solid rgba(107,127,255,0.10)' : 'none',
+                position: 'relative', minHeight: 112, padding: '14px 14px 12px', cursor: 'pointer',
+                borderRight: i % 2 === 0 ? '1px solid rgba(107,127,255,0.07)' : 'none',
+                borderBottom: i < 2 ? '1px solid rgba(107,127,255,0.07)' : 'none',
                 transition: 'background 0.22s ease, box-shadow 0.22s ease',
               }}
               onMouseEnter={() => applyHover(i)}
               onMouseLeave={() => applyHover(-1)}
             >
               {/* Country header row — index + name */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, paddingLeft: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                 <span style={{
-                  fontFamily: MONO, fontSize: 10, fontWeight: 700,
-                  color: seg.color, opacity: 0.7,
+                  flex: '0 0 auto', fontFamily: MONO, fontSize: 10, fontWeight: 700,
+                  color: seg.color, opacity: 0.52, lineHeight: 1.6,
                 }}>{String(i + 1).padStart(2, '0')}</span>
                 <span style={{
-                  fontFamily: LEX, fontSize: 11, fontWeight: 700,
-                  color: seg.color, letterSpacing: '0.10em', textTransform: 'uppercase',
-                }}>{seg.name}</span>
+                  fontFamily: language === 'zh' ? ZH : LEX,
+                  fontSize: language === 'zh' ? 16 : 14, fontWeight: 700,
+                  color: seg.color, letterSpacing: 0, lineHeight: 1.35,
+                }}>{pick(seg.name, seg.nameEn)}</span>
               </div>
 
-              {/* Bar — flat ends, no track */}
-              <div style={{ height: 4, marginBottom: 9 }}>
-                <div style={{
-                  height: '100%',
-                  width: `${(seg.count / RING_SEGS[0].count) * 100}%`,
-                  background: seg.color,
-                  boxShadow: `0 0 8px ${seg.color}77`,
-                }} />
+              {/* Primary data */}
+              <div style={{ marginTop: 12 }}>
+                {seg.count ? (
+                  <>
+                    <div style={{
+                      fontFamily: MONO, fontSize: 28, fontWeight: 700,
+                      color: '#e8e8f8', letterSpacing: 0, lineHeight: 1,
+                    }}>{seg.count.toLocaleString()}</div>
+                    <div style={{
+                      marginTop: 6, fontFamily: language === 'zh' ? ZH : LEX,
+                      fontSize: 10, fontWeight: 500,
+                      color: 'rgba(232,232,248,0.42)', lineHeight: 1.4, letterSpacing: 0,
+                    }}>{pick(seg.support, seg.supportEn)}</div>
+                  </>
+                ) : (
+                  <div style={{
+                    fontFamily: language === 'zh' ? ZH : LEX,
+                    fontSize: language === 'zh' ? 15 : 13, fontWeight: 700,
+                    color: 'rgba(232,232,248,0.72)', lineHeight: 1.4, letterSpacing: 0,
+                  }}>{pick(seg.support, seg.supportEn)}</div>
+                )}
               </div>
-
-              {/* Count + percentage — indented to avoid vertical line overlap */}
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, paddingLeft: 16 }}>
-                <span style={{
-                  fontFamily: MONO, fontSize: 28, fontWeight: 700,
-                  color: '#e8e8f8', letterSpacing: '-0.03em',
-                }}>{seg.count.toLocaleString()}</span>
-                <span style={{
-                  fontFamily: MONO, fontSize: 17, fontWeight: 700, color: seg.color,
-                }}>{(seg.pct * 100).toFixed(1)}%</span>
-              </div>
-
-              {/* Detail — revealed on hover */}
-              <div
-                ref={el => { detailRefs.current[i] = el }}
-                style={{
-                  marginTop: 8, paddingLeft: 16,
-                  fontFamily: ZH, fontSize: 12, color: 'rgba(232,232,248,0.5)',
-                  lineHeight: 1.85, maxWidth: 320,
-                  opacity: 0, maxHeight: 0, overflow: 'hidden',
-                  transition: 'opacity 0.3s ease, max-height 0.35s ease',
-                }}
-              >{pick(seg.detail, seg.detailEn)}</div>
             </div>
           ))}
         </div>
 
-        {/* Interaction affordance footer */}
-        <div style={{
-          marginTop: 14, fontFamily: LEX, fontSize: 7.5,
-          color: 'rgba(107,127,255,0.28)', letterSpacing: '0.14em', textTransform: 'uppercase',
-          pointerEvents: 'none',
-        }}>⊙ {pick('悬停查看历史详情', 'HOVER FOR SOURCE DETAILS')}</div>
+        {/* Shared hover detail keeps the matrix height stable */}
+        <div style={{ position: 'relative', height: 38, marginTop: 10, pointerEvents: 'none' }}>
+          {COUNTRY_ROWS.map((seg, i) => (
+            <div
+              key={`detail-${seg.nameEn}`}
+              ref={el => { detailRefs.current[i] = el }}
+              title={pick(seg.detail, seg.detailEn)}
+              style={{
+                position: 'absolute', inset: 0,
+                fontFamily: ZH, fontSize: 10, color: 'rgba(232,232,248,0.52)',
+                lineHeight: 1.65, maxWidth: 360, opacity: 0, overflow: 'hidden',
+                display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2,
+                transition: 'opacity 0.25s ease',
+              }}
+            >{pick(seg.detail, seg.detailEn)}</div>
+          ))}
+        </div>
+
+        {/* Source note */}
+        <div style={{ pointerEvents: 'none' }}>
+          <div style={{
+            fontFamily: ZH, fontSize: 8,
+            color: 'rgba(232,232,248,0.3)', lineHeight: 1.5, letterSpacing: 0,
+          }}>
+            {pick(
+              '数据来源：SPACE-TRACK.ORG Satellite Catalog · 统计截至 2025 年 4 月',
+              'SPACE-TRACK.ORG Satellite Catalog · Data through April 2025',
+            )}
+          </div>
+        </div>
       </div>
       {/* Stats overlay — 直接用全宽容器，left 精确定位到地球圆心上方 */}
       <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
@@ -1226,17 +1310,17 @@ function SceneCountries({ hovIdxRef }) {
           <div ref={cCountRef} data-m1-no-reveal style={{
             fontFamily: MONO, fontSize: 36, fontWeight: 700,
             color: '#e8e8f8', letterSpacing: '-0.03em',
-          }}>{TOTAL_DEBRIS.toLocaleString()}</div>
+          }}>{TOTAL_CATALOGUED_DEBRIS}</div>
           <div ref={cNameRef} data-m1-no-reveal style={{
             fontFamily: LEX, fontSize: 16, fontWeight: 700,
             color: 'rgba(255, 255, 255, 0.8)', letterSpacing: '0.16em',
             textTransform: 'uppercase', marginBottom: 6,
-          }}>TOTAL TRACKED</div>
+          }}>{pick('全球总量', 'GLOBAL TOTAL')}</div>
           <div ref={cPctRef} data-m1-no-reveal style={{
             fontFamily: LEX, fontSize: 12,
             color: 'rgba(255, 255, 255, 0.8)', letterSpacing: '0.1em',
             marginTop: 4,
-          }}>OBJECTS IN ORBIT</div>
+          }}>{pick('编目在轨碎片', 'CATALOGUED ORBITAL DEBRIS')}</div>
         </div>
       </div>
 
@@ -1651,38 +1735,61 @@ function SceneTrend() {
         <AnimatePresence>
           {TIMELINE_EVENTS.map(ev => {
             if (displayYear < ev.year) return null
-            const pct = (ev.year - 1960) / (2026 - 1960) * 100
-            const tickH = 8 + (ev.raise || 0)
+            const pct = timelineYearPct(ev.year)
+            const defaultTickH = 8 + (ev.raise || 0)
+            const tickH = ev.connectorHeight ?? defaultTickH
+            const markerBottom = 22 + (ev.raise || 0) + (defaultTickH - tickH)
+            const isEndAligned = ev.align === 'end'
+            const alignSelf = ev.align === 'start'
+              ? 'flex-start'
+              : isEndAligned
+                ? 'flex-end'
+                : 'center'
             return (
               <motion.div key={ev.year}
                 initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                 transition={{ duration: 0.4 }}
                 style={{
                   position: 'absolute',
-                  bottom: 22 + (ev.raise || 0),
+                  bottom: markerBottom,
                   left: `${pct}%`,
-                  transform: 'translateX(-50%)',
-                  display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
+                  width: 0,
+                  display: 'flex', flexDirection: 'column', alignItems: 'center',
                 }}
               >
                 <div style={{
-                  borderLeft: `1.5px solid ${ev.color}`,
-                  paddingLeft: 6, paddingBottom: 3, whiteSpace: 'nowrap',
+                  alignSelf,
+                  borderLeft: isEndAligned ? 'none' : '1px solid rgba(255,255,255,0.30)',
+                  borderRight: isEndAligned ? '1px solid rgba(255,255,255,0.30)' : 'none',
+                  paddingLeft: isEndAligned ? 0 : 8,
+                  paddingRight: isEndAligned ? 8 : 0,
+                  paddingBottom: 6, whiteSpace: 'nowrap',
+                  textAlign: isEndAligned ? 'right' : 'left',
                 }}>
                   <div style={{
-                    fontFamily: LEX, fontSize: 7, fontWeight: 700,
-                    color: ev.color, letterSpacing: '0.10em', textTransform: 'uppercase',
+                    fontFamily: MONO, fontSize: 12, fontWeight: 500,
+                    color: 'rgba(255,255,255,0.70)', lineHeight: 1.2,
                   }}>
-                    {ev.year} · {ev.delta}
+                    {ev.year}
                   </div>
                   <div style={{
-                    fontFamily: ZH, fontSize: 10, color: 'rgba(232,232,248,0.65)',
-                    marginTop: 2, lineHeight: 1.4,
+                    fontFamily: ZH, fontSize: 17, fontWeight: 700,
+                    color: 'rgba(255,255,255,0.95)', marginTop: 6, lineHeight: 1.25,
                   }}>
-                    {ev.label}
+                    {pick(ev.label, ev.labelEn)}
+                  </div>
+                  <div style={{
+                    fontFamily: ZH, fontSize: 12, fontWeight: 500,
+                    color: 'rgba(255,255,255,0.65)', marginTop: 6, lineHeight: 1.3,
+                  }}>
+                    {pick(ev.result, ev.resultEn)}
                   </div>
                 </div>
-                <div style={{ width: 1, height: tickH, background: `${ev.color}55` }} />
+                <div style={{
+                  width: 1, height: tickH,
+                  background: 'rgba(255,255,255,0.25)',
+                  boxShadow: '0 0 4px rgba(255,255,255,0.12)',
+                }} />
               </motion.div>
             )
           })}
@@ -1690,11 +1797,10 @@ function SceneTrend() {
 
         {/* Year label row */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          {[1960, 1970, 1980, 1990, 2000, 2007, 2009, 2015, 2026].map(y => (
+          {[1960, 1970, 1980, 1990, 2000, 2010, 2020, 2026].map(y => (
             <div key={y} style={{
-              fontFamily: MONO, fontSize: 10, letterSpacing: '0.06em',
-              color: (y === 2007 || y === 2009) ? 'rgba(107,127,255,1)' : 'rgba(180,190,220,0.75)',
-              fontWeight: (y === 2007 || y === 2009) ? 700 : 500,
+              fontFamily: MONO, fontSize: 10, letterSpacing: '0.06em', whiteSpace: 'nowrap',
+              color: 'rgba(180,190,220,0.75)', fontWeight: 500,
             }}>
               {y}
             </div>
@@ -1706,191 +1812,8 @@ function SceneTrend() {
 }
 
 
-/* ── 章节过渡：滚动驱动文字切换 ── */
-function ChapterEndTransition({ onComplete }) {
-  const { language, pick } = useI18n()
-  const containerRef = useRef()
-  const line1Ref     = useRef()   // GSAP 完全控制，React 不渲染子节点
-  const [phase, setPhase] = useState(0)
-  const phaseRef     = useRef(0)
-  const animatingRef = useRef(false)
-
-  const PHASES = useMemo(() => ([
-    { tag: pick('01 · SPACE DEBRIS · 本章总结', '01 · SPACE DEBRIS · SUMMARY'), tagColor: '#484878', title1: pick('太空垃圾', 'SPACE DEBRIS') },
-    { tag: pick('02 · HISTORY · 下一章节', '02 · HISTORY · NEXT'), tagColor: 'rgba(129,146,255,0.78)', title1: pick('历史事件', 'HISTORY') },
-  ]), [pick])
-
-  // 填充 GSAP 控制的大字 DOM
-  function populateLine1(el, text, startHidden) {
-    el.innerHTML = ''
-    for (const ch of text) {
-      const span = document.createElement('span')
-      span.className = 'cet-c'
-      span.style.display = 'inline-block'
-      if (startHidden) {
-        span.style.opacity = '0'
-        span.style.transform = 'translateY(80%)'
-        span.style.filter = 'blur(4px)'
-      }
-      span.textContent = ch
-      el.appendChild(span)
-    }
-  }
-
-  // 滚动相位检测
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-    const inViewRef = { current: false }
-    const io = new IntersectionObserver(([e]) => { inViewRef.current = e.isIntersecting }, { rootMargin: '120px' })
-    io.observe(el)
-    const onScroll = () => {
-      if (!inViewRef.current) return
-      const rect    = el.getBoundingClientRect()
-      const scrolled = -rect.top
-      const total    = rect.height - window.innerHeight
-      const p = Math.max(0, Math.min(1, scrolled / total))
-      setPhase(prev => {
-        const next = p > 0.46 ? 1 : 0
-        return prev !== next ? next : prev
-      })
-    }
-    window.addEventListener('scroll', onScroll, { passive: true })
-    onScroll()
-    return () => { window.removeEventListener('scroll', onScroll); io.disconnect() }
-  }, [])
-
-  // 初始挂载：填充第一帧大字
-  useEffect(() => {
-    if (line1Ref.current) populateLine1(line1Ref.current, PHASES[0].title1, false)
-  }, [PHASES])
-
-  // 相位切换：逐字向上替换动画（仅大字，其余元素不动）
-  useEffect(() => {
-    if (phaseRef.current === phase) return
-    const el = line1Ref.current
-    if (!el || animatingRef.current) return
-    animatingRef.current = true
-
-    const oldChars = [...el.querySelectorAll('.cet-c')]
-    const newTitle = PHASES[phase].title1
-    oldChars.forEach(char => { char.style.willChange = 'transform, opacity, filter' })
-
-    // 旧字：从右向左依次向上消失
-    const exitAnim = gsap.to(oldChars, {
-      y: '-90%', opacity: 0, filter: 'blur(5px)',
-      stagger: { each: 0.042, from: 'end' },
-      duration: 0.36, ease: 'power2.in',
-      onComplete() {
-        // 填入新字（初始隐藏在下方）
-        populateLine1(el, newTitle, true)
-        // 新字：从左向右依次向上进入
-        gsap.to(el.querySelectorAll('.cet-c'), {
-          y: '0%', opacity: 1, filter: 'blur(0px)',
-          stagger: { each: 0.065, from: 'start' },
-          duration: 0.72, ease: 'power3.out',
-          onComplete() {
-            el.querySelectorAll('.cet-c').forEach(char => { char.style.willChange = 'auto' })
-            animatingRef.current = false
-          },
-        })
-      },
-    })
-
-    phaseRef.current = phase
-    return () => exitAnim?.kill()
-  }, [PHASES, phase])
-
-  const cur = PHASES[phase]
-
-  const summaryFacts = [
-    { no: '01', value: '28,000', unit: 'km/h', label: pick('平均碰撞速度', 'Average collision speed'), note: pick('约为子弹速度的 10 倍', 'About ten times faster than a bullet') },
-    { no: '02', value: language === 'en' ? '~130M' : '~1.3亿', unit: '', label: pick('在轨碎片总量', 'Debris in orbit'), note: pick('多数仍无法持续追踪', 'Most cannot be continuously tracked') },
-    { no: '03', value: '36,500+', unit: '', label: pick('可追踪目标', 'Trackable objects'), note: pick('雷达持续编目与预警', 'Continuously catalogued by radar') },
-    { no: '04', value: '1957', unit: '', label: pick('污染起点', 'Beginning of orbital pollution'), note: pick('人造卫星时代同步开始', 'The year the satellite age began') },
-  ]
-
-  return (
-    <section ref={containerRef} className="m1-summary-section" data-m1-no-reveal>
-      <div className="m1-summary-sticky">
-        <div className="m1-summary-main">
-          <div className="m1-summary-ghost" aria-hidden="true">{phase === 0 ? '01' : '02'}</div>
-
-          <motion.div
-            key={`tag-${phase}`}
-            className="m1-summary-tag"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45, ease: EASE }}
-            style={{ '--summary-tag-color': cur.tagColor }}
-          >
-            <i />
-            <span>{cur.tag}</span>
-          </motion.div>
-
-          <div className="m1-summary-headline">
-            <div ref={line1Ref} className="m1-summary-title" data-m1-no-reveal />
-          </div>
-
-          <AnimatePresence mode="wait">
-            {phase === 0 ? (
-              <motion.div
-                key="summary-facts"
-                className="m1-summary-facts"
-                initial={{ opacity: 0, y: 24 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -18 }}
-                transition={{ duration: 0.6, ease: EASE, delay: 0.08 }}
-              >
-                {summaryFacts.map(fact => (
-                  <article className="m1-summary-fact" key={fact.no}>
-                    <small>{fact.no}</small>
-                    <div className="m1-summary-value">{fact.value}<em>{fact.unit}</em></div>
-                    <h3>{fact.label}</h3>
-                    <p>{fact.note}</p>
-                  </article>
-                ))}
-              </motion.div>
-            ) : (
-              <motion.div
-                key="summary-next"
-                className="m1-summary-next"
-                initial={{ opacity: 0, y: 24 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -18 }}
-                transition={{ duration: 0.6, ease: EASE, delay: 0.12 }}
-              >
-                <div className="m1-summary-next-copy">
-                  <small>UP NEXT / M3</small>
-                  <h3>{pick('重大历史事件', 'Major historical events')}</h3>
-                  <p>{pick('沿时间轴回看关键发射、碰撞与失效事件，理解轨道碎片如何一步步累积成今天的风险。', 'Follow key launches, collisions, and failures to see how orbital debris became today’s systemic risk.')}</p>
-                </div>
-                <div className="m1-summary-next-meta" aria-label={pick('下一章信息', 'Next chapter information')}>
-                  <span><b>01</b> {pick('时间脉络', 'Timeline')}</span>
-                  <span><b>02</b> {pick('关键事件', 'Key events')}</span>
-                  <span><b>03</b> {pick('风险转折', 'Risk shifts')}</span>
-                </div>
-                <button type="button" className="m1-summary-enter" onClick={() => onComplete({ autoScroll: false })}>
-                  <span>{pick('进入下一章', 'Enter next chapter')}</span>
-                  <b>HISTORY / M3</b>
-                  <i aria-hidden="true" />
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <div className="m1-summary-progress" aria-hidden="true">
-            {[0, 1].map(i => <i className={phase === i ? 'is-active' : ''} key={i} />)}
-            <span>{phase === 0 ? 'SCROLL TO CONTINUE' : 'ENTER HISTORY'}</span>
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
-
 /* ── Main M1 ── */
-export default function M1({ onComplete }) {
+export default function M1() {
   const containerRef         = useRef()
   const sideEarthWrapRef     = useRef()
   const countryEarthWrapRef  = useRef()
@@ -2017,8 +1940,6 @@ export default function M1({ onComplete }) {
         <SceneTrend />
       </div>
       <div style={s}><SceneSources /></div>
-
-      <ChapterEndTransition onComplete={onComplete} />
 
     </div>
   )

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createOpenAIStoryGenerator } from './model.js'
 
-test('GPT-5.6 Luna Outline 使用已验证的 low reasoning 和 JSON Schema output', async () => {
+test('GPT-5.6 Luna story request uses medium reasoning and JSON Schema output', async () => {
   let requestBody
   const mockFetch = async (_url, init) => {
     requestBody = JSON.parse(init.body)
@@ -45,7 +45,7 @@ test('GPT-5.6 Luna Outline 使用已验证的 low reasoning 和 JSON Schema outp
   })
 
   assert.equal(requestBody.model, 'gpt-5.6-luna')
-  assert.equal(requestBody.reasoning_effort, 'low')
+  assert.equal(requestBody.reasoning_effort, 'medium')
   assert.equal(requestBody.verbosity, 'medium')
   assert.equal(requestBody.max_completion_tokens, 6000)
   assert.equal(requestBody.max_tokens, undefined)
@@ -56,20 +56,4 @@ test('GPT-5.6 Luna Outline 使用已验证的 low reasoning 和 JSON Schema outp
   assert.equal(requestBody.messages[1].role, 'user')
   assert.equal(requestBody.response_format.type, 'json_schema')
   assert.equal(requestBody.response_format.json_schema.name, 'story_outline')
-
-  await generate(
-    'STORY_OUTLINE',
-    {
-      important_event: {
-        people: ['测试者'],
-        time: '',
-        location: '',
-        description: '一次重要经历',
-      },
-    },
-    { retryReason: 'OUTLINE_ENDING_UNREACHABLE: exact backend rules' },
-  )
-
-  assert.equal(requestBody.reasoning_effort, 'medium')
-  assert.match(requestBody.messages[1].content, /exact backend rules/)
 })

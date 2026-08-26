@@ -2,8 +2,6 @@ import { StoryError } from './constants.js'
 import {
   GameStateSchema,
   RuntimeStoryStateSchema,
-  SelectedSiteOptionSnapshotSchema,
-  SiteInteractionOutcomeSchema,
   StoryMetricsSchema,
   StoryOptionSchema,
   StoryStateDeltaSchema,
@@ -137,48 +135,6 @@ export function applyStoryOption(runtimeState, rawOption, action) {
   }
 }
 
-export function applySiteInteraction({
-  runtimeState,
-  snapshots,
-  combinedDelta,
-  addConsequenceIds,
-  resolveConsequenceIds,
-  outcomes,
-  action,
-}) {
-  const beforeState = RuntimeStoryStateSchema.parse(cloneState(runtimeState))
-  const parsedSnapshots = snapshots.map((snapshot) => (
-    SelectedSiteOptionSnapshotSchema.parse(cloneState(snapshot))
-  ))
-  outcomes.map((outcome) => SiteInteractionOutcomeSchema.parse(cloneState(outcome)))
-  const delta = StoryStateDeltaSchema.parse(cloneState(combinedDelta))
-  const before = storyMetrics(beforeState)
-  const after = applyStateDelta(before, delta)
-  const next = RuntimeStoryStateSchema.parse({
-    ...cloneState(beforeState),
-    ...after,
-    active_consequences: updateConsequenceIds(
-      beforeState.active_consequences,
-      addConsequenceIds,
-      resolveConsequenceIds,
-    ),
-    last_user_action: cloneState(action),
-  })
-
-  return {
-    before,
-    item_deltas: parsedSnapshots.map((snapshot) => ({
-      section_id: snapshot.section_id,
-      option_id: snapshot.option_id,
-      delta: cloneState(snapshot.state_delta),
-    })),
-    delta,
-    combined_delta: delta,
-    after,
-    state: next,
-  }
-}
-
 export function applyNarrativeOutput(runtimeState, additions, nextNodeId) {
   const before = RuntimeStoryStateSchema.parse(cloneState(runtimeState))
   return RuntimeStoryStateSchema.parse({
@@ -193,21 +149,23 @@ export function createInitialGameState({ satellite, damageLevel = 0 }) {
     satellite_build: {
       satellite: satellite || {},
       materials: {},
+      material_profiles: {},
     },
     mission: {
       mission_id: null,
       action_id: null,
+      label: null,
+      label_en: null,
+      anomaly_type: null,
+      mission_effect: null,
+      mission_effect_en: null,
+      orbit_profile: null,
     },
     orbital_events: {
       resolved: [],
     },
     cleanup_test: {
       matches: [],
-      target_set: [],
-      completed: false,
-      completion_id: null,
-      completed_at: null,
-      frozen_snapshot_ids: [],
     },
     technical_metrics: {
       armor: clampMetric(Math.max(45, Math.round(100 - Number(damageLevel || 0) * 0.7))),

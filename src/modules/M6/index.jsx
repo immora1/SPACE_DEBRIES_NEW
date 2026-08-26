@@ -1,173 +1,196 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import useAppStore from '../../store/useAppStore'
 import useI18n from '../../i18n/useI18n'
-import {
-  processQueuedStoryJobs,
-  submitCleanupMatchingComplete,
-  submitCleanupMatchStoryAction,
-} from '../../services/ai'
+import { submitCleanupPairStoryAction } from '../../services/ai'
 import './index.css'
 
 const METHODS = [
   {
     id: 'laser',
-    cleanupMethodId: 'LASER_ABLATION',
     image: '/cleanup/1.jpg',
-    title: '激光烧蚀',
-    titleEn: 'LASER ABLATION',
-    status: '研究阶段',
-    statusTone: 'research',
-    mode: '非接触',
-    target: '1–10 cm 小碎片',
-    action: '微量改轨',
-    object: '适合数量多、尺寸小、无法逐个捕获的碎片群，例如太阳能板碎片、隔热层剥落物和碰撞后形成的小颗粒。',
-    reason: '这类目标太小、速度太快，派航天器靠近反而风险更高。激光可以在远距离施加微小反冲，让碎片轨道逐步降低或避开关键轨道。',
-    principle: '用短脉冲加热目标表面，烧蚀喷流产生微小反冲，使碎片轨道逐步改变。',
-    limit: '需要极高的跟踪与指向精度，并持续确认光束不会影响正常航天器。',
+    label: '激光烧蚀',
+    labelEn: 'LASER ABLATION',
+    title: '激光改变轨道',
+    titleEn: 'Laser Orbit Modification',
+    action: '改变轨道',
+    actionEn: 'ORBIT MODIFICATION',
+    howItWorks: '激光脉冲照射碎片表面，使极少量材料发生烧蚀并产生微小反作用力，从而改变碎片的速度和轨道，使其更快降低轨道。',
+    howItWorksEn: 'Laser pulses ablate a very small amount of material from the debris surface. The resulting reaction force slightly changes the object’s velocity and orbit, helping it move toward a lower orbit.',
+    bestFor: '更适合尺寸较小、难以机械抓取的轨道碎片。这类目标数量多，逐个派航天器接近和捕获效率较低，激光可以通过非接触方式施加轨道扰动。',
+    bestForEn: 'It is better suited to smaller debris that is difficult to capture mechanically. Because such objects are numerous and inefficient to retrieve one by one, laser systems can alter their trajectories without direct physical contact.',
+    limitations: '需要先准确发现、跟踪和瞄准碎片，目前仍以研究和技术验证为主。大型失效卫星通常需要其他捕获或离轨方式。',
+    limitationsEn: 'The target must first be detected, tracked, and accurately illuminated. The concept remains primarily in research and technology validation, and large defunct spacecraft generally require other capture or disposal methods.',
+    takeaway: '激光通过微量烧蚀改变碎片轨道，并不会直接把整块碎片烧掉。',
+    takeawayEn: 'Laser ablation changes the debris orbit through a small reaction force; it does not simply vaporize the entire object.',
   },
   {
     id: 'arm',
-    cleanupMethodId: 'ROBOTIC_ARM_CAPTURE',
     image: '/cleanup/2.jpg',
+    label: '直接捕获',
+    labelEn: 'DIRECT CAPTURE',
     title: '机械臂抓取',
-    titleEn: 'ROBOTIC CAPTURE',
-    status: '任务开发',
-    statusTone: 'development',
-    mode: '刚性接触',
-    target: '完整卫星 / 火箭体',
+    titleEn: 'Robotic Arm Capture',
     action: '固定并离轨',
-    object: '主要针对还保持完整结构的大型废弃卫星、火箭末级和失控平台。',
-    reason: '大型目标质量集中，一旦碰撞会制造大量碎片。机械臂能先建立刚性连接，再把目标稳定拖离拥挤轨道。',
-    principle: '服务航天器近距离绕飞目标，估计翻滚状态后用多臂结构包络、固定并拖离拥挤轨道。',
-    limit: '面对无对接口、失去控制且持续翻滚的目标，接近和接触阶段风险最高。',
+    actionEn: 'CAPTURE AND DEORBIT',
+    howItWorks: '清理航天器先接近目标并控制相对运动，再利用机械臂抓住目标结构。捕获稳定后，可以带着目标改变轨道并完成后续处置。',
+    howItWorksEn: 'A servicing spacecraft first approaches the target and controls its relative motion, then uses a robotic arm to grasp the object. Once captured, the target can be maneuvered toward a disposal orbit or reentry path.',
+    bestFor: '更适合体积较大、结构完整，并具有可识别抓取位置的失效卫星或大型火箭残骸。机械臂可以在近距离对目标进行稳定控制。',
+    bestForEn: 'It is better suited to large, structurally intact targets with identifiable grasping points, such as defunct satellites or large rocket bodies. Robotic arms allow relatively stable control once contact is established.',
+    limitations: '清理航天器必须非常接近目标。目标如果正在快速翻滚或旋转，接近和抓取过程会明显变复杂，对导航和姿态控制要求很高。',
+    limitationsEn: 'The servicing spacecraft must operate very close to the target. Rapidly tumbling or rotating objects make approach and capture much more difficult and require precise navigation and attitude control.',
+    takeaway: '机械臂更适合能够近距离识别并稳定抓取的大型目标。',
+    takeawayEn: 'Robotic arms are best suited to large targets that can be identified and grasped reliably at close range.',
   },
   {
     id: 'net',
-    cleanupMethodId: 'FLEXIBLE_NET_CAPTURE',
     image: '/cleanup/3.jpg',
-    title: '柔性捕捉网',
-    titleEn: 'FLEXIBLE NET',
-    status: '在轨演示',
-    statusTone: 'tested',
-    mode: '柔性接触',
-    target: '不规则中型目标',
+    label: '包围捕获',
+    labelEn: 'NET CAPTURE',
+    title: '柔性网捕获',
+    titleEn: 'Net Capture',
     action: '包络捕获',
-    object: '适合外形不规则、没有标准对接口、但尺寸仍足以被包覆的中型残骸。',
-    reason: '目标表面可能破损、凸起或翻滚，刚性对接不容易成功。柔性网可以降低对接口要求，用包覆方式先获得控制。',
-    principle: '发射展开的高强度网，从多个方向包裹没有标准接口的目标，再通过缆绳控制组合体。',
-    limit: '网体展开、闭合和后续拖曳都要避免缠绕失控；一次发射通常只有一次捕获机会。',
+    actionEn: 'ENVELOPING CAPTURE',
+    howItWorks: '清理航天器在一定距离外向目标展开柔性网，用网将目标包围并限制其运动，再通过连接绳控制或拖带目标。',
+    howItWorksEn: 'A servicing spacecraft deploys a flexible net from a distance, surrounds the target, and restrains its motion. The captured object can then be controlled or towed using the connecting tether.',
+    bestFor: '更适合体积较大、外形不规则或缺少专用抓取接口的目标。柔性网不需要准确抓住一个很小的连接点，可以通过包围方式完成捕获。',
+    bestForEn: 'It is more suitable for large, irregularly shaped objects or targets without a dedicated capture interface. A net does not need to attach to one precise point and can capture the target by surrounding it.',
+    limitations: '捕获后目标仍可能旋转或摆动，需要继续控制“清理航天器 + 目标”的整体运动，避免发生新的碰撞。',
+    limitationsEn: 'The captured target may continue to rotate or swing. The combined motion of the servicing spacecraft and debris must therefore be controlled to avoid creating a new collision.',
+    takeaway: '柔性网适合包围形状不规则、缺少抓取接口的大型目标。',
+    takeawayEn: 'Nets are useful for surrounding large, irregular targets that lack a convenient grasping point.',
   },
   {
     id: 'harpoon',
-    cleanupMethodId: 'HARPOON_CAPTURE',
     image: '/cleanup/4.jpg',
-    title: '飞行鱼叉',
-    titleEn: 'HARPOON CAPTURE',
-    status: '在轨演示',
-    statusTone: 'tested',
-    mode: '穿透接触',
-    target: '坚硬大型结构',
+    label: '快速连接',
+    labelEn: 'HARPOON CAPTURE',
+    title: '鱼叉固定',
+    titleEn: 'Harpoon Capture',
     action: '锚定拖曳',
-    object: '更适合外壳坚硬、可承受锚定冲击的大型残骸，如火箭贮箱、适配器或较厚结构件。',
-    reason: '当目标没有可抓取接口、又需要快速建立牵引点时，鱼叉能直接锚定外壳，减少复杂对接步骤。',
-    principle: '高速锚体穿入目标外壳，倒钩锁定后通过缆绳施加控制和离轨力。',
-    limit: '穿透会向老化结构施加冲击；若材料状态判断错误，可能制造二次碎片。',
+    actionEn: 'ANCHOR AND TOW',
+    howItWorks: '清理航天器向目标发射带有绳索的鱼叉，使鱼叉穿入并固定在目标结构上，再利用连接绳控制或拖动目标。',
+    howItWorksEn: 'A servicing spacecraft fires a tethered harpoon into the target structure. Once anchored, the tether can be used to control or tow the captured object.',
+    bestFor: '更适合表面具有可穿透结构、体积较大的刚性目标。鱼叉可以在一定距离外建立连接，对缺少标准抓取接口的物体具有一定优势。',
+    bestForEn: 'It is better suited to large, rigid objects with structures that can safely accept penetration. The harpoon can establish a connection from some distance and does not require a standard docking interface.',
+    limitations: '鱼叉撞击会对目标结构施加较大作用力，因此必须判断材料和撞击位置是否适合。捕获不当可能破坏目标并产生新的碎片。',
+    limitationsEn: 'Harpoon impact places substantial force on the target structure, so the material and impact location must be suitable. Poorly controlled capture could damage the target and create additional debris.',
+    takeaway: '鱼叉适合能够承受捕获冲击的大型刚性结构。',
+    takeawayEn: 'Harpoons are better suited to large rigid structures that can withstand the impact of capture.',
   },
   {
     id: 'tether',
-    cleanupMethodId: 'ELECTRODYNAMIC_TETHER',
     image: '/cleanup/5.jpg',
-    title: '电动力缆索',
-    titleEn: 'ELECTRODYNAMIC TETHER',
-    status: '持续验证',
-    statusTone: 'development',
-    mode: '无推进剂',
-    target: '寿命末期航天器',
-    action: '持续减速',
-    object: '主要面向仍能部署装置的低轨航天器、任务末期平台或未来设计时预装的离轨组件。',
-    reason: '它不依赖推进剂，适合在航天器寿命末期用持续、温和的方式降低轨道能量。',
-    principle: '导电缆索切割地磁场并与电离层交换电流，洛伦兹力持续降低轨道能量。',
-    limit: '长缆部署和空间环境耦合复杂，更适合在航天器仍可控时主动启用。',
+    label: '降低轨道',
+    labelEn: 'ELECTRODYNAMIC TETHER',
+    title: '电动力绳索降轨',
+    titleEn: 'Electrodynamic Tether Deorbiting',
+    action: '持续降轨',
+    actionEn: 'CONTINUOUS DECELERATION',
+    howItWorks: '长导电绳索在地球磁场中运动并产生电磁作用，可以形成改变轨道的力，使已经连接的目标逐渐降低轨道，同时减少对传统推进剂的依赖。',
+    howItWorksEn: 'A long conductive tether interacts with Earth’s magnetic field to generate a force that changes the orbit of an attached object, gradually lowering its altitude without relying continuously on conventional propellant.',
+    bestFor: '适合已经能够与绳索系统连接的低轨目标，也可以在卫星设计阶段提前安装，在任务结束后用于加快自身离轨。',
+    bestForEn: 'It is suitable for low-Earth-orbit targets that can be connected to the tether system. The device can also be installed on a satellite before launch and deployed at the end of its mission to accelerate deorbiting.',
+    limitations: '电动力绳索主要解决“怎样降低轨道”。处理已经失控的旧碎片时，仍需要先完成目标接近和连接，绳索展开和控制本身也存在工程难度。',
+    limitationsEn: 'Electrodynamic tethers mainly address how to lower an orbit. Existing uncontrolled debris must still be approached and connected first, while tether deployment and control remain significant engineering challenges.',
+    takeaway: '电动力绳索主要帮助已经连接的目标逐渐降低轨道。',
+    takeawayEn: 'Electrodynamic tethers mainly help an attached target gradually lower its orbit.',
   },
   {
     id: 'sail',
-    cleanupMethodId: 'DRAG_SAIL',
     image: '/cleanup/6.jpg',
-    title: '阻力帆',
-    titleEn: 'DRAG SAIL',
-    status: '成熟部署',
-    statusTone: 'ready',
-    mode: '被动装置',
-    target: '低轨小卫星',
-    action: '增加阻力',
-    object: '适合低轨小卫星、立方星和任务结束前仍能触发部署的航天器。',
-    reason: '低轨仍有稀薄大气。展开阻力帆后，航天器受到的阻力变大，可以更快自然衰减并再入。',
-    principle: '任务结束时展开轻质大面积薄膜，提高面积质量比，让高层稀薄大气更快消耗轨道能量。',
-    limit: '它是预防性离轨装置，不能隔空处理已经脱离航天器的自由碎片。',
+    label: '增加阻力',
+    labelEn: 'DRAG SAIL',
+    title: '阻力帆降轨',
+    titleEn: 'Drag-Sail Deorbiting',
+    action: '加快离轨',
+    actionEn: 'INCREASE DRAG',
+    howItWorks: '航天器展开大面积轻质薄膜后，会受到更明显的稀薄大气阻力，使轨道逐渐衰减并加快进入大气层的过程。',
+    howItWorksEn: 'A spacecraft deploys a large lightweight sail that increases drag from the thin upper atmosphere, causing its orbit to decay faster and accelerating its eventual atmospheric entry.',
+    bestFor: '更适合低地球轨道中的小型卫星和 CubeSat。这类装置通常在发射前安装，任务结束后展开，帮助卫星加快自身离轨。',
+    bestForEn: 'It is better suited to small satellites and CubeSats in low Earth orbit. The sail is typically installed before launch and deployed after the mission to accelerate the satellite’s own orbital decay.',
+    limitations: '阻力帆依赖低轨仍然存在的稀薄大气，因此适用轨道范围有限。处理已经失控的旧碎片时，还需要先通过其他方式把装置连接到目标上。',
+    limitationsEn: 'Drag sails depend on the residual atmosphere in low Earth orbit, so their useful orbital range is limited. Existing uncontrolled debris would first require another method to attach the device.',
+    takeaway: '阻力帆通过增加大气阻力，加快低轨卫星自然离轨。',
+    takeawayEn: 'Drag sails increase atmospheric drag and accelerate the natural orbital decay of low-Earth-orbit satellites.',
   },
 ]
 
-const METHOD_EN = {
-  laser: {
-    status: 'RESEARCH', mode: 'NON-CONTACT', target: '1-10 CM FRAGMENTS', action: 'SMALL ORBIT CHANGE',
-    object: 'Dense groups of small fragments that are too numerous or too small to capture individually, including panel, insulation, and collision debris.',
-    reason: 'Close approach is risky for small, fast targets. A laser can apply a remote impulse that gradually lowers or shifts their orbit.',
-    principle: 'Short pulses heat the surface; the ablation plume creates a small recoil that changes the fragment orbit.',
-    limit: 'Requires extremely accurate tracking and pointing, with safeguards for active spacecraft.',
-  },
-  arm: {
-    status: 'MISSION DEVELOPMENT', mode: 'RIGID CONTACT', target: 'SATELLITES / ROCKET BODIES', action: 'CAPTURE AND DEORBIT',
-    object: 'Large retired satellites, upper stages, and uncontrolled platforms that still retain an intact structure.',
-    reason: 'Large objects can create thousands of fragments in a collision. A robotic arm establishes a rigid connection before controlled removal.',
-    principle: 'A servicing spacecraft estimates target tumble, closes in, secures the object with multiple arms, and tows it away.',
-    limit: 'Approach and contact are difficult when the target has no interface and is tumbling.',
-  },
-  net: {
-    status: 'IN-ORBIT DEMO', mode: 'FLEXIBLE CONTACT', target: 'IRREGULAR MEDIUM OBJECTS', action: 'ENVELOPING CAPTURE',
-    object: 'Irregular medium-size debris without a standard docking interface but still large enough to envelop.',
-    reason: 'A flexible net can control damaged, protruding, or tumbling objects without precise rigid docking.',
-    principle: 'A high-strength net deploys around the target and closes before the combined system is controlled by tethers.',
-    limit: 'Deployment and towing must avoid entanglement; a net often offers only one capture attempt.',
-  },
-  harpoon: {
-    status: 'IN-ORBIT DEMO', mode: 'PENETRATING CONTACT', target: 'HARD LARGE STRUCTURES', action: 'ANCHOR AND TOW',
-    object: 'Hard structures able to withstand an anchor impact, such as tanks, adapters, or thick structural panels.',
-    reason: 'A harpoon can create a towing point quickly when no grasping interface is available.',
-    principle: 'A high-speed anchor penetrates the shell, locks with barbs, and transfers control or deorbit force through a tether.',
-    limit: 'Impact can fragment aged structures if material condition is judged incorrectly.',
-  },
-  tether: {
-    status: 'ONGOING VALIDATION', mode: 'PROPELLANT-FREE', target: 'END-OF-LIFE SPACECRAFT', action: 'CONTINUOUS DECELERATION',
-    object: 'LEO spacecraft that can still deploy a device, or future missions equipped with an end-of-life module.',
-    reason: 'It reduces orbital energy gradually without propellant and is well suited to planned retirement.',
-    principle: 'A conductive tether exchanges current with the ionosphere and cuts Earth\'s magnetic field to create Lorentz drag.',
-    limit: 'Long-tether deployment is complex and works best while the spacecraft remains controllable.',
-  },
-  sail: {
-    status: 'DEPLOYED TECHNOLOGY', mode: 'PASSIVE DEVICE', target: 'SMALL LEO SATELLITES', action: 'INCREASE DRAG',
-    object: 'Small LEO satellites and CubeSats that can still trigger deployment near mission completion.',
-    reason: 'The residual atmosphere in LEO creates more drag on a deployed sail, accelerating natural decay and re-entry.',
-    principle: 'A large lightweight membrane increases area-to-mass ratio so the upper atmosphere removes orbital energy faster.',
-    limit: 'It is a preventive disposal device and cannot retrieve fragments already detached from a spacecraft.',
-  },
-}
-
 function localizeMethod(method, language) {
   if (language !== 'en') return method
-  return { ...method, title: method.titleEn, ...METHOD_EN[method.id] }
+  return {
+    ...method,
+    label: method.labelEn,
+    title: method.titleEn,
+    action: method.actionEn,
+    howItWorks: method.howItWorksEn,
+    bestFor: method.bestForEn,
+    limitations: method.limitationsEn,
+    takeaway: method.takeawayEn,
+  }
+}
+
+const TARGET_SCENARIOS = {
+  laser: {
+    code: 'A-17',
+    type: '高速碎片群',
+    typeEn: 'High-speed debris cluster',
+    name: '厘米级碎片群',
+    nameEn: 'Centimeter-Scale Debris Cluster',
+    diagnosis: '一次在轨解体产生了多块厘米级碎片，它们体积小、数量多，并继续高速绕地球运行。逐个接近并进行机械捕获的效率很低。',
+    diagnosisEn: 'An orbital breakup has produced multiple centimeter-scale fragments. They are small, numerous, and continue travelling at orbital velocity, making individual mechanical capture inefficient.',
+    size: '1–10 cm',
+    motion: '高速运行',
+    motionEn: 'High orbital speed',
+    thirdLabel: 'NUMBER',
+    thirdValue: '多个碎片',
+    thirdValueEn: 'Multiple fragments',
+  },
+  arm: {
+    code: 'B-04',
+    type: '完整大型目标',
+    typeEn: 'Intact large target',
+    name: '失效大型残骸',
+    nameEn: 'Large Defunct Object',
+    diagnosis: '这是一块已经失去控制的大型航天器残骸，主体结构仍然完整，目前正在轨道中缓慢翻滚。目标尺寸较大，可以从近距离识别其外部结构。',
+    diagnosisEn: 'This large spacecraft remnant is no longer under control, but its main structure remains intact. It is slowly tumbling in orbit and has external structures that can be identified at close range.',
+    size: '2.4 m / 620 kg',
+    motion: '缓慢翻滚',
+    motionEn: 'Slow tumble',
+    thirdLabel: 'STRUCTURE',
+    thirdValue: '主体完整',
+    thirdValueEn: 'Intact body',
+  },
+  sail: {
+    code: 'C-22',
+    type: '低轨可控目标',
+    typeEn: 'Controlled LEO target',
+    name: '任务末期小卫星',
+    nameEn: 'End-of-Life Small Satellite',
+    diagnosis: '这颗低轨小卫星已经完成任务，机体保持完整，目前仍能响应控制指令。它质量较低、轨道高度不高，正在等待任务后的离轨处置。',
+    diagnosisEn: 'This small satellite in low Earth orbit has completed its mission and remains structurally intact. It can still respond to control commands and is awaiting end-of-life disposal.',
+    size: '小型卫星',
+    sizeEn: 'Small satellite',
+    motion: '姿态可控',
+    motionEn: 'Controlled',
+    thirdLabel: 'ORBIT',
+    thirdValue: '低地球轨道',
+    thirdValueEn: 'Low Earth orbit',
+  },
 }
 
 function localizeTarget(target, language, index) {
   if (language !== 'en') return target
-  const copy = {
-    laser: { type: 'Fragment cloud', name: 'Small scattered debris cluster', motion: 'High-speed dispersion', diagnosis: 'Numerous small objects make individual contact capture impractical. A non-contact method can change many orbits with small impulses.' },
-    arm: { type: 'Intact large object', name: 'Retired spacecraft or upper stage', motion: 'Slow tumble', diagnosis: 'Mass is concentrated in an intact body. The target must be stabilized, secured, and guided through controlled disposal.' },
-    sail: { type: 'Preventive disposal', name: 'Controllable end-of-life satellite', size: 'Small LEO spacecraft', motion: 'Stable orbit', diagnosis: 'The object has not yet become free debris. A simple end-of-life device is more efficient than later retrieval.' },
-  }[target.ideal]
+  const copy = TARGET_SCENARIOS[target.ideal]
   return {
     ...target,
-    ...copy,
+    type: copy.typeEn,
+    name: copy.nameEn,
+    diagnosis: copy.diagnosisEn,
+    size: copy.sizeEn || copy.size,
+    motion: copy.motionEn,
+    thirdLabel: copy.thirdLabel,
+    thirdValue: copy.thirdValueEn,
     source: `TARGET ${String(index + 1).padStart(2, '0')} · GENERATED FROM CURRENT MISSION`,
   }
 }
@@ -209,10 +232,24 @@ const CLEANUP_FLOW_LINES = [
 ]
 
 const MATERIAL_META = {
-  frame: { aluminum: '铝合金主框架', titanium: '钛合金主框架', cfrp: '碳纤维复合主框架' },
-  solar: { silicon: '硅基太阳能板', gaas: '砷化镓太阳能板', flexible: '柔性薄膜太阳能板' },
-  insulation: { mli: '多层铝箔隔热毯', honeycomb: '铝蜂窝板', kevlar: '凯夫拉吸收层' },
-  propulsion: { ti_tank: '钛合金球形贮箱', al_tank: '铝合金贮箱', copv: '复合材料缠绕贮箱' },
+  frame: { aluminum: '铝合金主体结构', titanium: '钛合金主体结构', cfrp: '碳纤维复合主体结构' },
+  solar: { silicon: '硅基刚性电池板', gaas: '砷化镓多结电池板', flexible: '柔性薄膜阵列' },
+  insulation: {
+    aluminized: '镀铝聚酯薄膜',
+    kapton: '镀铝聚酰亚胺薄膜',
+    ceramic: '玻璃纤维外层材料',
+    mli: '多层铝箔隔热毯',
+    honeycomb: '铝蜂窝板',
+    kevlar: '凯夫拉吸收层',
+  },
+  propulsion: {
+    'aluminum-tank': '铝合金贮箱',
+    'composite-tank': '复合材料缠绕贮箱',
+    'titanium-tank': '钛合金贮箱',
+    ti_tank: '钛合金球形贮箱',
+    al_tank: '铝合金贮箱',
+    copv: '复合材料缠绕贮箱',
+  },
 }
 
 function materialLabel(materials, part, fallback) {
@@ -237,54 +274,39 @@ function buildTargets({ gameResult, materials, debrisGenerated, satellite }) {
   const satelliteName = satellite?.name || '任务卫星'
 
   const laserTarget = pickRandom([
-    { id: 'A17_FRAGMENT_CLOUD', uiId: 'fragment-cloud', code: 'A-17', type: '碎片云', size: '1–10 cm', motion: '高速分散', name: solar + '与' + insulation + '形成的小碎片群', source: 'M4 事件：' + event },
-    { id: 'A31_MICRO_DEBRIS', uiId: 'paint-flakes', code: 'A-31', type: '微小剥落物', size: '3–7 cm', motion: '密集漂移', name: '漆片、薄膜与绝热材料混合碎片', source: '随机目标：多点反射信号' },
-    { id: 'A42_PANEL_SPLINTERS', uiId: 'panel-splinters', code: 'A-42', type: '板材碎片群', size: '5–12 cm', motion: '轨道相位分散', name: solar + '断裂后形成的薄片群', source: '随机目标：雷达散射截面低' },
+    { id: 'fragment-cloud', code: 'A-17', type: '碎片云', size: '1–10 cm', motion: '高速分散', name: solar + '与' + insulation + '形成的小碎片群', source: 'M4 事件：' + event },
+    { id: 'paint-flakes', code: 'A-31', type: '微小剥落物', size: '3–7 cm', motion: '密集漂移', name: '漆片、薄膜与绝热材料混合碎片', source: '随机目标：多点反射信号' },
+    { id: 'panel-splinters', code: 'A-42', type: '板材碎片群', size: '5–12 cm', motion: '轨道相位分散', name: solar + '断裂后形成的薄片群', source: '随机目标：雷达散射截面低' },
   ])
 
   const armTarget = pickRandom([
-    { id: 'B04_INTACT_BODY', uiId: 'intact-body', code: 'B-04', type: failed ? '失控主体' : '退役主体', size: '2.4 m / 620 kg', motion: failed ? '姿态翻滚' : '缓慢漂移', name: frame + '与' + propulsion + '构成的完整主体', source: 'M4 结算：护甲 ' + (gameResult?.finalArmor ?? '—') + ' / 燃料 ' + (gameResult?.finalFuel ?? '—') },
-    { id: 'B16_ROCKET_STAGE', uiId: 'rocket-stage', code: 'B-16', type: '火箭末级', size: '8.1 m / 1.8 t', motion: '低速滚转', name: '失去控制的上面级壳体', source: '随机目标：大型完整回波' },
-    { id: 'B27_RING_STRUCTURE', uiId: 'adapter-ring', code: 'B-27', type: '适配器结构', size: '1.6 m / 180 kg', motion: '稳定漂移', name: '带有可夹持边缘的环形结构', source: '随机目标：可建立刚性接触' },
+    { id: 'intact-body', code: 'B-04', type: failed ? '失控主体' : '退役主体', size: '2.4 m / 620 kg', motion: failed ? '姿态翻滚' : '缓慢漂移', name: frame + '与' + propulsion + '构成的完整主体', source: 'M4 结算：护甲 ' + (gameResult?.finalArmor ?? '—') + ' / 燃料 ' + (gameResult?.finalFuel ?? '—') },
+    { id: 'rocket-stage', code: 'B-16', type: '火箭末级', size: '8.1 m / 1.8 t', motion: '低速滚转', name: '失去控制的上面级壳体', source: '随机目标：大型完整回波' },
+    { id: 'adapter-ring', code: 'B-27', type: '适配器结构', size: '1.6 m / 180 kg', motion: '稳定漂移', name: '带有可夹持边缘的环形结构', source: '随机目标：可建立刚性接触' },
   ])
 
   const sailTarget = pickRandom([
-    { id: 'C22_END_OF_LIFE_PLATFORM', uiId: 'end-of-life', code: 'C-22', type: '预防性处置', size: '低轨小卫星', motion: '仍可控制', name: satelliteName + '的寿命末期平台', source: 'M1 轨道：' + (satellite?.altitudeKm ?? 836) + ' km / 倾角 ' + (satellite?.inclination ?? 98) + '°' },
-    { id: 'C08_CUBESAT', uiId: 'cubesat', code: 'C-08', type: '立方星', size: '12U / 26 kg', motion: '轨道自然衰减慢', name: '任务结束但仍能触发装置的小卫星', source: '随机目标：低轨可控目标' },
-    { id: 'C35_LEO_PLATFORM', uiId: 'leo-platform', code: 'C-35', type: '低轨平台', size: '60×40×30 cm', motion: '速度稳定', name: '可部署末期离轨装置的低轨载荷', source: '随机目标：尚未解体' },
+    { id: 'end-of-life', code: 'C-22', type: '预防性处置', size: '低轨小卫星', motion: '仍可控制', name: satelliteName + '的寿命末期平台', source: 'M1 轨道：' + (satellite?.altitudeKm ?? 836) + ' km / 倾角 ' + (satellite?.inclination ?? 98) + '°' },
+    { id: 'cubesat', code: 'C-08', type: '立方星', size: '12U / 26 kg', motion: '轨道自然衰减慢', name: '任务结束但仍能触发装置的小卫星', source: '随机目标：低轨可控目标' },
+    { id: 'leo-platform', code: 'C-35', type: '低轨平台', size: '60×40×30 cm', motion: '速度稳定', name: '可部署末期离轨装置的低轨载荷', source: '随机目标：尚未解体' },
   ])
 
   return shuffleTargets([
-    { ...laserTarget, ideal: 'laser', diagnosis: '数量多、单体小，逐个接触捕获不现实。需要非接触方式为大量目标施加微小轨道改变量。' },
-    { ...armTarget, ideal: 'arm', diagnosis: '目标质量集中且结构仍完整，需要先稳定相对姿态，再可靠固定并执行受控离轨。' },
-    { ...sailTarget, ideal: 'sail', diagnosis: '目标尚未变成自由碎片。此时部署低质量、低复杂度的离轨装置，比事后回收更有效。' },
+    { ...laserTarget, ...TARGET_SCENARIOS.laser, ideal: 'laser' },
+    { ...armTarget, ...TARGET_SCENARIOS.arm, ideal: 'arm' },
+    { ...sailTarget, ...TARGET_SCENARIOS.sail, ideal: 'sail' },
   ])
-}
-
-function buildBackendTargets(targetSet) {
-  return (targetSet || []).map((target) => ({
-    id: target.cleanup_target_id,
-    uiId: target.ui_target_id,
-    code: target.code,
-    type: target.target_profile.target_type,
-    size: [target.target_profile.size, target.target_profile.mass].filter(Boolean).join(' / '),
-    motion: target.target_profile.motion_state,
-    name: target.cleanup_target_name,
-    source: target.source,
-    ideal: BACKEND_METHOD_TO_UI_METHOD[target.preferred_method_id],
-    diagnosis: target.target_profile.risk_traits.join('；'),
-  }))
 }
 
 function buildAssessment(target, method, correct, language = 'zh') {
   if (language === 'en') {
-    if (correct) return `${method.title} matches the target scale, motion, and contact conditions. ${method.principle}`
+    if (correct) return `${method.title} matches the target scale, motion, and contact conditions. ${method.howItWorks}`
     const idealMethod = localizeMethod(METHOD_MAP[target.ideal], language)
     return `${method.title} is not suitable for this target. A ${idealMethod.action.toLowerCase()} approach is a better match: ${idealMethod.title}.`
   }
-  if (correct) return `${method.title}与目标尺度、运动状态和接触条件匹配。${method.principle}`
+  if (correct) return `${method.title}与目标尺度、运动状态和接触条件匹配。${method.howItWorks}`
   const ideal = METHOD_MAP[target.ideal]
-  return `${method.title}不适合当前目标：${method.limit} 这里更需要“${ideal.action}”，优先考虑${ideal.title}。`
+  return `${method.title}不适合当前目标：${method.limitations} 这里更需要“${ideal.action}”，优先考虑${ideal.title}。`
 }
 
 const BACKEND_METHOD_TO_UI_METHOD = {
@@ -295,18 +317,14 @@ const BACKEND_METHOD_TO_UI_METHOD = {
 
 function buildRestoredResults(targets, resolvedMatches, language) {
   return Object.fromEntries((resolvedMatches || []).flatMap((match) => {
-    const stableMethodId = match.cleanup_method_id || match.method_id
-    const methodId = BACKEND_METHOD_TO_UI_METHOD[stableMethodId]
-    const target = targets.find((item) => (
-      item.id === match.cleanup_target_id
-      || item.ideal === methodId
-    ))
+    const methodId = BACKEND_METHOD_TO_UI_METHOD[match.method_id]
+    const target = targets.find((item) => item.ideal === methodId)
     const method = methodId ? localizeMethod(METHOD_MAP[methodId], language) : null
     if (!target || !method) return []
     return [[target.id, {
-      correct: match.is_allowed_match ?? true,
+      correct: true,
       methodId,
-      message: buildAssessment(target, method, match.is_allowed_match ?? true, language),
+      message: buildAssessment(target, method, true, language),
     }]]
   }))
 }
@@ -392,9 +410,9 @@ function MethodCard({ method, index, activeMethodId, cardSpacing, middle, onActi
         <div className="m6-method-card-meta">
           <span>{String(index + 1).padStart(2, '0')}</span>
         </div>
-        <span className="m6-method-card-en">{method.titleEn}</span>
+        <span className="m6-method-card-en">{method.label}</span>
         <h4>{method.title}</h4>
-        <p>{method.principle}</p>
+        <p>{method.howItWorks}</p>
       </div>
     </motion.article>
   )
@@ -452,13 +470,14 @@ function MethodObservatory() {
               transition={{ duration: 0.42, ease: [0.16, 1, 0.3, 1] }}
               onClick={(event) => event.stopPropagation()}
             >
-              <span>{activeMethod.titleEn}</span>
+              <span>{activeMethod.label}</span>
               <h3>{activeMethod.title}</h3>
               <dl>
-                <div><dt>{pick('适用情况', 'WHY USE IT')}</dt><dd>{activeMethod.reason}</dd></div>
-                <div><dt>{pick('主要垃圾类型', 'TARGET DEBRIS')}</dt><dd>{activeMethod.object}</dd></div>
-                <div><dt>{pick('处理边界', 'LIMITS')}</dt><dd>{activeMethod.limit}</dd></div>
+                <div><dt>{pick('工作原理', 'HOW IT WORKS')}</dt><dd>{activeMethod.howItWorks}</dd></div>
+                <div><dt>{pick('适用场景', 'BEST FOR')}</dt><dd>{activeMethod.bestFor}</dd></div>
+                <div><dt>{pick('技术边界', 'LIMITATIONS')}</dt><dd>{activeMethod.limitations}</dd></div>
               </dl>
+              <strong className="m6-method-takeaway">{activeMethod.takeaway}</strong>
             </motion.aside>
           )}
         </AnimatePresence>
@@ -483,7 +502,6 @@ function DragMatchLab({
   resolvedMatches,
   onComplete,
   onStoryMatch,
-  onStoryComplete,
 }) {
   const { language, pick } = useI18n()
   const methods = METHODS.map((method) => localizeMethod(method, language))
@@ -492,6 +510,7 @@ function DragMatchLab({
   const [selectedMethodId, setSelectedMethodId] = useState(null)
   const [draggingMethodId, setDraggingMethodId] = useState(null)
   const [dragOverId, setDragOverId] = useState(null)
+  const [draftMatches, setDraftMatches] = useState({})
   const [results, setResults] = useState(
     () => buildRestoredResults(targets, resolvedMatches, language),
   )
@@ -499,9 +518,9 @@ function DragMatchLab({
     () => Object.keys(buildRestoredResults(targets, resolvedMatches, language)).length,
   )
   const [pendingTargetId, setPendingTargetId] = useState(null)
-  const [completionPending, setCompletionPending] = useState(false)
   const [requestError, setRequestError] = useState('')
-  const [storyFeedback, setStoryFeedback] = useState('')
+  const [storyBeat, setStoryBeat] = useState('')
+  const [latestStorySnapshot, setLatestStorySnapshot] = useState(null)
 
   const resolvedCount = targets.filter((target) => results[target.id]?.correct).length
   const allResolved = resolvedCount === targets.length
@@ -517,7 +536,7 @@ function DragMatchLab({
     setAttempts((current) => Math.max(current, restoredCount))
   }, [language, resolvedMatches, targets])
 
-  async function matchTarget(targetId, methodId) {
+  function assignTarget(targetId, methodId) {
     const target = targets.find((item) => item.id === targetId)
     const method = methodMap[methodId]
     if (
@@ -527,53 +546,83 @@ function DragMatchLab({
       || results[targetId]?.correct
       || lockedMethodIds.has(methodId)
     ) return
-    setPendingTargetId(targetId)
-    setRequestError('')
-    setStoryFeedback('')
-    setDraggingMethodId(null)
-    setDragOverId(null)
-    let confirmation
-    try {
-      const storySnapshot = await onStoryMatch({
-        cleanupTargetId: target.id,
-        cleanupMethodId: method.cleanupMethodId,
-      })
-      confirmation = storySnapshot.action_confirmation
-      setStoryFeedback(confirmation?.feedback || '')
-    } catch (error) {
-      setRequestError(
-        error?.message
-        || pick('配对保存失败，当前卡片尚未锁定。请重试。', 'The match could not be saved. Please retry.'),
+    setDraftMatches((current) => {
+      const next = Object.fromEntries(
+        Object.entries(current).filter(([draftTargetId, draftMethodId]) => draftTargetId !== targetId && draftMethodId !== methodId),
       )
-      setPendingTargetId(null)
-      return
+      return { ...next, [targetId]: methodId }
+    })
+    if (results[targetId] && !results[targetId].correct) {
+      setResults((current) => {
+        const next = { ...current }
+        delete next[targetId]
+        return next
+      })
     }
-
-    const correct = Boolean(confirmation?.cleanup_match?.is_allowed_match)
-
-    setAttempts((current) => current + 1)
-    setResults((current) => ({ ...current, [targetId]: { correct, methodId, message: buildAssessment(target, method, correct, language) } }))
     setSelectedMethodId(null)
     setDraggingMethodId(null)
     setDragOverId(null)
-    setPendingTargetId(null)
   }
 
-  async function completeMatching() {
-    if (!allResolved || pendingTargetId || completionPending) return
-    setCompletionPending(true)
+  async function confirmMatches() {
+    const entries = Object.entries(draftMatches).filter(([targetId]) => !results[targetId]?.correct)
+    if (!entries.length || pendingTargetId) return
+
     setRequestError('')
-    try {
-      const storySnapshot = await onStoryComplete()
-      onComplete(efficiency, storySnapshot)
-    } catch (error) {
-      setRequestError(
-        error?.message
-        || pick('配对结果提交失败，已完成的配对仍会保留。', 'The completion could not be submitted; saved matches are preserved.'),
-      )
-    } finally {
-      setCompletionPending(false)
+    setStoryBeat('')
+    setSelectedMethodId(null)
+    setDraggingMethodId(null)
+    setDragOverId(null)
+
+    let nextResults = { ...results }
+    const committedTargetIds = []
+    let committedCount = 0
+
+    for (const [targetId, methodId] of entries) {
+      const target = targets.find((item) => item.id === targetId)
+      const method = methodMap[methodId]
+      if (!target || !method) continue
+      const correct = target.ideal === methodId
+
+      if (correct) {
+        setPendingTargetId(targetId)
+        try {
+          const storySnapshot = await onStoryMatch({
+            idealMethodId: target.ideal,
+            uiTargetId: target.id,
+          })
+          setLatestStorySnapshot(storySnapshot)
+          setStoryBeat(
+            storySnapshot.current_stage?.display_content?.story_text
+            || storySnapshot.current_stage?.stage_summary
+            || '',
+          )
+        } catch (error) {
+          setRequestError(
+            error?.message
+            || pick('故事推进失败，配对尚未提交。请重试。', 'Story generation failed, so the match was not committed. Please retry.'),
+          )
+          setPendingTargetId(null)
+          break
+        }
+      }
+
+      nextResults = {
+        ...nextResults,
+        [targetId]: { correct, methodId, message: buildAssessment(target, method, correct, language) },
+      }
+      setResults(nextResults)
+      committedTargetIds.push(targetId)
+      committedCount += 1
     }
+
+    if (committedTargetIds.length) {
+      setAttempts((current) => current + committedCount)
+      setDraftMatches((current) => Object.fromEntries(
+        Object.entries(current).filter(([targetId]) => !committedTargetIds.includes(targetId)),
+      ))
+    }
+    setPendingTargetId(null)
   }
 
   function startDrag(event, methodId) {
@@ -591,13 +640,13 @@ function DragMatchLab({
 
   function drop(event, targetId) {
     event.preventDefault()
-    void matchTarget(targetId, event.dataTransfer.getData('text/plain'))
+    assignTarget(targetId, event.dataTransfer.getData('text/plain'))
   }
 
   function targetKeyDown(event, targetId) {
     if (!selectedMethodId || (event.key !== 'Enter' && event.key !== ' ')) return
     event.preventDefault()
-    void matchTarget(targetId, selectedMethodId)
+    assignTarget(targetId, selectedMethodId)
   }
 
   return (
@@ -610,7 +659,7 @@ function DragMatchLab({
             {' '}
             <span>{pick('小测试', 'MATCHING LAB')}</span>
           </h3>
-          <p>{pick('先看上方清理方式卡片，再判断随机目标的类型与尺寸，把对应清理卡拖入目标卡兜。', 'Review the cleanup methods, inspect each generated target, then drag or select the best method for it.')}</p>
+          <p>{pick('观察每个目标的尺寸、运动状态和结构特点，再从左侧选择合适的清理方式，将卡片拖入对应目标。', 'Examine each target’s size, motion, and structural characteristics, then choose a suitable removal method from the left and drag it onto the matching target.')}</p>
         </div>
       </div>
 
@@ -622,10 +671,10 @@ function DragMatchLab({
           <span>{pick('目标生成 / 3 个随机轨道物体', 'TARGET SET / 3 ORBITAL OBJECTS')}</span>
           <b>{resolvedCount} / {targets.length} {pick('已归档', 'RESOLVED')}</b>
         </div>
-        {(requestError || storyFeedback) && (
+        {(requestError || storyBeat) && (
           <div className={requestError ? 'm6-story-message is-error' : 'm6-story-message'}>
             <span>{requestError ? 'STORY ERROR' : 'STORY UPDATE'}</span>
-            <p>{requestError || storyFeedback}</p>
+            <p>{requestError || storyBeat}</p>
           </div>
         )}
 
@@ -673,7 +722,8 @@ function DragMatchLab({
           <div className="m6-pocket-rack" aria-label={pick('目标卡兜', 'Target pockets')}>
             {targets.map((target, index) => {
               const result = results[target.id]
-              const method = result ? methodMap[result.methodId] : null
+              const draftMethod = draftMatches[target.id] ? methodMap[draftMatches[target.id]] : null
+              const method = draftMethod || (result ? methodMap[result.methodId] : null)
               const isOver = dragOverId === target.id
               const ready = Boolean(selectedMethodId && !result?.correct)
               const pending = pendingTargetId === target.id
@@ -684,7 +734,7 @@ function DragMatchLab({
                   role="button"
                   tabIndex={result?.correct ? -1 : 0}
                   aria-label={`${target.type}, ${target.name}${ready ? `, ${pick('点击投放所选技术', 'click to apply the selected method')}` : ''}`}
-                  onClick={() => selectedMethodId && void matchTarget(target.id, selectedMethodId)}
+                  onClick={() => selectedMethodId && assignTarget(target.id, selectedMethodId)}
                   onKeyDown={(event) => targetKeyDown(event, target.id)}
                   onDragEnter={(event) => { event.preventDefault(); if (!result?.correct) setDragOverId(target.id) }}
                   onDragOver={(event) => event.preventDefault()}
@@ -729,10 +779,11 @@ function DragMatchLab({
                     <div className="m6-pocket-meta">
                       <span><b>SIZE</b>{target.size}</span>
                       <span><b>MOTION</b>{target.motion}</span>
+                      <span><b>{target.thirdLabel}</b>{target.thirdValue}</span>
                     </div>
                     <div className="m6-pocket-slot">
-                      <span>{pending ? pick('正在校验并保存', 'VALIDATING AND SAVING') : result?.correct ? pick('匹配完成', 'MATCHED') : result ? pick('方式不合适', 'NOT SUITABLE') : isOver ? pick('松开装入卡兜', 'DROP TO APPLY') : pick('等待清理卡', 'AWAITING METHOD')}</span>
-                      <small>{pending ? pick('本次操作只由后端规则校验，不调用 AI。', 'This action uses backend rules only and does not call AI.') : result && !result.correct ? result.message : target.source}</small>
+                      <span>{pending ? pick('正在生成故事节点', 'GENERATING STORY BEAT') : result?.correct ? pick('匹配完成', 'MATCHED') : result ? pick('方式不合适', 'NOT SUITABLE') : draftMethod ? pick('已选择，等待确定', 'SELECTED, READY TO CONFIRM') : isOver ? pick('松开装入卡兜', 'DROP TO APPLY') : pick('拖入合适的清理方式', 'DRAG IN A SUITABLE REMOVAL METHOD')}</span>
+                      <small>{pending ? pick('AI 成功后才会锁定本次配对。', 'This match is committed only after the AI response succeeds.') : result && !result.correct ? result.message : ''}</small>
                     </div>
                   </div>
                 </motion.div>
@@ -740,6 +791,14 @@ function DragMatchLab({
             })}
           </div>
         </div>
+        <button
+          className="m6-pocket-confirm"
+          type="button"
+          disabled={!Object.keys(draftMatches).length || Boolean(pendingTargetId)}
+          onClick={() => void confirmMatches()}
+        >
+          {pendingTargetId ? pick('正在生成故事', 'GENERATING STORY') : pick('确认选择', 'CONFIRM SELECTION')}
+        </button>
       </div>
 
       <div className={['m6-match-completion', allResolved ? 'is-ready' : ''].join(' ')}>
@@ -748,12 +807,10 @@ function DragMatchLab({
         <p>{allResolved ? pick('目标与清理方式已全部对应。', 'Every target now has a suitable cleanup method.') : pick('完成三个卡兜匹配后进入下一章节。', 'Resolve all three targets to continue.')}</p>
         <button
           type="button"
-          disabled={!allResolved || Boolean(pendingTargetId) || completionPending}
-          onClick={() => void completeMatching()}
+          disabled={!allResolved || Boolean(pendingTargetId)}
+          onClick={() => onComplete(efficiency, latestStorySnapshot)}
         >
-          {completionPending
-            ? pick('正在提交配对', 'Submitting matches')
-            : pick('提交配对并继续', 'Submit and continue')}
+          {pick('继续下一章', 'Continue')}
         </button>
       </div>
     </section>
@@ -766,20 +823,8 @@ export default function M6({ onComplete }) {
   const resolvedCleanupMatches = useAppStore(
     (state) => state.publicGameState?.cleanup_test?.matches,
   )
-  const backendTargetSet = useAppStore(
-    (state) => state.publicGameState?.cleanup_test?.target_set,
-  )
-  const persistedCompletionId = useAppStore(
-    (state) => state.publicGameState?.cleanup_test?.completion_id,
-  )
-  const storyTimeline = useAppStore((state) => state.storyTimeline)
-  const completionIdRef = useRef(persistedCompletionId || globalThis.crypto.randomUUID())
-  const rawTargets = useMemo(
-    () => backendTargetSet?.length
-      ? buildBackendTargets(backendTargetSet)
-      : buildTargets({ gameResult, materials, debrisGenerated, satellite }),
-    [backendTargetSet, debrisGenerated, gameResult, materials, satellite],
-  )
+  const restoredFinalStory = useAppStore((state) => state.finalStory)
+  const rawTargets = useMemo(() => buildTargets({ gameResult, materials, debrisGenerated, satellite }), [debrisGenerated, gameResult, materials, satellite])
   const targets = useMemo(
     () => rawTargets.map((target, index) => localizeTarget(target, language, index)),
     [language, rawTargets],
@@ -794,27 +839,17 @@ export default function M6({ onComplete }) {
     ? `${cleanupFlowText}  ·  ${cleanupFlowText}  ·  `
     : CLEANUP_FLOW_MARQUEE_TEXT
 
-  useEffect(() => {
-    if (persistedCompletionId) completionIdRef.current = persistedCompletionId
-  }, [persistedCompletionId])
-
-  async function completeStory() {
-    const storySnapshot = await submitCleanupMatchingComplete(completionIdRef.current)
-    void processQueuedStoryJobs().catch(() => {})
-    return storySnapshot
-  }
-
   function finishModule(efficiency, storySnapshot) {
     const satelliteName = satellite?.name || pick('任务卫星', 'mission satellite')
     const fallbackEpilogue = pick(
       `${user?.name || '任务指挥员'}为${satelliteName}完成了三类清理决策，决策效率为 ${efficiency}%。真正有效的轨道治理，从来不是寻找一种万能技术，而是让目标、时机与处置方法准确对应。`,
       `${user?.name || 'The mission operator'} completed three cleanup decisions for ${satelliteName} with ${efficiency}% efficiency. Effective orbital governance depends on matching the target, timing, and disposal method rather than relying on one universal technology.`,
     )
-    const endingStage = [...(storySnapshot?.timeline || storyTimeline)]
-      .reverse()
-      .find((stage) => stage.node_id === 'node_05')
-    const ending = endingStage?.display_content?.story_text || fallbackEpilogue
+    const finalStory = storySnapshot?.final_story_if_completed || restoredFinalStory
+    const ending = finalStory?.ending?.story_text || fallbackEpilogue
+    const knowledgeReveal = finalStory?.knowledge_reveal?.story_text || ''
     setStoryChapter('m6', ending)
+    if (knowledgeReveal) setStoryChapter('knowledgeReveal', knowledgeReveal)
     onComplete()
   }
 
@@ -843,14 +878,17 @@ export default function M6({ onComplete }) {
       </div>
       <header className="m6-hero">
         <div className="m6-hero-copy">
-          <span>MODULE 06 / ORBITAL CLEANUP</span>
+          <span>{pick('模块 06 / 轨道清理', 'MODULE 06 / ORBITAL DEBRIS REMOVAL')}</span>
           <h2>
-            <span>{pick('清理不是', 'CLEANUP IS NOT')}</span>
-            {' '}
-            <span>{pick('捡起垃圾', 'SIMPLY PICKING IT UP')}</span>
+            <span>{pick('太空垃圾清理方法', 'Space Debris Removal Methods')}</span>
           </h2>
           <div className="m6-hero-rule" aria-hidden="true" />
-          <p>{pick('每一种目标，都需要不同的接近方式、接触条件和离轨路径。先读懂目标，再决定如何行动。', 'Every target requires a different approach, contact condition, and disposal path. Read the object before choosing the action.')}</p>
+          <p>
+            {pick(
+              '太空垃圾的尺寸、形状和运动状态各不相同。机械臂、柔性网和鱼叉可以捕获大型目标，激光可用于改变部分小型碎片的轨道，电动力绳索和阻力帆则可以帮助目标降低轨道。',
+              'Space debris varies in size, shape, and motion. Robotic arms, nets, and harpoons can be used to capture large targets, lasers can alter the orbits of some smaller fragments, while electrodynamic tethers and drag sails can help lower an object’s orbit.',
+            )}
+          </p>
         </div>
         <MethodObservatory />
       </header>
@@ -858,8 +896,7 @@ export default function M6({ onComplete }) {
         targets={targets}
         resolvedMatches={resolvedCleanupMatches || []}
         onComplete={finishModule}
-        onStoryMatch={submitCleanupMatchStoryAction}
-        onStoryComplete={completeStory}
+        onStoryMatch={submitCleanupPairStoryAction}
       />
       <footer className="m6-sources">
         <span>{pick('资料依据', 'SOURCES')}</span>

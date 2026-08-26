@@ -40,29 +40,29 @@ test('全部 v0.4 fixtures 可读，合法输入、Outline 与 Opening 通过', 
     clone(VALID_OPENING_FIXTURE),
     outline.initial_story_state,
   )
-  assert.equal(outline.story_nodes.length, 5)
+  assert.equal(outline.story_nodes.length, 10)
   assert.deepEqual(opening.additions, VALID_OPENING_FIXTURE.known_to_user_additions)
 })
 
 test('Outline 缺节点、错序、重复 ID 和错误任务类型均被精确拒绝', () => {
   const missing = clone(VALID_OUTLINE_FIXTURE)
   missing.story_nodes.pop()
-  expectCode(() => validateStoryOutline(missing), 'OUTLINE_STAGE_COUNT_INVALID')
+  expectCode(() => validateStoryOutline(missing), 'OUTLINE_NODE_COUNT_INVALID')
 
   const wrongOrder = clone(VALID_OUTLINE_FIXTURE)
   ;[wrongOrder.story_nodes[3], wrongOrder.story_nodes[4]] = [
     wrongOrder.story_nodes[4],
     wrongOrder.story_nodes[3],
   ]
-  expectCode(() => validateStoryOutline(wrongOrder), 'OUTLINE_STAGE_SEQUENCE_INVALID')
+  expectCode(() => validateStoryOutline(wrongOrder), 'OUTLINE_NODE_SEQUENCE_INVALID')
 
   const duplicate = clone(VALID_OUTLINE_FIXTURE)
   duplicate.story_nodes[1].node_id = 'node_01'
-  expectCode(() => validateStoryOutline(duplicate), 'OUTLINE_STAGE_ID_DUPLICATE')
+  expectCode(() => validateStoryOutline(duplicate), 'OUTLINE_NODE_ID_DUPLICATE')
 
   const wrongType = clone(VALID_OUTLINE_FIXTURE)
-  wrongType.story_nodes[3].task_type = 'STORY_ENDING'
-  expectCode(() => validateStoryOutline(wrongType), 'OUTLINE_STAGE_SEQUENCE_INVALID')
+  wrongType.story_nodes[3].task_type = 'STORY_CONTINUE'
+  expectCode(() => validateStoryOutline(wrongType), 'OUTLINE_NODE_SEQUENCE_INVALID')
 })
 
 test('Outline 旧 condition、错误初态和额外字段被拒绝', () => {

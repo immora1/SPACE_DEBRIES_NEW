@@ -19,17 +19,16 @@ import {
   Telescope,
 } from 'lucide-react'
 import useI18n from '../../i18n/useI18n'
-import { missionControlId } from '../../services/storySiteInteractions'
 import './mission-selection-deck.css'
 
 const EASE = [0.16, 1, 0.3, 1]
 const RETURN_SPRING = { type: 'spring', stiffness: 410, damping: 34 }
 
 const MISSION_ICONS = {
-  weather: CloudSun,
-  comms: RadioTower,
-  imaging: ScanLine,
-  science: Telescope,
+  weather_monitoring: CloudSun,
+  communications_relay: RadioTower,
+  earth_observation: ScanLine,
+  space_science_observation: Telescope,
 }
 
 function wrapIndex(index, length) {
@@ -45,16 +44,33 @@ function MissionCardContent({ mission }) {
       <div className="m3-mission-card-heading">
         <span className="m3-mission-card-icon"><MissionIcon size={24} strokeWidth={1.35} /></span>
         <span>
-          <small>{mission.labelEn}</small>
-          <h4>{language === 'en' ? mission.labelEn : mission.label}</h4>
+          <small>{mission.label_en}</small>
+          <h4>{language === 'en' ? mission.label_en : mission.label}</h4>
         </span>
       </div>
 
-      <p>{pick(mission.desc, mission.descEn)}</p>
+      <div className="m3-mission-card-copy">
+        <span>
+          <small>{pick('任务目标', 'Objective')}</small>
+          <p>{pick(mission.objective, mission.objective_en)}</p>
+        </span>
+        <span>
+          <small>{pick('如何工作', 'How it works')}</small>
+          <p>{pick(mission.operation, mission.operation_en)}</p>
+        </span>
+      </div>
 
       <div className="m3-mission-card-data">
-        <span><small>{pick('目标轨道', 'Target orbit')}</small><b>{pick(mission.orbit, mission.orbitEn)}</b></span>
-        <span><small>{pick('典型案例', 'Examples')}</small><b>{pick(mission.example, mission.exampleEn)}</b></span>
+        <span>
+          <small>{pick('目标轨道', 'Target orbit')}</small>
+          <b>{pick(mission.orbit_profile.label, mission.orbit_profile.label_en)} · {pick(mission.orbit_profile.altitude_label, mission.orbit_profile.altitude_label_en)}</b>
+        </span>
+        <span><small>{pick('典型任务 / 卫星', 'Examples')}</small><b>{pick(mission.examples, mission.examples_en)}</b></span>
+      </div>
+
+      <div className="m3-mission-card-effect">
+        <small>{pick('任务影响', 'Mission effect')}</small>
+        <p>{pick(mission.mission_effect, mission.mission_effect_en)}</p>
       </div>
     </>
   )
@@ -63,12 +79,9 @@ function MissionCardContent({ mission }) {
 export default function MissionSelectionDeck({
   missions,
   selectedMissionId,
-  confirmedMissionId,
   aiState,
-  error,
   story,
   satelliteName,
-  onSelect,
   onConfirm,
 }) {
   const { language, pick } = useI18n()
@@ -86,7 +99,6 @@ export default function MissionSelectionDeck({
 
   const activeMission = missions[activeIndex]
   const selectedMission = selectedIndex >= 0 ? missions[selectedIndex] : null
-  const confirmedMission = missions.find((mission) => mission.id === confirmedMissionId) || null
   const interactionLocked = aiState === 'loading' || aiState === 'done'
   const controlsLocked = resolving || interactionLocked
 
@@ -103,7 +115,6 @@ export default function MissionSelectionDeck({
 
   async function transitionMission(nextIndex, direction) {
     if (resolvingRef.current || interactionLocked) return
-    onSelect?.(missions[nextIndex].id)
     resolvingRef.current = true
     setResolving(true)
     const duration = reduceMotion ? 0.01 : 0.28
@@ -142,17 +153,14 @@ export default function MissionSelectionDeck({
   }
 
   function selectMission(index) {
-    if (index === activeIndex) {
-      onSelect?.(missions[index].id)
-      return
-    }
+    if (index === activeIndex) return
     const forwardDistance = wrapIndex(index - activeIndex, missions.length)
     const backwardDistance = wrapIndex(activeIndex - index, missions.length)
     transitionMission(index, forwardDistance <= backwardDistance ? 1 : -1)
   }
 
   async function assignMission() {
-    if (resolvingRef.current || interactionLocked || !selectedMission) return
+    if (resolvingRef.current || interactionLocked) return
     resolvingRef.current = true
     setResolving(true)
     setDragging(false)
@@ -165,7 +173,7 @@ export default function MissionSelectionDeck({
       animate(cardOpacity, 0.72, { duration }),
     ])
 
-    onConfirm(selectedMission.id)
+    onConfirm(activeMission.id)
     cardX.set(0)
     cardRotate.set(0)
     await Promise.all([
@@ -191,9 +199,9 @@ export default function MissionSelectionDeck({
   return (
     <section className="m3-mission-deck">
       <header className="m3-mission-heading">
-        <span>04 · MISSION SELECT</span>
-        <h3>{pick('为卫星指定任务', 'Assign a mission to the satellite')}</h3>
-        <p>{pick('选择一项主任务。它将决定故事走向与 M4 游戏的背景设定，也是全站第二个有后果的选择。', 'Choose one primary mission. It determines the story direction and the context of the M4 survival game, making this the second consequential choice.')}</p>
+        <span>{pick('04 · 任务选择', '04 · MISSION SELECTION')}</span>
+        <h3>{pick('为卫星指定任务', 'Assign a Mission')}</h3>
+        <p>{pick('每颗卫星都有自己的任务，而任务决定它需要去哪里、如何运行。选择一项任务，为你的卫星确定工作目标和轨道环境。', 'Every satellite is built for a specific purpose, and that mission determines where it operates and how it works. Choose a mission to define your satellite’s objective and orbital environment.')}</p>
       </header>
 
       <div className="m3-mission-console">
@@ -214,23 +222,20 @@ export default function MissionSelectionDeck({
           {missions.map((mission, index) => {
             const MissionIcon = MISSION_ICONS[mission.id] ?? Orbit
             const active = index === activeIndex
-            const selected = mission.id === selectedMissionId
-            const assigned = mission.id === confirmedMissionId
+            const assigned = mission.id === selectedMissionId
             return (
               <button
                 key={mission.id}
-                id={missionControlId(mission.id)}
-                data-story-control-id={missionControlId(mission.id)}
                 type="button"
                 role="tab"
                 aria-selected={active}
-                className={`${active ? 'is-active' : ''}${selected ? ' is-selected' : ''}${assigned ? ' is-assigned' : ''}`}
+                className={`${active ? 'is-active' : ''}${assigned ? ' is-assigned' : ''}`}
                 disabled={controlsLocked}
                 onClick={() => selectMission(index)}
               >
                 <span>{String(index + 1).padStart(2, '0')}</span>
                 <MissionIcon size={15} strokeWidth={1.45} />
-                <b>{language === 'en' ? mission.labelEn : mission.label}</b>
+                <b>{language === 'en' ? mission.label_en : mission.label}</b>
               </button>
             )
           })}
@@ -248,9 +253,6 @@ export default function MissionSelectionDeck({
             dragMomentum={false}
             onDragStart={() => setDragging(true)}
             onDragEnd={handleDragEnd}
-            onClick={() => {
-              if (!dragging && !controlsLocked) onSelect?.(activeMission.id)
-            }}
           >
             <MissionCardContent mission={activeMission} />
           </motion.article>
@@ -259,26 +261,16 @@ export default function MissionSelectionDeck({
         <div className="m3-mission-assign-row">
           <button
             type="button"
-            className={confirmedMission ? 'is-assigned' : selectedMission ? 'is-ready' : ''}
-            disabled={controlsLocked || !selectedMission}
+            className={selectedMission ? 'is-assigned' : ''}
+            disabled={controlsLocked}
             onClick={assignMission}
-            aria-label={confirmedMission
-              ? pick(`已指派${confirmedMission.label}`, `${confirmedMission.labelEn} assigned`)
-              : aiState === 'error'
-                ? pick('重试生成任务故事', 'Retry mission story generation')
-              : selectedMission
-                ? pick(`确认${selectedMission.label}`, `Confirm ${selectedMission.labelEn}`)
-                : pick('请先选择任务', 'Select a mission first')}
+            aria-label={selectedMission
+              ? pick(`已指派${selectedMission.label}`, `${selectedMission.label_en} assigned`)
+              : pick(`指派${activeMission.label}`, `Assign ${activeMission.label_en}`)}
           >
-            {confirmedMission ? <Check size={17} strokeWidth={1.8} /> : null}
-            <span>{confirmedMission
-              ? pick('任务已分配', 'Mission assigned')
-              : aiState === 'error'
-                ? pick('重试生成', 'Retry generation')
-              : selectedMission
-                ? pick('确认任务', 'Confirm mission')
-                : pick('请先选择任务', 'Select a mission first')}</span>
-            {confirmedMission ? null : <ArrowRight size={17} strokeWidth={1.6} />}
+            {selectedMission ? <Check size={17} strokeWidth={1.8} /> : null}
+            <span>{selectedMission ? pick('任务已分配', 'Mission assigned') : pick('指派此任务', 'Assign this mission')}</span>
+            {selectedMission ? null : <ArrowRight size={17} strokeWidth={1.6} />}
           </button>
         </div>
 
@@ -292,7 +284,7 @@ export default function MissionSelectionDeck({
               exit={{ opacity: 0, y: -10 }}
             >
               <span aria-hidden="true"><i /><i /><i /></span>
-              <div><b>{pick('正在生成任务叙事', 'Generating mission narrative')}</b><small>GENERATING MISSION NARRATIVE</small></div>
+              <div><b>{pick('正在保存任务配置', 'Saving mission profile')}</b><small>SAVING MISSION PROFILE</small></div>
             </motion.div>
           ) : null}
 
@@ -305,15 +297,15 @@ export default function MissionSelectionDeck({
               transition={{ duration: 0.5, ease: EASE }}
             >
               <div className="m3-mission-story-head">
-                <span>MISSION NARRATIVE · {satelliteName || 'YOUR SAT'}</span>
-                <b>{language === 'en' ? selectedMission.labelEn : selectedMission.label}</b>
+                <span>MISSION PROFILE · {satelliteName || 'YOUR SAT'}</span>
+                <b>{language === 'en' ? selectedMission.label_en : selectedMission.label}</b>
               </div>
               <div className="m3-mission-story-meta">
-                <span><small>{pick('轨道', 'Orbit')}</small><b>{pick(selectedMission.orbit, selectedMission.orbitEn)}</b></span>
-                <span><small>{pick('典型案例', 'Examples')}</small><b>{pick(selectedMission.example, selectedMission.exampleEn)}</b></span>
+                <span><small>{pick('轨道', 'Orbit')}</small><b>{pick(selectedMission.orbit_profile.label, selectedMission.orbit_profile.label_en)} · {pick(selectedMission.orbit_profile.altitude_label, selectedMission.orbit_profile.altitude_label_en)}</b></span>
+                <span><small>{pick('典型任务 / 卫星', 'Examples')}</small><b>{pick(selectedMission.examples, selectedMission.examples_en)}</b></span>
               </div>
-              <p>{story}</p>
-              <footer><Sparkles size={15} strokeWidth={1.4} /> {pick('第二段 · 任务展开', 'PART TWO · MISSION DEPLOYMENT')} <ArrowRight size={16} strokeWidth={1.5} /></footer>
+              <p>{story || pick(selectedMission.mission_effect, selectedMission.mission_effect_en)}</p>
+              <footer><Sparkles size={15} strokeWidth={1.4} /> {pick('任务与轨道已绑定', 'MISSION AND ORBIT LINKED')} <ArrowRight size={16} strokeWidth={1.5} /></footer>
             </motion.article>
           ) : null}
 
@@ -326,14 +318,13 @@ export default function MissionSelectionDeck({
               transition={{ duration: 0.35, ease: EASE }}
             >
               <div className="m3-mission-story-head">
-                <span>MISSION NARRATIVE · RETRY REQUIRED</span>
+                <span>MISSION PROFILE · RETRY REQUIRED</span>
                 <b>{pick('任务尚未提交', 'Mission not committed')}</b>
               </div>
               <p>{pick(
-                '叙事生成暂时失败，故事状态没有推进。无需重新拖动或选择，直接点击“重试生成”即可。',
-                'Narrative generation temporarily failed and the story did not advance. No reselection or dragging is needed; click “Retry generation”.',
+                '任务配置保存失败。请再次点击“指派此任务”重试。',
+                'The mission profile could not be saved. Click “Assign this mission” to retry.',
               )}</p>
-              {error?.code ? <footer>{error.code} · {error.message}</footer> : null}
             </motion.article>
           ) : null}
         </AnimatePresence>

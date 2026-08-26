@@ -107,11 +107,11 @@ const ALL_EVENTS = [
 const KEY_IDS = new Set(['ablestar', 'kessler', 'kosmos954', 'cerise', 'fy1c', 'iridium', 'issbattery'])
 
 const ERA_META = [
-  { id: 1, range: '1957–1969', name: '太空竞赛时代', nameEn: 'THE SPACE RACE', desc: '发射能力首次突破地球引力，轨道也开始积累无法回收的早期残骸。', descEn: 'Launch capability broke free of Earth while unrecoverable early hardware began accumulating in orbit.' },
-  { id: 2, range: '1970–1989', name: '深空探索与空间站', nameEn: 'DEEP SPACE & STATIONS', desc: '深空探测与长期驻留展开，大型航天器带来新的失控再入风险。', descEn: 'Deep-space exploration and long-duration stations introduced new risks from large uncontrolled re-entries.' },
-  { id: 3, range: '1990–2009', name: '太空碎片危机浮现', nameEn: 'THE DEBRIS CRISIS', desc: '碰撞与反卫试验让碎片从隐患变成可观测的系统性危机。', descEn: 'Collisions and anti-satellite tests turned debris from a hidden hazard into a measurable systemic crisis.' },
-  { id: 4, range: '2010–2019', name: '商业航天崛起', nameEn: 'COMMERCIAL SPACE', desc: '发射频率快速上升，商业星座开始重塑近地轨道密度。', descEn: 'Launch cadence accelerated as commercial constellations began reshaping low-Earth-orbit density.' },
-  { id: 5, range: '2020–2026', name: '新太空纪元', nameEn: 'THE NEW SPACE ERA', desc: '巨型星座与主动清理并存，治理能力必须开始追赶技术扩张。', descEn: 'Mega-constellations and active removal now coexist, forcing governance to catch up with technical expansion.' },
+  { id: 1, range: '1957–1969', name: '轨道遗留开始出现', nameEn: 'Orbital leftovers begin to appear', desc: '第一批卫星和火箭进入太空，任务结束后的火箭级、失效航天器和零部件也开始留在轨道中。', descEn: 'The first satellites and rockets entered space, while spent rocket stages, inactive spacecraft, and other hardware began to remain in orbit after missions ended.' },
+  { id: 2, range: '1970–1989', name: '废弃物持续累积', nameEn: 'Debris continues to accumulate', desc: '发射活动越来越频繁，更多废弃卫星和火箭级长期留在轨道中，爆炸和解体也不断产生新的碎片。', descEn: 'As launches became more frequent, more inactive satellites and spent rocket stages remained in orbit, while explosions and breakups created additional fragments.' },
+  { id: 3, range: '1990–2009', name: '大规模碎裂成为警报', nameEn: 'Major fragmentation events raise alarm', desc: '爆炸、反卫星试验和卫星碰撞开始一次产生大量碎片，轨道碎片带来的风险变得越来越明显。', descEn: 'Explosions, anti-satellite tests, and satellite collisions began producing large numbers of fragments at once, making orbital debris risks increasingly visible.' },
+  { id: 4, range: '2010–2019', name: '碰撞规避成为日常', nameEn: 'Collision avoidance becomes routine', desc: '轨道上的卫星和碎片越来越多，监测、预警和碰撞规避逐渐成为航天器日常运行的一部分。', descEn: 'As more satellites and debris occupied orbit, tracking, warning systems, and collision avoidance became part of routine spacecraft operations.' },
+  { id: 5, range: '2020–2026', name: '轨道进入高密度时代', nameEn: 'Orbit enters a high-density era', desc: '大规模卫星部署进一步提高轨道密度，减少新碎片、及时离轨和主动清除开始成为轨道长期使用的重要任务。', descEn: 'Large-scale satellite deployment further increased orbital density, making debris prevention, timely deorbiting, and active removal increasingly important for long-term orbital use.' },
 ]
 
 const EVENT_TYPE_COPY = {
@@ -1074,7 +1074,7 @@ export default function M2({ onComplete }) {
           <header className="m2-header">
             <span>03 / ORBITAL HISTORY</span>
             <h2>{pick('轨道，记得每一次碰撞。', 'Orbit remembers every collision.')}</h2>
-            <p>{pick('从第一颗人造卫星到主动清理计划，五条时间轨道记录了航天探索与碎片风险共同增长的历史。', 'From the first artificial satellite to active-removal missions, five orbital timelines trace how exploration and debris risk grew together.')}</p>
+            <p>{pick('从第一颗人造卫星升空开始，轨道上的遗留物就一直在增加。五个阶段，记录太空垃圾如何从少量残骸，逐渐成为今天必须面对的轨道问题。', "Since the first artificial satellite was launched, objects left in orbit have continued to accumulate. These five stages show how space debris grew from a small amount of leftover hardware into a major challenge for today's orbital environment.")}</p>
             <div className="m2-summary" aria-label={pick(`${ALL_EVENTS.length} 个历史事件，${FALL_EVENTS.length} 个坠落事件，5 个轨道阶段`, `${ALL_EVENTS.length} historical events, ${FALL_EVENTS.length} re-entry records, 5 orbital eras`)}>
               <span><strong>{ALL_EVENTS.length}</strong> ARCHIVED EVENTS</span>
               <span><strong>{FALL_EVENTS.length}</strong> FALL RECORDS</span>

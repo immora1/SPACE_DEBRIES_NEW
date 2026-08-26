@@ -9,9 +9,10 @@ import {
 } from './constants.js'
 import {
   MATERIAL_COMPONENTS,
+  calculateMaterialBuildMetrics,
   getMaterialOption,
 } from './config/materials.js'
-import { getMission } from './config/missions.js'
+import { createMissionState, getMission } from './config/missions.js'
 import { getOrbitalEventOption } from './config/orbital-events.js'
 import { getCleanupPair } from './config/cleanup-pairs.js'
 import {
@@ -26,11 +27,6 @@ function validateCheckpoint(story, checkpoint) {
     `Action is not valid at checkpoint ${story.current_checkpoint}.`,
     409,
   )
-}
-
-function aggregateMaterialRisk(options) {
-  const risks = new Set(options.map((item) => item.technical_effect.reentry_risk))
-  return risks.size === 1 ? [...risks][0] : 'mixed'
 }
 
 function interaction(module, sourceId, actionId, label, technicalEffect, narrativeEffect) {
@@ -73,10 +69,17 @@ function resolveMaterials(story, request) {
     'Unknown material component.',
   )
   const gameState = cloneState(story.game_state)
+  const buildMetrics = calculateMaterialBuildMetrics(
+    selections,
+    gameState.technical_metrics,
+  )
   gameState.satellite_build.materials = Object.fromEntries(
     selected.map((item) => [item.component_id, item.option_id]),
   )
-  gameState.technical_metrics.reentry_risk = aggregateMaterialRisk(selected)
+  gameState.satellite_build.material_profiles = buildMetrics.reentry_profiles
+  gameState.technical_metrics.fuel = buildMetrics.fuel
+  gameState.technical_metrics.armor = buildMetrics.armor
+  gameState.technical_metrics.reentry_risk = buildMetrics.reentry_risk
   const technicalEffect = selected.map((item) => ({
     component_id: item.component_id,
     option_id: item.option_id,
@@ -102,10 +105,7 @@ function resolveMission(story, request) {
   const mission = getMission(request.action_id)
   assertStory(mission, 'INVALID_ACTION', 'Unknown mission.')
   const gameState = cloneState(story.game_state)
-  gameState.mission = {
-    mission_id: mission.mission_id,
-    action_id: mission.action_id,
-  }
+  gameState.mission = createMissionState(mission)
   return {
     gameState,
     nextCheckpoint: CHECKPOINT.ORBITAL_EVENTS,
@@ -117,9 +117,12 @@ function resolveMission(story, request) {
       {
         mission_id: mission.mission_id,
         anomaly_type: mission.anomaly_type,
-        orbit: mission.orbit,
+        orbit_profile: gameState.mission.orbit_profile,
       },
-      null,
+      {
+        mission_effect: mission.mission_effect,
+        mission_effect_en: mission.mission_effect_en,
+      },
     ),
   }
 }
@@ -210,4 +213,3 @@ export function resolveProductAction(story, request) {
       throw new StoryError('INVALID_ACTION_TYPE', 'Unsupported product action.')
   }
 }
-

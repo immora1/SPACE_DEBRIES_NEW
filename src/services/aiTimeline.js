@@ -123,7 +123,6 @@ const PRODUCT_MODULE_TO_STAGE = {
   M2_MISSION: 'm3',
   M4_ORBITAL_EVENTS: 'm4',
   M5_CLEANUP: 'm6',
-  M6_CLEANUP_MATCHING: 'm6',
 }
 
 function knowledgeRevealText(displayContent) {
@@ -172,128 +171,17 @@ export function publicStoryTimelineToEvents(timeline, language = 'zh') {
     .sort((a, b) => a.createdAt - b.createdAt)
 }
 
-function getActiveStoryPhaseCopy(context, language) {
-  const currentNodeId = context?.currentNodeId || context?.currentInteraction?.node_id
-  if (!currentNodeId || context?.storyStatus === 'completed') return null
-
-  const english = language === 'en'
-  const sync = context?.gameStorySync || {}
-  const failedNode = sync.failed_node || currentNodeId
-  const generatingNode = sync.current_generation_node
-  const queuedNode = sync.queued_nodes?.[0]
-    || (sync.queued_story_stages ? currentNodeId : null)
-
-  if (sync.has_failed_job) {
-    return {
-      action: english
-        ? `Retry story generation for ${failedNode}`
-        : `重试 ${failedNode} 的故事生成`,
-      impact: english
-        ? `${failedNode} failed to generate. Game progress is preserved.`
-        : `${failedNode} 生成失败，游戏进度已保存。`,
-    }
-  }
-
-  if (generatingNode) {
-    return {
-      action: english
-        ? `Generating ${generatingNode}`
-        : `正在生成 ${generatingNode}`,
-      impact: english
-        ? `${generatingNode} is generating in the background. The game can continue.`
-        : `${generatingNode} 正在后台生成，游戏可以继续。`,
-    }
-  }
-
-  if (queuedNode) {
-    return {
-      action: english
-        ? `${queuedNode} is queued for generation`
-        : `${queuedNode} 已进入生成队列`,
-      impact: english
-        ? `The result for ${queuedNode} has been saved and is waiting for background story generation.`
-        : `${queuedNode} 的操作结果已保存，正在等待后台生成故事。`,
-    }
-  }
-
-  const waitingPrompt = text(context?.currentInteraction?.waiting_prompt, language)
-  return {
-    action: english
-      ? `Waiting for the ${currentNodeId} action`
-      : `等待 ${currentNodeId} 的当前操作`,
-    impact: waitingPrompt || (english
-      ? `${currentNodeId} is waiting for the current page interaction.`
-      : `${currentNodeId} 正在等待当前页面操作。`),
-  }
-}
-
-export function getStoryPhase(
-  entries,
-  currentModule = 'm1',
-  language = 'zh',
-  context = {},
-) {
+export function getStoryPhase(entries, currentModule = 'm1', language = 'zh') {
   const latest = entries.at(-1)
   const stageId = currentModule || latest?.stageId || 'm1'
   const stage = AI_STORY_STAGES[stageId] || AI_STORY_STAGES.m1
-  const active = getActiveStoryPhaseCopy(context, language)
 
   return {
     code: stage.code,
     label: text(stage.label, language),
-    action: active?.action
-      || latest?.choice
-      || (language === 'en' ? 'No story-changing choice has been made yet' : '尚未产生影响故事走线的选择'),
-    impact: active?.impact || latest?.impact || text(stage.fallback, language),
+    action: latest?.choice || (language === 'en' ? 'No story-changing choice has been made yet' : '尚未产生影响故事走线的选择'),
+    impact: latest?.impact || text(stage.fallback, language),
   }
-}
-
-export function getCurrentOrbitalStoryPanelText({
-  currentNodeId,
-  latestGeneratedNodeId,
-  latestStory,
-  loading = false,
-  gameStorySync = {},
-}, language = 'zh') {
-  if (!currentNodeId) return latestStory || ''
-
-  const english = language === 'en'
-  const sync = gameStorySync || {}
-  const failedNode = sync.failed_node
-  const backgroundNode = sync.current_generation_node
-    || sync.queued_nodes?.[0]
-
-  if (loading) {
-    return english
-      ? `Submitting the orbital-event result for ${currentNodeId}. Its story will be generated in the background.`
-      : `正在提交 ${currentNodeId} 的轨道事件结果，本节点故事将在后台生成。`
-  }
-
-  if (sync.has_failed_job && failedNode) {
-    return failedNode === currentNodeId
-      ? english
-        ? `${currentNodeId} could not generate yet. Your game result is saved; retry story generation from the status panel.`
-        : `${currentNodeId} 暂时生成失败，游戏结果已经保存，可在状态面板单独重试故事。`
-      : english
-        ? `${currentNodeId} is ready for the current orbital event. ${failedNode} still needs a story-generation retry.`
-        : `${currentNodeId} 正在等待当前轨道事件；较早的 ${failedNode} 仍需重试故事生成。`
-  }
-
-  if (backgroundNode) {
-    return backgroundNode === currentNodeId
-      ? english
-        ? `${currentNodeId} is generating from the confirmed orbital-event result. The game can continue.`
-        : `${currentNodeId} 正在根据已确认的轨道事件结果生成故事，游戏可以继续。`
-      : english
-        ? `${currentNodeId} is waiting for the current orbital-event decision. ${backgroundNode} is generating in the background.`
-        : `${currentNodeId} 正在等待当前轨道事件选择；${backgroundNode} 正在后台补齐故事。`
-  }
-
-  if (latestGeneratedNodeId === currentNodeId && latestStory) return latestStory
-
-  return english
-    ? `${currentNodeId} is waiting for your decision in the orbital-event panel. This area will update when the node begins generating.`
-    : `${currentNodeId} 正在等待你在右侧轨道事件面板确认选择；本节点开始生成后，这里会同步更新状态。`
 }
 
 export function getTimelineTickScale(index, hoveredIndex) {

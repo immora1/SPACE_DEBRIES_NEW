@@ -1,30 +1,31 @@
 import useAppStore from '../store/useAppStore'
 import { createAIOutputEvent } from './aiTimeline'
-import {
-  buildM2MaterialInteractions,
-  buildM3MissionInteractions,
-  M2_MATERIAL_NODE_ID,
-  M2_STORY_MODULE_ID,
-  M3_MISSION_NODE_ID,
-  M3_STORY_MODULE_ID,
-} from './storySiteInteractions'
 
 let aiEventSequence = 0
 const STORY_SESSION_STORAGE_KEY = 'space-debris-story-session'
-const storyProcessors = new Map()
 
 export const STORY_ACTION = Object.freeze({
   STORY_OPTION_SELECT: 'STORY_OPTION_SELECT',
-  SITE_INTERACTION_COMMIT: 'SITE_INTERACTION_COMMIT',
   MATERIALS_COMMIT: 'MATERIALS_COMMIT',
+  MISSION_SELECT: 'MISSION_SELECT',
   ORBITAL_EVENT_RESOLVE: 'ORBITAL_EVENT_RESOLVE',
-  GAME_ANSWER_CONFIRM: 'GAME_ANSWER_CONFIRM',
   CLEANUP_PAIR_SUBMIT: 'CLEANUP_PAIR_SUBMIT',
-  M6_MATCH_UPDATE: 'M6_MATCH_UPDATE',
-  M6_MATCH_COMPLETE: 'M6_MATCH_COMPLETE',
 })
 
-export const M6_CLEANUP_MODULE_ID = 'M6_CLEANUP_MATCHING'
+const CLEANUP_PAIR_IDS = Object.freeze({
+  laser: {
+    targetId: 'A31_MICRO_DEBRIS',
+    methodId: 'LASER_ABLATION',
+  },
+  arm: {
+    targetId: 'B27_RING_STRUCTURE',
+    methodId: 'ROBOTIC_ARM_CAPTURE',
+  },
+  sail: {
+    targetId: 'C22_END_OF_LIFE_PLATFORM',
+    methodId: 'DRAG_SAIL',
+  },
+})
 
 export class StoryAPIError extends Error {
   constructor(code, message, status, details) {
@@ -99,21 +100,6 @@ function failStoryRequest(error) {
     message: error.message || '故事服务暂时不可用。',
   })
   throw error
-}
-
-export function isStorySessionUnavailableError(error) {
-  return ['STORY_SESSION_MISSING', 'STORY_SESSION_EXPIRED'].includes(error?.code)
-}
-
-function normalizeStoryActionError(error) {
-  if (error?.status !== 404) return error
-  clearStoredStorySession()
-  useAppStore.getState().clearStorySession()
-  return new StoryAPIError(
-    'STORY_SESSION_EXPIRED',
-    '本地故事后端已重启，原故事会话无法恢复。你的页面选择仍已保留，请重新建立身份后继续。',
-    409,
-  )
 }
 
 export async function createStorySession({
@@ -198,7 +184,7 @@ async function submitStoryAction(action) {
     )
     return finishStoryRequest(story)
   } catch (error) {
-    return failStoryRequest(normalizeStoryActionError(error))
+    return failStoryRequest(error)
   }
 }
 
@@ -217,156 +203,46 @@ export function submitCurrentStoryOption(optionId, clientActionId = globalThis.c
   })
 }
 
-export function submitSiteStoryInteraction({
-  nodeId,
-  moduleId,
-  interactions,
-  clientActionId = globalThis.crypto.randomUUID(),
+export function submitMaterialStoryAction(materials) {
+  return submitStoryAction({
+    action_type: STORY_ACTION.MATERIALS_COMMIT,
+    source_id: 'satellite_build',
+    action_id: 'materials_commit',
+    payload: { selections: materials },
+  })
+}
+
+export function submitMissionStoryAction(missionId) {
+  return submitStoryAction({
+    action_type: STORY_ACTION.MISSION_SELECT,
+    source_id: 'mission',
+    action_id: missionId,
+    payload: {},
+  })
+}
+
+export function submitOrbitalEventStoryAction(eventId, optionId) {
+  return submitStoryAction({
+    action_type: STORY_ACTION.ORBITAL_EVENT_RESOLVE,
+    source_id: eventId,
+    action_id: optionId,
+    payload: {},
+  })
+}
+
+export function submitCleanupPairStoryAction({
+  idealMethodId,
+  uiTargetId,
 }) {
-  return submitStoryAction({
-    action_type: STORY_ACTION.SITE_INTERACTION_COMMIT,
-    node_id: nodeId,
-    module_id: moduleId,
-    interactions,
-    client_action_id: clientActionId,
-  })
-}
-
-export function submitMaterialStoryAction(
-  materials,
-  clientActionId = globalThis.crypto.randomUUID(),
-) {
-  return submitSiteStoryInteraction({
-    nodeId: M2_MATERIAL_NODE_ID,
-    moduleId: M2_STORY_MODULE_ID,
-    interactions: buildM2MaterialInteractions(materials),
-    clientActionId,
-  })
-}
-
-export function submitMissionStoryAction(
-  missionId,
-  clientActionId = globalThis.crypto.randomUUID(),
-) {
-  return submitSiteStoryInteraction({
-    nodeId: M3_MISSION_NODE_ID,
-    moduleId: M3_STORY_MODULE_ID,
-    interactions: buildM3MissionInteractions(missionId),
-    clientActionId,
-  })
-}
-
-function orbitalAnswerControlId(questionId, answerId) {
-  return `m4-orbital:${questionId}:${answerId}`
-}
-
-export function submitOrbitalEventStoryAction(
-  eventId,
-  optionId,
-  _questionOrder,
-  clientActionId = globalThis.crypto.randomUUID(),
-) {
-  return submitStoryAction({
-    action_type: STORY_ACTION.GAME_ANSWER_CONFIRM,
-    node_id: 'node_04',
-    game_module_id: 'M4_ORBITAL_EVENTS',
-    question_id: eventId,
-    answer_id: optionId,
-    control_id: orbitalAnswerControlId(eventId, optionId),
-    client_action_id: clientActionId,
-  })
-}
-
-async function refreshStorySessionSilently() {
-  const state = useAppStore.getState()
-  const credentials = getStoredStorySession()
-  if (!state.storyId || !credentials || credentials.storyId !== state.storyId) return null
-  const story = await storyFetch(
-    `/api/stories/${encodeURIComponent(state.storyId)}?session_id=${encodeURIComponent(credentials.sessionId)}`,
-    { method: 'GET' },
-  )
-  useAppStore.getState().setStorySnapshot(story)
-  return story
-}
-
-export function processQueuedStoryJobs({ retryJobId = null } = {}) {
-  const state = useAppStore.getState()
-  const credentials = getStoredStorySession()
-  if (!state.storyId || !credentials || credentials.storyId !== state.storyId) {
-    return Promise.resolve(null)
+  const pair = CLEANUP_PAIR_IDS[idealMethodId]
+  if (!pair) {
+    return Promise.reject(new StoryAPIError('INVALID_CLEANUP_METHOD', '未知清理方式。', 400))
   }
-  const existing = storyProcessors.get(state.storyId)
-  if (existing && !retryJobId) return existing
-
-  const storyId = state.storyId
-  const processor = (async () => {
-    let retryId = retryJobId
-    try {
-      for (;;) {
-        const story = await storyFetch(
-          `/api/stories/${encodeURIComponent(storyId)}/generations/process`,
-          {
-            method: 'POST',
-            body: JSON.stringify({
-              session_id: credentials.sessionId,
-              ...(retryId ? { retry_job_id: retryId } : {}),
-            }),
-          },
-        )
-        retryId = null
-        useAppStore.getState().setStorySnapshot(story)
-        const sync = story.game_story_sync
-        if (
-          !sync
-          || sync.has_failed_job
-          || sync.queued_story_stages === 0
-          || sync.current_generation_node
-        ) break
-      }
-    } catch (error) {
-      try {
-        await refreshStorySessionSilently()
-      } catch {
-        useAppStore.getState().setStoryError({
-          code: error.code || 'STORY_GENERATION_FAILED',
-          message: error.message || '后台故事生成失败，可稍后重试。',
-        })
-      }
-      throw error
-    } finally {
-      storyProcessors.delete(storyId)
-    }
-    return useAppStore.getState().gameStorySync
-  })()
-  storyProcessors.set(storyId, processor)
-  return processor
-}
-
-export function submitCleanupMatchStoryAction({
-  cleanupTargetId,
-  cleanupMethodId,
-  clientActionId = globalThis.crypto.randomUUID(),
-}) {
   return submitStoryAction({
-    action_type: STORY_ACTION.M6_MATCH_UPDATE,
-    node_id: 'node_05',
-    module_id: M6_CLEANUP_MODULE_ID,
-    cleanup_target_id: cleanupTargetId,
-    cleanup_method_id: cleanupMethodId,
-    client_action_id: clientActionId,
-  })
-}
-
-export function submitCleanupMatchingComplete(
-  completionId,
-  clientActionId = completionId,
-) {
-  return submitStoryAction({
-    action_type: STORY_ACTION.M6_MATCH_COMPLETE,
-    node_id: 'node_05',
-    module_id: M6_CLEANUP_MODULE_ID,
-    completion_id: completionId,
-    client_action_id: clientActionId,
+    action_type: STORY_ACTION.CLEANUP_PAIR_SUBMIT,
+    source_id: pair.targetId,
+    action_id: pair.methodId,
+    payload: { ui_target_id: uiTargetId },
   })
 }
 
