@@ -1,215 +1,166 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Clock3, GitBranch, MousePointer2, Sparkles } from 'lucide-react'
+import { motion, useReducedMotion } from 'framer-motion'
+import { ArrowDown, RotateCcw } from 'lucide-react'
 import useAppStore from '../store/useAppStore'
 import useI18n from '../i18n/useI18n'
-import {
-  getStoryPhase,
-  getTimelineTickScale,
-  publicStoryTimelineToEvents,
-} from '../services/aiTimeline'
-import { submitCurrentStoryOption } from '../services/ai'
+import { publicStoryTimelineToEvents } from '../services/aiTimeline'
+import { retryBackgroundStory } from '../services/ai'
 import './AIStoryRail.css'
 
 export default function AIStoryRail() {
   const { language, pick } = useI18n()
-  const aiTimeline = useAppStore((state) => state.aiTimeline)
   const storyTimeline = useAppStore((state) => state.storyTimeline)
   const storyId = useAppStore((state) => state.storyId)
-  const currentModule = useAppStore((state) => state.currentModule)
   const storySessionReady = useAppStore((state) => state.storySessionReady)
-  const currentStoryNode = useAppStore((state) => state.currentStoryNode)
-  const currentStoryOptions = useAppStore((state) => state.currentStoryOptions)
-  const storyLoading = useAppStore((state) => state.storyLoading)
-  const publicStoryEntries = useMemo(
-    () => publicStoryTimelineToEvents(storyTimeline, language),
-    [language, storyTimeline],
-  )
-  const entries = publicStoryEntries.length ? publicStoryEntries : aiTimeline
-  const phase = useMemo(
-    () => getStoryPhase(entries, currentModule, language),
-    [currentModule, entries, language],
-  )
-  const timeFormatter = useMemo(() => new Intl.DateTimeFormat(language === 'en' ? 'en-US' : 'zh-CN', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  }), [language])
-  const formatEventTime = (createdAt) => (
-    createdAt
-      ? timeFormatter.format(new Date(createdAt))
-      : pick('历史记录', 'Archive')
-  )
-
-  const viewportRef = useRef(null)
-  const closeTimerRef = useRef(0)
-  const [hoverState, setHoverState] = useState(null)
-  const [choiceError, setChoiceError] = useState('')
-  const [pendingOptionId, setPendingOptionId] = useState(null)
-  const retryActionRef = useRef(null)
-  const hoveredIndex = hoverState?.index ?? null
-  const hoveredEntry = hoveredIndex === null ? null : entries[hoveredIndex]
+  const pending = useAppStore((state) => state.storyBackgroundPending)
+  const error = useAppStore((state) => state.storyBackgroundError)
+  const entries = useMemo(() => publicStoryTimelineToEvents(storyTimeline, language)
+    .filter((entry) => entry.content?.trim()), [storyTimeline, language])
+  const seen = useRef(new Set())
+  const restoring = useRef(Boolean(storyId))
+  const [waiting, setWaiting] = useState([])
+  const [archived, setArchived] = useState([])
+  const [selected, setSelected] = useState(null)
+  const [hovered, setHovered] = useState(null)
+  const cardRef = useRef(null)
+  const dockRef = useRef(null)
+  const returnFocusRef = useRef(null)
+  const reduceMotion = useReducedMotion()
+  const activeId = selected || waiting[0]
+  const active = entries.find((entry) => entry.id === activeId)
+  const archiveEntries = entries.filter((entry) => archived.includes(entry.id) && entry.id !== activeId)
+  const preview = !active && entries.find((entry) => entry.id === hovered)
 
   useEffect(() => {
-    const viewport = viewportRef.current
-    if (!storySessionReady || !viewport || !entries.length) return undefined
-
-    const frameId = window.requestAnimationFrame(() => {
-      const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-      viewport.scrollTo({
-        left: viewport.scrollWidth,
-        behavior: reduceMotion ? 'auto' : 'smooth',
-      })
-    })
-
-    return () => window.cancelAnimationFrame(frameId)
-  }, [entries.length, storySessionReady])
-
-  useEffect(() => () => {
-    if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current)
-  }, [])
-
-  function cancelClose() {
-    if (!closeTimerRef.current) return
-    window.clearTimeout(closeTimerRef.current)
-    closeTimerRef.current = 0
-  }
-
-  function openEntry(event, index) {
-    cancelClose()
-    const rect = event.currentTarget.getBoundingClientRect()
-    const popoverHalfWidth = Math.min(190, Math.max(140, (window.innerWidth - 24) / 2))
-    const center = rect.left + rect.width / 2
-    const x = Math.max(
-      popoverHalfWidth + 12,
-      Math.min(window.innerWidth - popoverHalfWidth - 12, center),
-    )
-    setHoverState({ index, x })
-  }
-
-  function closeEntrySoon() {
-    cancelClose()
-    closeTimerRef.current = window.setTimeout(() => {
-      closeTimerRef.current = 0
-      setHoverState(null)
-    }, 120)
-  }
-
-  async function chooseStoryOption(optionId) {
-    if (storyLoading) return
-    const retry = retryActionRef.current?.optionId === optionId
-      ? retryActionRef.current
-      : {
-          optionId,
-          clientActionId: globalThis.crypto.randomUUID(),
-        }
-    retryActionRef.current = retry
-    setPendingOptionId(optionId)
-    setChoiceError('')
-    try {
-      await submitCurrentStoryOption(optionId, retry.clientActionId)
-      retryActionRef.current = null
-    } catch (error) {
-      setChoiceError(error?.message || pick('故事推进失败，请重试。', 'Story generation failed. Please retry.'))
-    } finally {
-      setPendingOptionId(null)
+    if (!storyId && !entries.length) {
+      seen.current.clear()
+      restoring.current = false
+      setWaiting([])
+      setArchived([])
+      setSelected(null)
+      setHovered(null)
+      return
     }
+    const fresh = entries.filter((entry) => !seen.current.has(entry.id)).map((entry) => entry.id)
+    if (!fresh.length) return
+    fresh.forEach((id) => seen.current.add(id))
+    if (restoring.current) {
+      setArchived((current) => [...current, ...fresh])
+      restoring.current = false
+    } else {
+      setWaiting((current) => [...current, ...fresh])
+    }
+  }, [entries, storyId, storySessionReady])
+
+  useEffect(() => {
+    if (!activeId) return undefined
+    returnFocusRef.current = document.activeElement
+    cardRef.current?.focus({ preventScroll: true })
+    function dismiss(event) {
+      if (event.type === 'keydown' && event.key !== 'Escape') return
+      if (event.type === 'click' && (cardRef.current?.contains(event.target) || dockRef.current?.contains(event.target))) return
+      event.preventDefault()
+      event.stopPropagation()
+      setArchived((current) => current.includes(activeId) ? current : [...current, activeId])
+      setWaiting((current) => current.filter((id) => id !== activeId))
+      setSelected(null)
+      setHovered(null)
+      returnFocusRef.current?.focus?.({ preventScroll: true })
+    }
+    document.addEventListener('click', dismiss, true)
+    document.addEventListener('keydown', dismiss, true)
+    return () => {
+      document.removeEventListener('click', dismiss, true)
+      document.removeEventListener('keydown', dismiss, true)
+    }
+  }, [activeId])
+
+  function collapse() {
+    setArchived((current) => current.includes(activeId) ? current : [...current, activeId])
+    setWaiting((current) => current.filter((id) => id !== activeId))
+    setSelected(null)
+    setHovered(null)
+    returnFocusRef.current?.focus?.({ preventScroll: true })
+  }
+
+  function tilt(event) {
+    if (reduceMotion || event.pointerType !== 'mouse') return
+    const rect = event.currentTarget.getBoundingClientRect()
+    event.currentTarget.style.setProperty('--story-tilt-x', `${(0.5 - (event.clientY - rect.top) / rect.height) * 5}deg`)
+    event.currentTarget.style.setProperty('--story-tilt-y', `${((event.clientX - rect.left) / rect.width - 0.5) * 5}deg`)
+  }
+
+  function resetTilt(event) {
+    event.currentTarget.style.setProperty('--story-tilt-x', '0deg')
+    event.currentTarget.style.setProperty('--story-tilt-y', '0deg')
   }
 
   if (!storySessionReady && !storyId) return null
 
   return (
-    <div className="ai-story-hud" aria-label={pick('AI 个性化故事记录', 'AI personalized story log')}>
-      <aside className="ai-story-phase" aria-live="polite">
-        <div className="ai-story-phase__eyebrow">
-          <GitBranch size={13} strokeWidth={1.7} />
-          <span>CURRENT STORY PHASE</span>
-        </div>
-        <div className="ai-story-phase__heading">
-          <b>{phase.code}</b>
-          <h2>{phase.label}</h2>
-        </div>
-        <p>{phase.impact}</p>
-        <div className="ai-story-phase__action">
-          <MousePointer2 size={13} strokeWidth={1.7} />
-          <span>{phase.action}</span>
-        </div>
-        {currentStoryOptions.length ? (
-          <section className="ai-story-phase__choices" aria-label={pick('当前故事选项', 'Current story options')}>
-            <header>
-              <span>{currentStoryNode} / {currentStoryOptions.length} OPTIONS</span>
-              {storyLoading ? <small>{pick('生成中', 'GENERATING')}</small> : null}
-            </header>
-            <div>
-              {currentStoryOptions.map((option, index) => (
-                <button
-                  key={option.option_id}
-                  type="button"
-                  disabled={storyLoading}
-                  title={option.effect_summary}
-                  onClick={() => void chooseStoryOption(option.option_id)}
-                >
-                  <b>{String(index + 1).padStart(2, '0')}</b>
-                  <span>{option.label}</span>
-                  {pendingOptionId === option.option_id ? <i aria-hidden="true" /> : null}
-                </button>
-              ))}
-            </div>
-            {choiceError ? <p role="alert">{choiceError}</p> : null}
-          </section>
-        ) : null}
-      </aside>
-
-      {hoveredEntry ? (
-        <article
-          className="ai-story-popover"
-          style={{ '--ai-popover-x': `${hoverState.x}px` }}
-          onPointerEnter={cancelClose}
-          onPointerLeave={closeEntrySoon}
+    <div className="ai-story-hud" aria-label={pick('你的平行时空故事', 'Your parallel story')}>
+      {active && <div className="ai-story-center">
+        <motion.article
+          key={active.id}
+          layoutId={`story-card-${active.id}`}
+          transition={{ duration: reduceMotion ? 0 : 0.42, ease: [0.22, 1, 0.36, 1] }}
+          ref={cardRef}
+          className="ai-story-card"
+          role="dialog"
+          aria-modal="false"
+          aria-labelledby="ai-story-card-title"
+          tabIndex={-1}
+          onPointerMove={tilt}
+          onPointerLeave={resetTilt}
         >
+          <div className="ai-story-card__surface">
           <header>
-            <span>{hoveredEntry.stageCode} / AI RECORD</span>
-            <time><Clock3 size={12} strokeWidth={1.7} />{formatEventTime(hoveredEntry.createdAt)}</time>
+            <span>PARALLEL LIFE / {String(entries.indexOf(active) + 1).padStart(2, '0')}</span>
+            <button type="button" onClick={collapse} aria-label={pick('收起故事卡片', 'Collapse story card')}><ArrowDown size={18} /></button>
           </header>
-          <h3>{hoveredEntry.title}</h3>
-          <section>
-            <div><Sparkles size={13} strokeWidth={1.7} /><b>{pick('AI 输出', 'AI output')}</b></div>
-            <p className="ai-story-popover__output">{hoveredEntry.content}</p>
-          </section>
-          <section>
-            <div><MousePointer2 size={13} strokeWidth={1.7} /><b>{pick('用户选择', 'User choice')}</b></div>
-            <p>{hoveredEntry.choice}</p>
-          </section>
-          <section>
-            <div><GitBranch size={13} strokeWidth={1.7} /><b>{pick('故事影响', 'Story impact')}</b></div>
-            <p>{hoveredEntry.impact}</p>
-          </section>
-        </article>
-      ) : null}
-
-      {entries.length ? <div className="ai-story-rail">
-        <div ref={viewportRef} className="ai-story-rail__viewport">
-          <div className="ai-story-rail__track">
-            {entries.map((entry, index) => {
-              const scale = getTimelineTickScale(index, hoveredIndex)
-              return (
-                <button
-                  key={entry.id}
-                  type="button"
-                  className={`ai-story-tick${index === hoveredIndex ? ' is-hovered' : ''}`}
-                  style={{ '--ai-tick-scale': scale }}
-                  aria-label={`${entry.stageCode} ${entry.title}`}
-                  onPointerEnter={(event) => openEntry(event, index)}
-                  onPointerLeave={closeEntrySoon}
-                  onFocus={(event) => openEntry(event, index)}
-                  onBlur={closeEntrySoon}
-                >
-                  <span className="ai-story-tick__line" aria-hidden="true" />
-                </button>
-              )
-            })}
+          <h2 id="ai-story-card-title">{active.title}</h2>
+          <div className="ai-story-card__body"><p>{active.content}</p></div>
+          <footer>
+            <span>{pick('点击卡片外部收起 · 故事保留在屏幕底部', 'Click outside to tuck this story along the bottom edge')}</span>
+            {waiting.length > 1 && <span>{pick(`另有 ${waiting.length - 1} 段故事待阅读`, `${waiting.length - 1} more to read`)}</span>}
+          </footer>
           </div>
-        </div>
-      </div> : null}
+        </motion.article>
+      </div>}
+
+      {!active && (error || pending > 0) && <div className="ai-story-status" role={error ? 'alert' : 'status'}>
+        <span>{error
+          ? pick('故事暂未送达，你可以继续浏览', 'Story delivery paused. Keep exploring.')
+          : pick('平行时空的故事正在写来，你可以继续探索', 'Your parallel story is on its way. Keep exploring.')}</span>
+        {error && <button type="button" onClick={() => void retryBackgroundStory()}><RotateCcw size={12} />{pick('重试', 'Retry')}</button>}
+      </div>}
+
+      {preview && <article className="ai-story-preview" aria-hidden="true">
+        <span>PARALLEL LIFE / {String(entries.indexOf(preview) + 1).padStart(2, '0')}</span>
+        <h3>{preview.title}</h3><p>{preview.content}</p>
+        <small>{pick('点击卡片，展开阅读', 'Click the card to read')}</small>
+      </article>}
+
+      <nav ref={dockRef} className="ai-story-bottom" aria-label={pick('已收起的故事', 'Saved stories')}
+        style={{ '--story-count': archiveEntries.length || 1 }}>
+        {archiveEntries.map((entry, index) => <motion.button
+          key={entry.id}
+          layoutId={`story-card-${entry.id}`}
+          transition={{ duration: reduceMotion ? 0 : 0.42, ease: [0.22, 1, 0.36, 1] }}
+          type="button"
+          className="ai-story-bottom__card"
+          style={{ '--story-index': index, zIndex: hovered === entry.id ? 20 : index + 1 }}
+          aria-label={`${pick('重读', 'Read again')} ${String(entries.indexOf(entry) + 1).padStart(2, '0')} ${entry.title}`}
+          onPointerEnter={(event) => { if (event.pointerType === 'mouse') setHovered(entry.id) }}
+          onPointerLeave={() => setHovered(null)}
+          onFocus={() => setHovered(entry.id)}
+          onBlur={() => setHovered(null)}
+          onClick={() => { setSelected(entry.id); setHovered(null) }}
+        >
+          <span>{String(entries.indexOf(entry) + 1).padStart(2, '0')}</span>
+          <strong>{entry.title}</strong>
+        </motion.button>)}
+      </nav>
     </div>
   )
 }

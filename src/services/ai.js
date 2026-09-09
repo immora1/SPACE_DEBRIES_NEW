@@ -1,12 +1,64 @@
-import useAppStore from '../store/useAppStore'
-import { createAIOutputEvent } from './aiTimeline'
+import useAppStore from '../store/useAppStore.js'
+import { createAIOutputEvent } from './aiTimeline.js'
 import { readStoryStream } from './story-stream.js'
+import { createStoryQueue } from './background-story.js'
+import { initialStoryProgress, advanceStoryProgress, storyActionAcknowledged } from './story-progress.js'
 
 let aiEventSequence = 0
 const STORY_SESSION_STORAGE_KEY = 'space-debris-story-session'
+const STORY_QUEUE_STORAGE_KEY = 'space-debris-story-queue'
+
+function storedJobs() {
+  try { return JSON.parse(window.sessionStorage.getItem(STORY_QUEUE_STORAGE_KEY)) || [] }
+  catch { return [] }
+}
+
+const backgroundStory = createStoryQueue({
+  jobs: storedJobs(),
+  persist: jobs => {
+    if (typeof window !== 'undefined') window.sessionStorage.setItem(STORY_QUEUE_STORAGE_KEY, JSON.stringify(jobs))
+  },
+  change: snapshot => useAppStore.getState().setStoryBackground(snapshot),
+  run: async (job, signal) => {
+    startStoryRequest()
+    if (job.type === 'create') {
+      return storyFetch('/api/stories', {
+        method: 'POST', signal,
+        headers: { accept: 'application/x-ndjson' },
+        body: JSON.stringify(job.request),
+      })
+    }
+    const credentials = getStoredStorySession()
+    if (!credentials?.storyId) throw new StoryAPIError('STORY_SESSION_MISSING', '故事会话尚未建立，请重试。', 409)
+    const path = `/api/stories/${encodeURIComponent(credentials.storyId)}`
+    // Refresh first to reconcile a response lost after a successful server commit.
+    const current = await storyFetch(`${path}?session_id=${encodeURIComponent(credentials.sessionId)}`, { method: 'GET', signal })
+    if (storyActionAcknowledged(current, job.action)) return current
+    return storyFetch(`${path}/actions`, {
+      method: 'POST', signal,
+      body: JSON.stringify({ session_id: credentials.sessionId, version: current.version, ...job.action }),
+    })
+  },
+  complete: (story, job) => {
+    if (job.type === 'create') storeStorySession(story.story_id, job.request.session_id)
+    finishStoryRequest(story)
+  },
+})
+
+export function retryBackgroundStory() { backgroundStory.retry() }
+
+let restorePromise
+export function resumeBackgroundStory() {
+  if (backgroundStory.snapshot().jobs.length) {
+    useAppStore.setState({ storySessionReady: true })
+    backgroundStory.retry()
+    return Promise.resolve()
+  }
+  restorePromise ||= restoreStorySession()
+  return restorePromise
+}
 
 export const STORY_ACTION = Object.freeze({
-  STORY_OPTION_SELECT: 'STORY_OPTION_SELECT',
   MATERIALS_COMMIT: 'MATERIALS_COMMIT',
   MISSION_SELECT: 'MISSION_SELECT',
   ORBITAL_EVENT_RESOLVE: 'ORBITAL_EVENT_RESOLVE',
@@ -98,14 +150,6 @@ function finishStoryRequest(story) {
   return story
 }
 
-function failStoryRequest(error) {
-  useAppStore.getState().setStoryError({
-    code: error.code || 'STORY_REQUEST_FAILED',
-    message: error.message || '故事服务暂时不可用。',
-  })
-  throw error
-}
-
 export async function createStorySession({
   name,
   city,
@@ -113,33 +157,30 @@ export async function createStorySession({
   satellite,
   damageLevel = 0,
   historyEventIds = [],
-  onEvent,
 }) {
   const sessionId = globalThis.crypto.randomUUID()
+  backgroundStory.reset()
   clearStoredStorySession()
-  startStoryRequest()
-  try {
-    const story = await storyFetch('/api/stories', {
-      method: 'POST',
-      headers: { accept: 'application/x-ndjson' },
-      body: JSON.stringify({
-        session_id: sessionId,
-        nickname: name,
-        city,
-        important_event: importantEvent,
-        satellite,
-        game_context: {
-          damage_level: damageLevel,
-          history_event_ids: historyEventIds,
-        },
-        language: currentLanguage(),
-      }),
-    }, onEvent)
-    storeStorySession(story.story_id, sessionId)
-    return finishStoryRequest(story)
-  } catch (error) {
-    return failStoryRequest(error)
-  }
+  const state = useAppStore.getState()
+  state.beginStorySession()
+  const progress = initialStoryProgress({ satellite, damageLevel })
+  state.setStoryLocalProgress(progress)
+  backgroundStory.enqueue({
+    type: 'create',
+    request: {
+      session_id: sessionId,
+      nickname: name,
+      city,
+      important_event: importantEvent,
+      satellite,
+      game_context: {
+        damage_level: damageLevel,
+        history_event_ids: historyEventIds,
+      },
+      language: currentLanguage(),
+    },
+  })
+  return { public_game_state: progress.gameState, current_checkpoint: progress.checkpoint }
 }
 
 export async function restoreStorySession() {
@@ -157,8 +198,10 @@ export async function restoreStorySession() {
       `/api/stories/${encodeURIComponent(state.storyId)}?session_id=${encodeURIComponent(credentials.sessionId)}`,
       { method: 'GET' },
     )
+    if (getStoredStorySession()?.sessionId !== credentials.sessionId) return null
     return finishStoryRequest(story)
   } catch (error) {
+    if (getStoredStorySession()?.sessionId !== credentials.sessionId) return null
     if (error.status === 404) {
       clearStoredStorySession()
       state.clearStorySession()
@@ -171,42 +214,14 @@ export async function restoreStorySession() {
 
 async function submitStoryAction(action) {
   const state = useAppStore.getState()
-  const credentials = getStoredStorySession()
-  if (!state.storyId || !credentials || credentials.storyId !== state.storyId) {
-    throw new StoryAPIError('STORY_SESSION_MISSING', '请先在身份信息阶段建立故事。', 409)
-  }
-  startStoryRequest()
-  try {
-    const story = await storyFetch(
-      `/api/stories/${encodeURIComponent(state.storyId)}/actions`,
-      {
-        method: 'POST',
-        body: JSON.stringify({
-          session_id: credentials.sessionId,
-          version: state.storyVersion,
-          ...action,
-        }),
-      },
-    )
-    return finishStoryRequest(story)
-  } catch (error) {
-    return failStoryRequest(error)
-  }
-}
-
-export function submitCurrentStoryOption(optionId, clientActionId = globalThis.crypto.randomUUID()) {
-  const state = useAppStore.getState()
-  if (!state.currentStoryNode) {
-    return Promise.reject(
-      new StoryAPIError('STORY_NODE_MISSING', '当前没有等待处理的故事节点。', 409),
-    )
-  }
-  return submitStoryAction({
-    action_type: STORY_ACTION.STORY_OPTION_SELECT,
-    node_id: state.currentStoryNode,
-    option_id: optionId,
-    client_action_id: clientActionId,
+  const progress = state.storyLocalProgress || (state.publicGameState && {
+    gameState: state.publicGameState, checkpoint: state.storyCheckpoint,
   })
+  if (!progress) throw new StoryAPIError('STORY_SESSION_MISSING', '请先生成个人故事。', 409)
+  const next = advanceStoryProgress(progress, action)
+  state.setStoryLocalProgress(next)
+  backgroundStory.enqueue({ type: 'action', action })
+  return { public_game_state: next.gameState, current_checkpoint: next.checkpoint }
 }
 
 export function submitMaterialStoryAction(materials) {

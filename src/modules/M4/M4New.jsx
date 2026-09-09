@@ -4184,9 +4184,7 @@ export default function M4New({ onComplete = () => {} }) {
     setScrollLocked,
     setStoryChapter,
   } = useAppStore()
-  const storyId = useAppStore((state) => state.storyId)
   const publicGameState = useAppStore((state) => state.publicGameState)
-  const storyTimeline = useAppStore((state) => state.storyTimeline)
   const missionEnvironment = useMemo(
     () => resolveMissionEnvironment(publicGameState?.mission, satellite),
     [publicGameState?.mission, satellite],
@@ -4228,7 +4226,6 @@ export default function M4New({ onComplete = () => {} }) {
   const [activeRecoveryStepIndex, setActiveRecoveryStepIndex] = useState(0)
   const [materialBoardAnchor, setMaterialBoardAnchor] = useState(null)
   const initialStory = storyChapters?.m3
-    || storyChapters?.opening
     || pick(
       `${satellite?.name || '卫星'}进入${missionEnvironment.orbitLabel}执行${missionEnvironment.missionLabel}。监测系统开始记录每一次微小偏移。`,
       `${satellite?.name || 'The satellite'} enters ${missionEnvironment.orbitLabelEn} for ${missionEnvironment.missionLabelEn}. The monitoring system begins recording every small deviation.`,
@@ -4360,8 +4357,9 @@ export default function M4New({ onComplete = () => {} }) {
   ])
 
   useEffect(() => {
-    if (storyRestoreApplied.current || !storyId || !publicGameState) return
+    if (storyRestoreApplied.current || !publicGameState?.mission?.mission_id) return
     storyRestoreApplied.current = true
+    if (started.current) return
 
     const resolvedEvents = publicGameState.orbital_events?.resolved || []
     const metrics = publicGameState.technical_metrics
@@ -4392,11 +4390,7 @@ export default function M4New({ onComplete = () => {} }) {
         missionDelta: option?.missionDelta || 0,
       }
     })
-    const restoredStoryBeats = storyTimeline
-      .filter((stage) => stage.input_action?.module === 'M4_ORBITAL_EVENTS')
-      .map((stage) => stage.display_content?.story_text)
-      .filter(Boolean)
-    const restoredStories = [initialStory, ...restoredStoryBeats].filter(Boolean)
+    const restoredStories = [initialStory].filter(Boolean)
     const restoredStatus = metrics
       ? {
           armor: metrics.armor,
@@ -4432,12 +4426,11 @@ export default function M4New({ onComplete = () => {} }) {
     initialStory,
     language,
     publicGameState,
-    storyId,
-    storyTimeline,
   ])
 
   const handleChoose = useCallback(async (option) => {
     if (!currentEvent || loading) return
+    storyRestoreApplied.current = true
 
     const nextStatus = {
       armor: Math.max(0, Math.min(100, gameStatus.armor + (option.armorDelta || 0))),
@@ -4549,7 +4542,7 @@ export default function M4New({ onComplete = () => {} }) {
   }, [])
 
   const handleJumpToRecovery = useCallback(() => {
-    if (storyId && (publicGameState?.orbital_events?.resolved?.length || 0) < TOTAL_ROUNDS) {
+    if (publicGameState && (publicGameState.orbital_events?.resolved?.length || 0) < TOTAL_ROUNDS) {
       setDecisionError(pick('请先完成六个轨道事件，故事状态才能进入清理阶段。', 'Resolve all six orbital events before entering cleanup.'))
       return
     }
@@ -4589,8 +4582,7 @@ export default function M4New({ onComplete = () => {} }) {
     unlockNextStageWithoutScroll,
     language,
     pick,
-    publicGameState?.orbital_events?.resolved?.length,
-    storyId,
+    publicGameState,
   ])
 
   const handleModuleWheel = useCallback((event) => {

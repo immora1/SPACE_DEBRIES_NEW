@@ -182,12 +182,9 @@ export default function M3({ onComplete }) {
   const clickedHistoryEvents = useAppStore((s) => s.clickedHistoryEvents)
   const storyId         = useAppStore((s) => s.storyId)
   const storyCheckpoint = useAppStore((s) => s.storyCheckpoint)
-  const storyTimeline   = useAppStore((s) => s.storyTimeline)
   const publicGameState = useAppStore((s) => s.publicGameState)
   const setUser         = useAppStore((s) => s.setUser)
   const setSatellite    = useAppStore((s) => s.setSatellite)
-  const setStoryOutline = useAppStore((s) => s.setStoryOutline)
-  const beginStorySession = useAppStore((s) => s.beginStorySession)
   const setMission       = useAppStore((s) => s.setMission)
   const setStoryChapter  = useAppStore((s) => s.setStoryChapter)
   const scrollLocked     = useAppStore((s) => s.scrollLocked)
@@ -196,12 +193,6 @@ export default function M3({ onComplete }) {
 
   const restoredMissionId = publicGameState?.mission?.action_id || null
   const restoredMaterialsCommitted = Object.keys(publicGameState?.satellite_build?.materials || {}).length === 4
-  const restoredMaterialStage = [...(storyTimeline || [])].reverse().find(
-    (stage) => stage.input_action?.module === 'M2_MATERIALS',
-  )
-  const restoredOpeningStage = [...(storyTimeline || [])].reverse().find(
-    (stage) => stage.task_type === 'STORY_OPENING',
-  )
 
   const [mission,        setMissionLocal]  = useState(restoredMissionId)
   const [aiState,        setAiState]       = useState(restoredMissionId ? 'done' : 'idle')
@@ -214,12 +205,9 @@ export default function M3({ onComplete }) {
   const [activeOrbit, setActiveOrbit] = useState('leo')
   const [pinnedOrbit, setPinnedOrbit] = useState('leo')
   const [matAiState,     setMatAiState]    = useState(restoredMaterialsCommitted ? 'done' : 'idle')
-  const [matFeedback,    setMatFeedback]   = useState(restoredMaterialStage?.display_content?.story_text || '')
 
-  const [formStep,       setFormStep]      = useState(storyId && satellite ? 'result' : 'form')
+  const [formStep,       setFormStep]      = useState(publicGameState && satellite ? 'result' : 'form')
   const [form,           setForm]          = useState({ name: '', city: '', importantEvent: '' })
-  const [openingStory,   setOpeningStory]  = useState(restoredOpeningStage?.display_content?.story_text || '')
-  const [openingPreview, setOpeningPreview] = useState('')
   const [formError,      setFormError]     = useState(null)
 
   const onCompleteRef = useRef(onComplete)
@@ -239,14 +227,10 @@ export default function M3({ onComplete }) {
     ) {
       storyRestoreAppliedRef.current = true
       setFormStep('result')
-      if (restoredOpeningStage?.display_content?.story_text) {
-        setOpeningStory(restoredOpeningStage.display_content.story_text)
-      }
     }
 
     if (restoredMaterialsCommitted && storyCheckpoint !== 'materials') {
       setMatAiState('done')
-      setMatFeedback(restoredMaterialStage?.display_content?.story_text || '')
     }
 
     if (restoredMissionId) {
@@ -260,10 +244,8 @@ export default function M3({ onComplete }) {
     }
   }, [
     formStep,
-    restoredMaterialStage,
     restoredMaterialsCommitted,
     restoredMissionId,
-    restoredOpeningStage,
     language,
     publicGameState?.mission?.mission_effect,
     publicGameState?.mission?.mission_effect_en,
@@ -349,7 +331,6 @@ export default function M3({ onComplete }) {
     const ready = form.name.trim() && form.city.trim() && form.importantEvent.trim()
     if (!ready) return
     setFormError(null)
-    setOpeningPreview('')
     setFormStep('matching')
     try {
       const res = await fetch(`/api/satellite?city=${encodeURIComponent(form.city)}`)
@@ -370,19 +351,12 @@ export default function M3({ onComplete }) {
       }
       setUser(form)
       setSatellite(sat)
-      beginStorySession()
       setMission(null)
       setMissionLocal(null)
       setAiState('idle')
       setStory('')
       setMatAiState('idle')
-      setMatFeedback('')
-      setFormStep('generating')
-      const storySnapshot = await createStorySession({
-        onEvent: event => {
-          if (event.type === 'reset') setOpeningPreview('')
-          if (event.type === 'preview') setOpeningPreview(event.text)
-        },
+      await createStorySession({
         name: form.name,
         city: form.city,
         importantEvent: form.importantEvent,
@@ -392,14 +366,8 @@ export default function M3({ onComplete }) {
           event?.id || event?.eventId || event?.name || event?.title || String(event)
         )),
       })
-      setStoryOutline(null)
-      const openStory = storySnapshot.current_stage?.display_content?.story_text || ''
-      setOpeningStory(openStory)
-      setStoryChapter('opening', openStory)
       setFormStep('result')
-      setOpeningPreview('')
     } catch (error) {
-      setOpeningPreview('')
       setFormError(error?.message || pick('匹配失败，请重试', 'Matching failed. Please try again.'))
       setFormStep('form')
     }
@@ -496,8 +464,7 @@ export default function M3({ onComplete }) {
     if (!matAllDone || matAiState !== 'idle') return
     setMatAiState('loading')
     try {
-      const storySnapshot = await submitMaterialStoryAction(materials)
-      setMatFeedback(storySnapshot.current_stage?.display_content?.story_text || '')
+      await submitMaterialStoryAction(materials)
       setMatAiState('done')
     } catch { setMatAiState('error') }
   }
@@ -507,7 +474,6 @@ export default function M3({ onComplete }) {
     setMaterialPart(partId, optionId)
     if (matAiState !== 'idle') {
       setMatAiState('idle')
-      setMatFeedback('')
     }
   }
 
@@ -681,8 +647,6 @@ export default function M3({ onComplete }) {
               formStep={formStep}
               formError={formError}
               satellite={satellite}
-              openingStory={openingStory}
-              openingPreview={openingPreview}
               onChange={(field, value) => setForm((previous) => ({ ...previous, [field]: value }))}
               onSubmit={handleFormSubmit}
               onReset={() => {
@@ -700,7 +664,6 @@ export default function M3({ onComplete }) {
               materials={safeMatls}
               allDone={matAllDone}
               aiState={matAiState}
-              feedback={matFeedback}
               materialAnalysis={materialAnalysis}
               onSelect={handleMaterialSelect}
               onAnalyze={handleMatFeedback}

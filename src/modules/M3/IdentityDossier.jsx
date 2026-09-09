@@ -76,67 +76,17 @@ function IdentityField({ field, value, onChange }) {
   )
 }
 
-function LoadingState({ formStep, openingPreview }) {
+function QuickIntroduction() {
   const { pick } = useI18n()
-  const generating = formStep === 'generating'
-  const stages = [
-    { label: pick('定位城市', 'Locate city'), complete: true },
-    { label: pick('匹配轨道', 'Match orbit'), complete: generating },
-    { label: pick('生成叙事', 'Generate story'), complete: false, active: generating },
-  ]
-
   return (
-    <motion.div
-      key="loading"
-      className="m3-identity-loading"
-      initial={{ opacity: 0, y: 14 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      transition={{ duration: 0.38, ease: EASE }}
-    >
-      <motion.span
-        className="m3-identity-loading-icon"
-        animate={{ y: [0, -5, 0] }}
-        transition={{ duration: 2.2, ease: 'easeInOut', repeat: Infinity }}
-        aria-hidden="true"
-      >
-        <Satellite size={28} strokeWidth={1.35} />
-      </motion.span>
-
-      <div className="m3-identity-loading-copy">
-        <span>{generating ? pick('正在生成', 'GENERATING') : pick('正在匹配', 'MATCHING')}</span>
-        <h4>{generating ? pick('正在写入你的故事坐标', 'Writing your story coordinates') : pick('正在寻找与你相遇的卫星', 'Finding a satellite that crosses your path')}</h4>
-        <p>
-          {generating
-            ? pick('真实卫星已经确认，系统正在建立第一段平行叙事。', 'A real satellite has been confirmed. The system is building the opening parallel narrative.')
-            : pick('系统正在轨道数据中检索经过你所在城市上空的目标。', 'The system is searching orbital data for objects passing over your city.')}
-        </p>
+    <div className="m3-identity-story" role="status">
+      <div className="m3-identity-story-heading">
+        <span>{pick('另一种人生，正在展开', 'Another life is unfolding')}</span>
+        <small>PARALLEL LIFE</small>
       </div>
-
-      <div className="m3-identity-stage-list" aria-label={pick('匹配进度', 'Matching progress')}>
-        {stages.map((stage, index) => {
-          const active = stage.active || (!generating && index === 1)
-          return (
-            <span
-              key={stage.label}
-              className={`${stage.complete ? 'is-complete' : ''}${active ? ' is-active' : ''}`}
-            >
-              <i />
-              {stage.label}
-            </span>
-          )
-        })}
-      </div>
-      {generating && openingPreview ? (
-        <div className="m3-identity-story" aria-busy="true">
-          <div className="m3-identity-story-heading">
-            <span>{pick('故事开场', 'Opening scene')}</span>
-            <small>{pick('正在续写…', 'Writing…')}</small>
-          </div>
-          <p>{openingPreview}</p>
-        </div>
-      ) : null}
-    </motion.div>
+      <p>{pick('因为你的选择，平行时空中的你，正走向一段截然不同的人生。', 'Because of your choices, another you is taking a different path in a parallel world.')}</p>
+      <p>{pick('继续向下探索吧。新的故事准备好后，会来到你的屏幕中央。', 'Keep exploring. Each new chapter will appear in the center of your screen when it is ready.')}</p>
+    </div>
   )
 }
 
@@ -153,7 +103,7 @@ function getOrbitProfile(satellite) {
   return { zone, speed, risk }
 }
 
-function ResultState({ satellite, openingStory, onReset }) {
+function ResultState({ satellite, onReset }) {
   const { pick } = useI18n()
   const orbit = getOrbitProfile(satellite)
   const risk = {
@@ -181,15 +131,7 @@ function ResultState({ satellite, openingStory, onReset }) {
         <h4>{satellite.name}</h4>
       </div>
 
-      {openingStory ? (
-        <div className="m3-identity-story">
-          <div className="m3-identity-story-heading">
-            <span>{pick('故事开场', 'Opening scene')}</span>
-            <small>OPENING SCENE</small>
-          </div>
-          <p>{openingStory}</p>
-        </div>
-      ) : null}
+      <QuickIntroduction />
 
       <div className="m3-identity-result-primary">
         {[
@@ -237,8 +179,6 @@ export default function IdentityDossier({
   formStep,
   formError,
   satellite,
-  openingStory,
-  openingPreview,
   onChange,
   onSubmit,
   onReset,
@@ -373,18 +313,18 @@ export default function IdentityDossier({
                   whileTap={isReady ? { scale: 0.99 } : undefined}
                   transition={{ type: 'spring', stiffness: 380, damping: 26 }}
                 >
-                  <span><Satellite size={16} strokeWidth={1.5} /> {pick('匹配我的卫星', 'Match my satellite')}</span>
+                  <span><Satellite size={16} strokeWidth={1.5} /> {pick('生成个人故事', 'Generate my story')}</span>
                   <ArrowUpRight size={17} strokeWidth={1.7} />
                 </motion.button>
               </motion.div>
             ) : null}
 
             {formStep === 'matching' || formStep === 'generating' ? (
-              <LoadingState formStep={formStep} openingPreview={openingPreview} />
+              <QuickIntroduction />
             ) : null}
 
             {formStep === 'result' && satellite ? (
-              <ResultState satellite={satellite} openingStory={openingStory} onReset={onReset} />
+              <ResultState satellite={satellite} onReset={onReset} />
             ) : null}
           </AnimatePresence>
         </div>
