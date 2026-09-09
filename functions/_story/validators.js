@@ -1,27 +1,19 @@
-import Ajv from 'ajv'
+import compiledValidators from './schema-validators.generated.cjs'
 import { StoryError, TASK_TYPE } from './constants.js'
 import {
-  continueSchemaEnvelope,
-  endingSchemaEnvelope,
-  knowledgeSchemaEnvelope,
-  openingSchemaEnvelope,
-  outlineSchemaEnvelope,
   validationRules,
 } from './spec-assets.js'
 import { consequenceIds } from './config/story-options.js'
 import { relevantHiddenFacts } from './anomaly-facts.js'
 import { analyzeEndingReachability } from './ending-reachability.js'
 
-const ajv = new Ajv({
-  allErrors: true,
-  strict: true,
-})
-
-const validateOutlineJson = ajv.compile(outlineSchemaEnvelope.schema)
-const validateOpeningJson = ajv.compile(openingSchemaEnvelope.schema)
-const validateContinueJson = ajv.compile(continueSchemaEnvelope.schema)
-const validateEndingJson = ajv.compile(endingSchemaEnvelope.schema)
-const validateKnowledgeJson = ajv.compile(knowledgeSchemaEnvelope.schema)
+const {
+  validateOutlineJson,
+  validateOpeningJson,
+  validateContinueJson,
+  validateEndingJson,
+  validateKnowledgeJson,
+} = compiledValidators
 const EXPECTED_NODES = validationRules.outline.expected_node_sequence
 
 function schemaPath(error) {

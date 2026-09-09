@@ -26,7 +26,7 @@ const MODULES = [
 ]
 
 function ModuleLoader() {
-  return <div style={{ height: 120 }} />
+  return <div style={{ minHeight: 'clamp(420px, 70vh, 760px)' }} />
 }
 
 function DeferredModule({ Component, eager = false, onComplete, componentProps }) {

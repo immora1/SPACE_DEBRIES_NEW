@@ -27,7 +27,7 @@ const validationRules = STORY_VALIDATION_RULES
 
 const SPEC_BY_TASK = Object.freeze({
   [TASK_TYPE.OUTLINE]: Object.freeze({
-    variableName: 'story_user_input',
+    variableName: 'user_input',
     promptTemplate: STORY_OUTLINE_PROMPT_TEMPLATE,
     schemaEnvelope: outlineSchemaEnvelope,
   }),

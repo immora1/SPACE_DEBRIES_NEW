@@ -143,8 +143,6 @@ const ModuleWrapper = forwardRef(function ModuleWrapper(
       style={{
         visibility: isVisible ? 'visible' : 'hidden',
         pointerEvents: isVisible ? 'auto' : 'none',
-        contentVisibility: isVisible ? 'auto' : undefined,
-        containIntrinsicSize: '900px',
       }}
     >
       <div style={{ position: 'relative', isolation: 'isolate' }}>
