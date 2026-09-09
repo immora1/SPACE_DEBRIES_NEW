@@ -76,7 +76,7 @@ function IdentityField({ field, value, onChange }) {
   )
 }
 
-function LoadingState({ formStep }) {
+function LoadingState({ formStep, openingPreview }) {
   const { pick } = useI18n()
   const generating = formStep === 'generating'
   const stages = [
@@ -127,6 +127,15 @@ function LoadingState({ formStep }) {
           )
         })}
       </div>
+      {generating && openingPreview ? (
+        <div className="m3-identity-story" aria-busy="true">
+          <div className="m3-identity-story-heading">
+            <span>{pick('故事开场', 'Opening scene')}</span>
+            <small>{pick('正在续写…', 'Writing…')}</small>
+          </div>
+          <p>{openingPreview}</p>
+        </div>
+      ) : null}
     </motion.div>
   )
 }
@@ -229,6 +238,7 @@ export default function IdentityDossier({
   formError,
   satellite,
   openingStory,
+  openingPreview,
   onChange,
   onSubmit,
   onReset,
@@ -370,7 +380,7 @@ export default function IdentityDossier({
             ) : null}
 
             {formStep === 'matching' || formStep === 'generating' ? (
-              <LoadingState formStep={formStep} />
+              <LoadingState formStep={formStep} openingPreview={openingPreview} />
             ) : null}
 
             {formStep === 'result' && satellite ? (

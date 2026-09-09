@@ -56,8 +56,8 @@ test('Opening 保持 v0.4 冻结文本，v2 Prompt 读取增量包单一来源',
   )
   const prompt = buildStoryPrompt('STORY_OUTLINE', userInputFixture)
   assert.match(prompt, /state_rule/)
-  assert.match(prompt, /六次轨道事件/)
-  assert.match(prompt, /不会新增任何 consequence/)
+  assert.match(prompt, /后端会注入固定数值规则/)
+  assert.match(prompt, /不输出 state_rule/)
 })
 
 test('Opening Schema 未改变，v2 输出 Schema 直接读取增量包', async () => {

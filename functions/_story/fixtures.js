@@ -90,7 +90,9 @@ export function createFixtureStoryGenerator(options = {}) {
 
   const generate = async (taskType, input, context = {}) => {
     callCount += 1
-    calls.push({ taskType, input: clone(input), context: clone(context) })
+    calls.push({ taskType, input: clone(input), context: {
+      attempt: context.attempt, retryReason: context.retryReason,
+    } })
     if (
       options.failTask === taskType
       || options.failCallIndex === callCount

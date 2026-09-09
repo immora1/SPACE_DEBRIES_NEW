@@ -1,5 +1,6 @@
 import useAppStore from '../store/useAppStore'
 import { createAIOutputEvent } from './aiTimeline'
+import { readStoryStream } from './story-stream.js'
 
 let aiEventSequence = 0
 const STORY_SESSION_STORAGE_KEY = 'space-debris-story-session'
@@ -59,7 +60,7 @@ export function clearStoredStorySession() {
   window.sessionStorage.removeItem(STORY_SESSION_STORAGE_KEY)
 }
 
-async function storyFetch(path, init) {
+async function storyFetch(path, init, onEvent) {
   const response = await fetch(path, {
     ...init,
     headers: {
@@ -67,6 +68,9 @@ async function storyFetch(path, init) {
       ...(init?.headers || {}),
     },
   })
+  if (response.ok && response.headers.get('content-type')?.includes('application/x-ndjson')) {
+    return readStoryStream(response, onEvent)
+  }
   let data
   try {
     data = await response.json()
@@ -109,6 +113,7 @@ export async function createStorySession({
   satellite,
   damageLevel = 0,
   historyEventIds = [],
+  onEvent,
 }) {
   const sessionId = globalThis.crypto.randomUUID()
   clearStoredStorySession()
@@ -116,6 +121,7 @@ export async function createStorySession({
   try {
     const story = await storyFetch('/api/stories', {
       method: 'POST',
+      headers: { accept: 'application/x-ndjson' },
       body: JSON.stringify({
         session_id: sessionId,
         nickname: name,
@@ -128,7 +134,7 @@ export async function createStorySession({
         },
         language: currentLanguage(),
       }),
-    })
+    }, onEvent)
     storeStorySession(story.story_id, sessionId)
     return finishStoryRequest(story)
   } catch (error) {

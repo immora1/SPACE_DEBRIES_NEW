@@ -219,6 +219,7 @@ export default function M3({ onComplete }) {
   const [formStep,       setFormStep]      = useState(storyId && satellite ? 'result' : 'form')
   const [form,           setForm]          = useState({ name: '', city: '', importantEvent: '' })
   const [openingStory,   setOpeningStory]  = useState(restoredOpeningStage?.display_content?.story_text || '')
+  const [openingPreview, setOpeningPreview] = useState('')
   const [formError,      setFormError]     = useState(null)
 
   const onCompleteRef = useRef(onComplete)
@@ -348,6 +349,7 @@ export default function M3({ onComplete }) {
     const ready = form.name.trim() && form.city.trim() && form.importantEvent.trim()
     if (!ready) return
     setFormError(null)
+    setOpeningPreview('')
     setFormStep('matching')
     try {
       const res = await fetch(`/api/satellite?city=${encodeURIComponent(form.city)}`)
@@ -377,6 +379,10 @@ export default function M3({ onComplete }) {
       setMatFeedback('')
       setFormStep('generating')
       const storySnapshot = await createStorySession({
+        onEvent: event => {
+          if (event.type === 'reset') setOpeningPreview('')
+          if (event.type === 'preview') setOpeningPreview(event.text)
+        },
         name: form.name,
         city: form.city,
         importantEvent: form.importantEvent,
@@ -391,7 +397,9 @@ export default function M3({ onComplete }) {
       setOpeningStory(openStory)
       setStoryChapter('opening', openStory)
       setFormStep('result')
+      setOpeningPreview('')
     } catch (error) {
+      setOpeningPreview('')
       setFormError(error?.message || pick('匹配失败，请重试', 'Matching failed. Please try again.'))
       setFormStep('form')
     }
@@ -674,6 +682,7 @@ export default function M3({ onComplete }) {
               formError={formError}
               satellite={satellite}
               openingStory={openingStory}
+              openingPreview={openingPreview}
               onChange={(field, value) => setForm((previous) => ({ ...previous, [field]: value }))}
               onSubmit={handleFormSubmit}
               onReset={() => {

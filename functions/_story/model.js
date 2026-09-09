@@ -10,6 +10,8 @@ import {
 } from './constants.js'
 import { buildStoryPrompt, getStorySpec } from './spec-assets.js'
 import { SYSTEM_PROMPT } from './prompts/system.js'
+import { partialOpeningText } from './opening-stream.js'
+import { restoreOutlineRules } from './outline-generation.js'
 
 function boundedInteger(value, fallback, minimum, maximum) {
   const parsed = Number.parseInt(value, 10)
@@ -82,23 +84,58 @@ export function createOpenAIStoryGenerator(env, options = {}) {
 
     const spec = getStorySpec(taskType)
     const prompt = buildStoryPrompt(taskType, input, context.retryReason)
+    const startedAt = performance.now()
+    let firstTextMs = null
+    const opening = taskType === TASK_TYPE.OPENING
+    const streamOpening = opening && typeof context.onPreview === 'function'
+    const taskReasoning = opening
+      ? boundedChoice(env?.STORY_OPENING_REASONING_EFFORT, 'low', ['none', 'low', 'medium', 'high'])
+      : reasoningEffort
 
     let completion
     try {
       completion = await client.chat.completions.create({
         model,
-        reasoning_effort: reasoningEffort,
+        reasoning_effort: taskReasoning,
         verbosity,
         max_completion_tokens: maxTokens(taskType),
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: prompt },
+          { role: 'user', content: opening ? `${prompt}\n将 story_text 作为 JSON 的第一个字段输出。` : prompt },
         ],
         response_format: {
           type: 'json_schema',
           json_schema: spec.schemaEnvelope,
         },
-      })
+        ...(streamOpening ? { stream: true, stream_options: { include_usage: true } } : {}),
+      }, { signal: context.signal })
+      if (streamOpening) {
+        let content = ''
+        let lastPreview = ''
+        let refusal = ''
+        let finishReason = null
+        let usage = null
+        let responseModel = model
+        for await (const chunk of completion) {
+          responseModel = chunk.model || responseModel
+          usage = chunk.usage || usage
+          const choice = chunk.choices?.[0]
+          finishReason = choice?.finish_reason || finishReason
+          refusal += choice?.delta?.refusal || ''
+          content += choice?.delta?.content || ''
+          const preview = partialOpeningText(content)
+          if (preview && firstTextMs === null) firstTextMs = Math.round(performance.now() - startedAt)
+          if (preview.length >= lastPreview.length + 20) {
+            context.onPreview(preview)
+            lastPreview = preview
+          }
+        }
+        if (!finishReason) throw new Error('Opening stream ended before completion.')
+        const finalPreview = partialOpeningText(content)
+        if (finalPreview !== lastPreview) context.onPreview(finalPreview)
+        completion = { model: responseModel, usage,
+          choices: [{ finish_reason: finishReason, message: { content, refusal } }] }
+      }
     } catch (error) {
       throw new StoryError(
         'AI_REQUEST_FAILED',
@@ -138,13 +175,17 @@ export function createOpenAIStoryGenerator(env, options = {}) {
     }
 
     try {
-      const output = JSON.parse(message.content)
+      const parsed = JSON.parse(message.content)
+      const output = taskType === TASK_TYPE.OUTLINE ? restoreOutlineRules(parsed) : parsed
       Object.defineProperty(output, STORY_GENERATION_METADATA, {
         value: Object.freeze({
           request_id: completion._request_id || null,
           model: completion.model || model,
           input_tokens: completion.usage?.prompt_tokens ?? null,
           output_tokens: completion.usage?.completion_tokens ?? null,
+          duration_ms: Math.round(performance.now() - startedAt),
+          first_text_ms: firstTextMs,
+          reasoning_effort: taskReasoning,
         }),
         enumerable: false,
       })

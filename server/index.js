@@ -2,6 +2,8 @@ import { config } from 'dotenv'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { readFileSync } from 'fs'
+import { Readable } from 'node:stream'
+import { createStoryStream } from '../functions/_story/stream-response.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 config({ path: join(__dirname, '.env') })
@@ -66,6 +68,15 @@ function sendStoryError(res, error) {
 // ── 本地故事 API：与 Pages Functions 共用同一 StoryService ─────────────────
 app.post('/api/stories', async (req, res) => {
   try {
+    if (req.headers.accept?.includes('application/x-ndjson')) {
+      const response = createStoryStream(localStoryService, req.body)
+      response.headers.forEach((value, key) => res.setHeader(key, value))
+      const stream = Readable.fromWeb(response.body)
+      res.on('close', () => stream.destroy())
+      stream.on('error', () => res.destroy())
+      stream.pipe(res)
+      return
+    }
     const story = await localStoryService.createStory(req.body)
     res.status(201).json({ ok: true, story })
   } catch (error) {

@@ -272,11 +272,13 @@ export class StoryService {
     this.clock = clock
   }
 
-  async generateValidated(taskType, input, validate) {
+  async generateValidated(taskType, input, validate, generationOptions = {}) {
     let previousError = null
     for (let attempt = 1; attempt <= 2; attempt += 1) {
       try {
+        generationOptions.onAttempt?.(attempt)
         const output = await this.generateOutput(taskType, input, {
+          ...generationOptions,
           attempt,
           retryReason: previousError ? retryReason(previousError) : '',
         })
@@ -293,7 +295,7 @@ export class StoryService {
     throw new StoryError('AI_INVALID_OUTPUT', 'Story output validation failed.', 502)
   }
 
-  async generateStoryOutline(rawInput) {
+  async generateStoryOutline(rawInput, generationOptions = {}) {
     const input = parse(
       CanonicalStoryUserInputSchema,
       rawInput,
@@ -303,6 +305,7 @@ export class StoryService {
       TASK_TYPE.OUTLINE,
       input,
       validateStoryOutline,
+      generationOptions,
     )
     return {
       outline: deepFreeze(cloneState(generated.data)),
@@ -311,7 +314,7 @@ export class StoryService {
     }
   }
 
-  async generateStoryOpening(outline, runtimeState) {
+  async generateStoryOpening(outline, runtimeState, generationOptions = {}) {
     validateStoryOutline(outline)
     const generated = await this.generateValidated(
       TASK_TYPE.OPENING,
@@ -323,6 +326,7 @@ export class StoryService {
         known_to_user: cloneState(runtimeState.known_to_user),
       },
       (output) => validateStoryOpening(output, runtimeState),
+      generationOptions,
     )
     return {
       opening: generated.data.output,
@@ -336,7 +340,8 @@ export class StoryService {
     return createRuntimeStoryState(initialStoryState)
   }
 
-  async createStory(rawRequest) {
+  async createStory(rawRequest, onEvent = () => {}, signal) {
+    const requestStarted = performance.now()
     const request = parse(CreateStoryRequestSchema, rawRequest)
     const now = this.clock()
     await this.repository.cleanupExpiredStories(now)
@@ -364,18 +369,31 @@ export class StoryService {
       submitted_at_ms: now,
     })
     const canonicalInput = canonicalInputFromRequest(request)
+    onEvent({ type: 'phase', phase: 'outline' })
+    const outlineStarted = performance.now()
     const {
       outline,
       attempts: outlineAttempts,
       providerMetadata: outlineProviderMetadata,
-    } = await this.generateStoryOutline(canonicalInput)
+    } = await this.generateStoryOutline(canonicalInput, { signal })
+    const outlineMs = Math.round(performance.now() - outlineStarted)
+    signal?.throwIfAborted()
+    onEvent({ type: 'phase', phase: 'opening' })
+    const openingStarted = performance.now()
     const initialRuntimeState = this.createRuntimeStoryState(outline.initial_story_state)
     const {
       opening,
       additions,
       attempts: openingAttempts,
       providerMetadata: openingProviderMetadata,
-    } = await this.generateStoryOpening(outline, initialRuntimeState)
+    } = await this.generateStoryOpening(outline, initialRuntimeState, {
+      signal,
+      onAttempt: () => onEvent({ type: 'reset' }),
+      onPreview: text => onEvent({ type: 'preview', text }),
+    })
+    const openingMs = Math.round(performance.now() - openingStarted)
+    signal?.throwIfAborted()
+    onEvent({ type: 'phase', phase: 'validating' })
     const stateTransition = applyOpeningOutput(initialRuntimeState, additions)
 
     const storyId = id()
@@ -439,6 +457,7 @@ export class StoryService {
       completed_at_ms: null,
     }
 
+    const persistStarted = performance.now()
     try {
       await this.repository.createStory(story, [stage])
     } catch (error) {
@@ -456,7 +475,13 @@ export class StoryService {
         await this.repository.getStages(concurrent.story_id),
       )
     }
-    return toPublicStoryDTO(story, [stage])
+    return { ...toPublicStoryDTO(story, [stage]), generation_timings: {
+      outline_ms: outlineMs, opening_ms: openingMs,
+      persist_ms: Math.round(performance.now() - persistStarted),
+      total_ms: Math.round(performance.now() - requestStarted),
+      outline_attempts: outlineAttempts, opening_attempts: openingAttempts,
+      opening_first_text_ms: openingProviderMetadata?.first_text_ms ?? null,
+    } }
   }
 
   async getStory(storyId, sessionId) {
