@@ -37,12 +37,12 @@ const DEFAULT_CONTINUE_OUTPUT = {
 function defaultEndingOutput(endingId) {
   return {
     task_type: 'STORY_ENDING',
-    node_id: 'node_09',
+    node_id: 'node_05',
     selected_ending_id: endingId,
     story_text: ENDING_PARAGRAPHS,
     ending_summary: '走马灯在一个可见缺口下完成点亮，灯诗和共同动作得以保留。你与外婆共同看完灯片转过一圈，关系停在明确而真实的共同记忆上。',
     next_node_context: '现场天气变化早于信息提示，压缩了准备窗口并影响修补结果。异常为何造成这段短暂的信息偏差仍未解释。',
-    next_node_id: 'node_10',
+    next_node_id: null,
   }
 }
 
@@ -71,6 +71,9 @@ const DEFAULT_KNOWLEDGE_OUTPUT = {
   ],
   reality_note: '现实中的影响通常局部、短暂且因系统冗余而不一致，并不等于整套服务完全失效。具体异常需要结合地面站、载荷和服务日志继续确认。',
   story_completed: true,
+  material_insights: [],
+  mission_insights: [],
+  cleanup_insights: [],
 }
 
 export function createFixtureStoryGenerator(options = {}) {

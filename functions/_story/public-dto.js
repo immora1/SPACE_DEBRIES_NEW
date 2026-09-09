@@ -1,5 +1,4 @@
-import { STORY_SPEC_VERSION, TASK_TYPE } from './constants.js'
-import { resolveOptionsForNode } from './config/story-options.js'
+import { TASK_TYPE } from './constants.js'
 
 function publicStage(stage) {
   if (!stage) return null
@@ -36,14 +35,7 @@ export function toPublicStoryDTO(story, stages = []) {
     || [...timeline].reverse().find((stage) => stage.task_type === TASK_TYPE.ENDING)
   const reveal = timeline.findLast?.((stage) => stage.task_type === TASK_TYPE.KNOWLEDGE_REVEAL)
     || [...timeline].reverse().find((stage) => stage.task_type === TASK_TYPE.KNOWLEDGE_REVEAL)
-  const currentOptions = story.status === 'in_progress'
-    && story.prompt_metadata?.spec_version === STORY_SPEC_VERSION
-    ? resolveOptionsForNode(story, story.current_node_id).map((option) => ({
-        option_id: option.option_id,
-        label: option.label,
-        effect_summary: option.effect_summary,
-      }))
-    : []
+  const currentOptions = []
 
   return {
     story_id: story.story_id,

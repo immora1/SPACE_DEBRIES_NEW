@@ -59,7 +59,7 @@ test('创建故事按 Outline→Opening 完成，并只由后端推进到 node_0
   assert.equal(story.status, 'in_progress')
   assert.equal(story.current_node_id, 'node_02')
   assert.equal(story.current_checkpoint, 'materials')
-  assert.equal(story.current_options.length, 3)
+  assert.equal(story.current_options.length, 0)
   assert.equal(story.story_text, VALID_OPENING_FIXTURE.story_text)
   assert.equal(story.timeline.length, 1)
   assert.equal(story.timeline[0].node_id, 'node_01')
@@ -178,7 +178,7 @@ test('Outline 不可达结局重试反馈包含 ending ID 与真实数值范围'
   const reason = generator.getCalls()[1].context.retryReason
   assert.match(reason, /OUTLINE_ENDING_UNREACHABLE/)
   assert.match(reason, /ending_01/)
-  assert.match(reason, /event_integrity 72-100/)
+  assert.match(reason, /event_integrity 76-100/)
   assert.match(reason, /更高 priority 规则完全遮蔽/)
 })
 

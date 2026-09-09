@@ -115,7 +115,7 @@ export function buildEndingContext({
   runtimeState,
   previousHandoff,
 }) {
-  const currentNode = findOutlineNode(story.story_outline, 'node_09')
+  const currentNode = findOutlineNode(story.story_outline, 'node_05')
   const anchor = story.story_outline.event_anchor
   const context = {
     current_node: currentNode,
@@ -138,18 +138,39 @@ export function buildEndingContext({
   return parseContext(EndingContextSchema, context, 'ENDING_CONTEXT_INVALID')
 }
 
+export function buildProductContinueContext({ story, interaction, previousHandoff }) {
+  return parseContext(ContinueContextSchema, {
+    current_node: findOutlineNode(story.story_outline, story.current_node_id),
+    selected_option_effect: {
+      option_id: interaction.action_id,
+      effect_summary: `${interaction.label}：${JSON.stringify(interaction.narrative_effect)}`.slice(0, 800),
+    },
+    state_transition: {
+      before: interaction.state_before,
+      delta: interaction.state_delta,
+      after: interaction.state_after,
+      active_consequences: describeConsequences(story.story_state.active_consequences),
+    },
+    previous_handoff: clone(previousHandoff),
+    story_context: {
+      core_event: story.story_outline.event_anchor.core_event,
+      irreplaceable_part: story.story_outline.event_anchor.irreplaceable_part,
+      primary_anomaly: story.story_outline.primary_anomaly,
+    },
+    known_to_user: clone(story.story_state.known_to_user),
+  }, 'CONTINUE_CONTEXT_INVALID')
+}
+
 export function buildKnowledgeContext({
   story,
   endingOutput,
   stages,
 }) {
-  const currentNode = findOutlineNode(story.story_outline, 'node_10')
-  if (currentNode.task_type !== TASK_TYPE.KNOWLEDGE_REVEAL) {
-    throw new StoryError(
-      'KNOWLEDGE_NODE_INVALID',
-      'node_10 must be KNOWLEDGE_REVEAL.',
-      500,
-    )
+  // node_10 is the existing knowledge API marker, not a sixth outline node.
+  const currentNode = {
+    node_id: 'node_10',
+    task_type: TASK_TYPE.KNOWLEDGE_REVEAL,
+    summary: '清理完成后独立揭示故事异常与航天知识。',
   }
   const hiddenFacts = relevantHiddenFacts(
     story.story_state.hidden_facts,
@@ -180,4 +201,3 @@ export function buildKnowledgeContext({
   }
   return parseContext(KnowledgeContextSchema, context, 'KNOWLEDGE_CONTEXT_INVALID')
 }
-

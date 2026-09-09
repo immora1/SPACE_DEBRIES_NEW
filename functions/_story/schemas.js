@@ -151,7 +151,7 @@ export const ContinueContextSchema = strictObject({
 
 export const EndingContextSchema = strictObject({
   current_node: strictObject({
-    node_id: z.literal('node_09'),
+    node_id: z.literal('node_05'),
     task_type: z.literal(TASK_TYPE.ENDING),
     summary: trimmedText(2400),
     entry_condition: trimmedText(1200),

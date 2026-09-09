@@ -1,5 +1,5 @@
-import { INTERACTIVE_NODE_IDS } from './constants.js'
-import { resolveOptionsForNode } from './config/story-options.js'
+import { ORBITAL_EVENTS } from './config/orbital-events.js'
+import { resolveGameAnswerStoryBinding } from './config/game-story-bindings.js'
 import { selectEnding } from './ending-selector.js'
 import { applyStateDelta, storyMetrics } from './state-reducer.js'
 
@@ -21,7 +21,7 @@ export function analyzeEndingReachability(outline) {
   }
 
   function visit(index, metrics, activeConsequenceIds, path) {
-    if (index === INTERACTIVE_NODE_IDS.length) {
+    if (index === ORBITAL_EVENTS.length) {
       for (const metric of Object.keys(ranges)) {
         ranges[metric].min = Math.min(ranges[metric].min, metrics[metric])
         ranges[metric].max = Math.max(ranges[metric].max, metrics[metric])
@@ -36,13 +36,14 @@ export function analyzeEndingReachability(outline) {
       return
     }
 
-    const nodeId = INTERACTIVE_NODE_IDS[index]
-    for (const option of resolveOptionsForNode({}, nodeId)) {
+    const event = ORBITAL_EVENTS[index]
+    for (const answer of event.options) {
+      const option = resolveGameAnswerStoryBinding(event.id, answer.id)
       visit(
         index + 1,
         applyStateDelta(metrics, option.state_delta),
         applyConsequences(activeConsequenceIds, option),
-        [...path, { node_id: nodeId, option_id: option.option_id }],
+        [...path, { question_id: event.id, answer_id: answer.id }],
       )
     }
   }

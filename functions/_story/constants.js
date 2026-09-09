@@ -43,7 +43,7 @@ export const STORY_EXPIRY_MS = 60 * 60 * 1000
 export const STORY_MODEL = 'gpt-5.6-luna'
 export const STORY_REASONING_EFFORT = 'medium'
 export const STORY_VERBOSITY = 'medium'
-export const STORY_SPEC_VERSION = '2.0-numeric-state'
+export const STORY_SPEC_VERSION = '4.0-five-stage-v1'
 export const TOTAL_ORBITAL_EVENTS = 6
 export const TOTAL_CLEANUP_PAIRS = 3
 export const STORY_GENERATION_METADATA = Symbol.for(
@@ -63,17 +63,12 @@ export const INTERACTIVE_NODE_IDS = Object.freeze([
   'node_02',
   'node_03',
   'node_04',
-  'node_05',
-  'node_06',
-  'node_07',
-  'node_08',
 ])
 
 export const STORY_NODE_IDS = Object.freeze([
   'node_01',
   ...INTERACTIVE_NODE_IDS,
-  'node_09',
-  'node_10',
+  'node_05',
 ])
 
 export class StoryError extends Error {

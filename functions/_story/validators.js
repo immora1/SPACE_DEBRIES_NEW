@@ -615,8 +615,8 @@ export function validateStoryEnding(value, {
   }
   if (
     value.task_type !== TASK_TYPE.ENDING
-    || value.node_id !== 'node_09'
-    || value.next_node_id !== 'node_10'
+    || value.node_id !== 'node_05'
+    || value.next_node_id !== null
     || value.selected_ending_id !== selectedEndingId
   ) {
     throw new StoryError(

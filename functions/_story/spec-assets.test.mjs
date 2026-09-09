@@ -33,7 +33,7 @@ async function promptFromMarkdown(relativePath) {
 }
 
 test('Opening 保持 v0.4 冻结文本，v2 Prompt 读取增量包单一来源', async () => {
-  assert.equal(STORY_SPEC_VERSION, '2.0-numeric-state')
+  assert.equal(STORY_SPEC_VERSION, '4.0-five-stage-v1')
   assert.equal(STORY_OPENING_SPEC_VERSION, '0.4')
   assert.equal(
     STORY_OPENING_PROMPT_TEMPLATE,
@@ -54,12 +54,10 @@ test('Opening 保持 v0.4 冻结文本，v2 Prompt 读取增量包单一来源',
     (await readFile(resolve(numericRoot, '03_knowledge_reveal.prompt.txt'), 'utf8'))
       .replace(/\r\n/g, '\n'),
   )
-  assert.match(STORY_OUTLINE_PROMPT_TEMPLATE, /结构化 `state_rule`/)
-  assert.match(STORY_OUTLINE_PROMPT_TEMPLATE, /不得生成旧 ending_type 字段/)
-  assert.match(STORY_OUTLINE_PROMPT_TEMPLATE, /至少一条必须是与 `primary_anomaly` 直接相关/)
-  assert.match(STORY_OUTLINE_PROMPT_TEMPLATE, /不能被更高优先级规则完全遮蔽/)
-  assert.match(STORY_OUTLINE_PROMPT_TEMPLATE, /prepare_reversible_backup/)
-  assert.match(STORY_OUTLINE_PROMPT_TEMPLATE, /delta 数组依次为 event_integrity/)
+  const prompt = buildStoryPrompt('STORY_OUTLINE', userInputFixture)
+  assert.match(prompt, /state_rule/)
+  assert.match(prompt, /六次轨道事件/)
+  assert.match(prompt, /不会新增任何 consequence/)
 })
 
 test('Opening Schema 未改变，v2 输出 Schema 直接读取增量包', async () => {

@@ -40,7 +40,7 @@ test('全部 v0.4 fixtures 可读，合法输入、Outline 与 Opening 通过', 
     clone(VALID_OPENING_FIXTURE),
     outline.initial_story_state,
   )
-  assert.equal(outline.story_nodes.length, 10)
+  assert.equal(outline.story_nodes.length, 5)
   assert.deepEqual(opening.additions, VALID_OPENING_FIXTURE.known_to_user_additions)
 })
 
@@ -61,7 +61,7 @@ test('Outline 缺节点、错序、重复 ID 和错误任务类型均被精确�
   expectCode(() => validateStoryOutline(duplicate), 'OUTLINE_NODE_ID_DUPLICATE')
 
   const wrongType = clone(VALID_OUTLINE_FIXTURE)
-  wrongType.story_nodes[3].task_type = 'STORY_CONTINUE'
+  wrongType.story_nodes[3].task_type = 'STORY_ENDING'
   expectCode(() => validateStoryOutline(wrongType), 'OUTLINE_NODE_SEQUENCE_INVALID')
 })
 

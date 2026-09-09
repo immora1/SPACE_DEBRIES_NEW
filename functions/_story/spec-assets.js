@@ -16,6 +16,7 @@ import {
   STORY_OUTLINE_PROMPT_TEMPLATE,
   STORY_SPEC_VERSION,
   STORY_VALIDATION_RULES,
+  VALID_OUTLINE_FIXTURE,
 } from './spec-assets.generated.js'
 
 const outlineSchemaEnvelope = STORY_OUTLINE_SCHEMA_ENVELOPE
@@ -32,7 +33,7 @@ const SPEC_BY_TASK = Object.freeze({
     schemaEnvelope: outlineSchemaEnvelope,
   }),
   [TASK_TYPE.OPENING]: Object.freeze({
-    variableName: 'story_outline',
+    variableName: 'opening_context',
     promptTemplate: STORY_OPENING_PROMPT_TEMPLATE,
     schemaEnvelope: openingSchemaEnvelope,
   }),
@@ -85,7 +86,11 @@ export function buildStoryPrompt(taskType, input, retryReason = '') {
     throw new Error(`Prompt placeholder missing: ${placeholder}`)
   }
 
-  const rendered = spec.promptTemplate.replace(placeholder, stableStringify(input))
+  let rendered = spec.promptTemplate.replace(placeholder, stableStringify(input))
+  if (taskType === TASK_TYPE.OUTLINE) {
+    rendered += '\n\n后端真实五阶段规则：初始数值为 event_integrity=100、relationship_connection=50、uncertainty=10。材料和任务选择不改变这三个数值。六次轨道事件每次只有三种变化：(3,1,-3)、(0,0,1)、(-4,-1,4)，每次变化后各数值限制在0到100。不会新增任何 consequence。结局按 priority 从高到低选首个命中项，必须保证每个非兜底结局都可实际选中。建议按以下五组已验证可达的 state_rule 顺序设计相应 outcome：'
+      + stableStringify(VALID_OUTLINE_FIXTURE.reachable_endings.map(ending => ending.state_rule))
+  }
   if (!retryReason) return rendered
 
   const conciseReason = String(retryReason).replace(/\s+/g, ' ').trim().slice(0, 320)

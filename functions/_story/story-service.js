@@ -18,6 +18,7 @@ import {
 } from './schemas.js'
 import {
   applyNarrativeOutput,
+  applyStateDelta,
   applyOpeningOutput,
   applyStoryOption,
   cloneState,
@@ -40,6 +41,7 @@ import {
 import { resolveOptionsForNode } from './config/story-options.js'
 import {
   buildContinueContext,
+  buildProductContinueContext,
   buildEndingContext,
   buildKnowledgeContext,
   findOutlineNode,
@@ -313,7 +315,13 @@ export class StoryService {
     validateStoryOutline(outline)
     const generated = await this.generateValidated(
       TASK_TYPE.OPENING,
-      outline,
+      {
+        event_anchor: cloneState(outline.event_anchor),
+        ...cloneState(outline.event_anchor),
+        primary_anomaly: outline.primary_anomaly,
+        current_node: findOutlineNode(outline, 'node_01'),
+        known_to_user: cloneState(runtimeState.known_to_user),
+      },
       (output) => validateStoryOpening(output, runtimeState),
     )
     return {
@@ -478,6 +486,8 @@ export class StoryService {
       409,
     )
     const resolution = resolveProductAction(current, request)
+    assertStory(current.prompt_metadata?.spec_version === STORY_SPEC_VERSION,
+      'STORY_VERSION_NOT_CONTINUABLE', '故事版本已更新，请重新匹配卫星开始新故事。', 409)
     const story = cloneState(current)
     story.game_state = resolution.gameState
     story.current_checkpoint = resolution.nextCheckpoint
@@ -490,11 +500,82 @@ export class StoryService {
       ...resolution.interaction,
       created_at_ms: now,
     }
+    const before = storyMetrics(current.story_state)
+    const delta = (request.action_type === ACTION_TYPE.ORBITAL_EVENT_RESOLVE
+      ? resolution.interaction.narrative_effect.metrics_delta : null)
+      || { event_integrity: 0, relationship_connection: 0, uncertainty: 0 }
+    const after = applyStateDelta(before, delta)
+    Object.assign(story.story_state, after)
+    Object.assign(interaction, { state_before: before, state_delta: delta, state_after: after })
+    if (request.action_type !== ACTION_TYPE.CLEANUP_PAIR_SUBMIT) {
+      story.story_state.key_outcomes.push(interaction.label)
+    }
+    const existingStages = await this.repository.getStages(storyId)
+    const stages = []
+    const orbitalCount = story.game_state.orbital_events.resolved.length
+    const continues = request.action_type === ACTION_TYPE.MATERIALS_COMMIT
+      || request.action_type === ACTION_TYPE.MISSION_SELECT
+      || (request.action_type === ACTION_TYPE.ORBITAL_EVENT_RESOLVE && orbitalCount === 1)
+    const addStage = (taskType, nodeId, generated, displayContent, continuityHandoff = null) => {
+      const stage = narrativeStage({
+        story, stageIndex: current.current_stage_index + stages.length + 1,
+        taskType, nodeId, inputAction: {
+          module: interaction.module, source_id: interaction.source_id,
+          action_id: interaction.action_id, label: interaction.label,
+        },
+        displayContent, continuityHandoff,
+        modelMetadata: { spec_version: STORY_SPEC_VERSION, attempts: generated.attempts, provider: generated.providerMetadata },
+        summary: `${nodeId} 已根据页面操作完成。`,
+        stateBefore: current.story_state, stateAfter: story.story_state, createdAt: now,
+      })
+      stages.push(stage)
+      return stage
+    }
+    if (continues) {
+      const context = buildProductContinueContext({ story, interaction,
+        previousHandoff: latestContinuityHandoff(existingStages) })
+      const generated = await this.generateValidated(TASK_TYPE.CONTINUE, context,
+        output => validateStoryContinue(output, story.story_state))
+      const nodeId = story.current_node_id
+      const next = nodeId === 'node_02' ? 'node_03' : 'node_04'
+      story.story_state = applyNarrativeOutput(story.story_state, generated.data.additions, next)
+      story.current_node_id = next
+      addStage(TASK_TYPE.CONTINUE, nodeId, generated,
+        { story_text: generated.data.output.story_text, choices: [] }, generated.data.output.continuity_handoff)
+    }
+    if (request.action_type === ACTION_TYPE.ORBITAL_EVENT_RESOLVE
+      && resolution.nextCheckpoint === CHECKPOINT.CLEANUP) {
+      const selected = selectEnding({ reachableEndings: story.story_outline.reachable_endings,
+        storyState: after, activeConsequenceIds: story.story_state.active_consequences })
+      const context = buildEndingContext({ story, selectedEnding: selected.ending,
+        runtimeState: story.story_state, previousHandoff: latestContinuityHandoff(existingStages) })
+      const generated = await this.generateValidated(TASK_TYPE.ENDING, context,
+        output => validateStoryEnding(output, { selectedEndingId: selected.ending.ending_id,
+          hiddenFacts: story.story_state.hidden_facts }))
+      story.story_state = applyNarrativeOutput(story.story_state, [], 'node_05')
+      story.current_node_id = 'node_05'
+      const stage = addStage(TASK_TYPE.ENDING, 'node_05', generated, generated.data)
+      story.final_story = { selected_ending_id: selected.ending.ending_id, ending_stage_id: stage.stage_id }
+    }
+    if (resolution.nextCheckpoint === CHECKPOINT.COMPLETED) {
+      const endingStage = existingStages.find(stage => stage.task_type === TASK_TYPE.ENDING)
+      assertStory(endingStage, 'ENDING_MISSING', '请先完成轨道事件生成故事结局。', 409)
+      const context = buildKnowledgeContext({ story, endingOutput: endingStage.display_content, stages: existingStages })
+      const generated = await this.generateValidated(TASK_TYPE.KNOWLEDGE_REVEAL, context, validateKnowledgeReveal)
+      story.story_state = applyNarrativeOutput(story.story_state, [], null)
+      story.current_node_id = null
+      const stage = addStage(TASK_TYPE.KNOWLEDGE_REVEAL, 'node_10', generated, knowledgeDisplay(generated.data))
+      story.final_story.knowledge_reveal_stage_id = stage.stage_id
+      story.status = STORY_STATUS.COMPLETED
+      story.completed_at_ms = now
+      story.expires_at_ms = null
+    }
+    story.current_stage_index = stages.at(-1)?.stage_index || current.current_stage_index
     await this.repository.commitAdvance({
       story,
       expectedVersion: current.version,
       interaction,
-      stages: [],
+      stages,
     })
     return toPublicStoryDTO(story, await this.repository.getStages(storyId))
   }
@@ -778,7 +859,7 @@ export class StoryService {
     const now = this.clock()
     await this.repository.cleanupExpiredStories(now)
     if (request.action_type === ACTION_TYPE.STORY_OPTION_SELECT) {
-      return this.advanceStoryOption(storyId, request, now)
+      throw new StoryError('INVALID_ACTION_TYPE', '请通过材料、任务和轨道事件推进五阶段故事。', 400)
     }
     return this.advanceProductAction(storyId, request, now)
   }
