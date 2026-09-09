@@ -99,6 +99,7 @@ export default function AIStoryRail() {
 
   return (
     <div className="ai-story-hud" aria-label={pick('你的平行时空故事', 'Your parallel story')}>
+      {(active || preview) && <div className="ai-story-backdrop" aria-hidden="true" />}
       {active && <div className="ai-story-center">
         <motion.article
           key={active.id}
