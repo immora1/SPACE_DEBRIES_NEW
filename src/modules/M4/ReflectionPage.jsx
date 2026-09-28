@@ -1,4 +1,5 @@
 import useI18n from '../../i18n/useI18n'
+import { TOTAL_ORBITAL_EVENTS } from '../../../functions/_story/constants.js'
 
 const RESULT_STYLES = `
   .m4-result-overlay {
@@ -290,7 +291,7 @@ export default function ReflectionPage({ reflection, gameResult, missionStats, o
       >
         <header className="m4-result-header">
           <span className="m4-result-label">MISSION DEBRIEF · ORBITAL SURVIVAL</span>
-          <span className="m4-result-label">ROUND 06 / 06</span>
+          <span className="m4-result-label">ROUND {String(TOTAL_ORBITAL_EVENTS).padStart(2, '0')} / {String(TOTAL_ORBITAL_EVENTS).padStart(2, '0')}</span>
         </header>
 
         <div className="m4-result-hero">

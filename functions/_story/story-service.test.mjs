@@ -5,9 +5,8 @@ import { StoryService } from './story-service.js'
 import { MemoryStoryRepository } from './repository.js'
 import {
   createFixtureStoryGenerator,
-  VALID_OPENING_FIXTURE,
-  VALID_OUTLINE_FIXTURE,
 } from './fixtures.js'
+import { CURRENT_OPENING_FIXTURE as VALID_OPENING_FIXTURE, CURRENT_OUTLINE_FIXTURE as VALID_OUTLINE_FIXTURE } from './current-fixtures.js'
 
 function clone(value) {
   return structuredClone(value)
@@ -128,7 +127,6 @@ test('Opening 不修改指标、持续后果、隐藏事实或 last_user_action'
   const runtime = internal.story_state
 
   for (const field of [
-    'confirmed_facts',
     'hidden_facts',
     'event_integrity',
     'relationship_connection',
@@ -158,34 +156,18 @@ test('Outline 业务校验失败会携带原因重试一次', async () => {
   assert.match(calls[1].context.retryReason, /OUTLINE_NODE_SEQUENCE_INVALID/)
 })
 
-test('Outline 不可达结局重试反馈包含 ending ID 与真实数值范围', async () => {
-  const unreachable = clone(VALID_OUTLINE_FIXTURE)
-  unreachable.reachable_endings[0].state_rule = {
-    priority: 100,
-    conditions: [
-      { metric: 'event_integrity', operator: 'lt', value: 1 },
-    ],
-    required_consequence_ids: [],
-    forbidden_consequence_ids: [],
-    fallback: false,
-  }
-  const generator = createFixtureStoryGenerator({
-    outlineOutputs: [unreachable, VALID_OUTLINE_FIXTURE],
-  })
-  const harness = createHarness({ generateOutput: generator })
-
-  await harness.service.createStory(createRequest())
-  const reason = generator.getCalls()[1].context.retryReason
-  assert.match(reason, /OUTLINE_ENDING_UNREACHABLE/)
-  assert.match(reason, /ending_01/)
-  assert.match(reason, /event_integrity 76-100/)
-  assert.match(reason, /更高 priority 规则完全遮蔽/)
+test('Outline 重复候选结局 ID 会被拒绝并重试', async () => {
+  const invalid = clone(VALID_OUTLINE_FIXTURE)
+  invalid.ending_candidates[1].ending_id = invalid.ending_candidates[0].ending_id
+  const generator = createFixtureStoryGenerator({ outlineOutputs: [invalid, VALID_OUTLINE_FIXTURE] })
+  await createHarness({ generateOutput: generator }).service.createStory(createRequest())
+  assert.match(generator.getCalls()[1].context.retryReason, /OUTLINE_ENDING_ID_DUPLICATE/)
 })
 
 test('Opening 结构校验失败会重试，最终只保存一个 node_01 stage', async () => {
   const invalidOpening = {
     ...clone(VALID_OPENING_FIXTURE),
-    next_node_id: 'node_02',
+    next_node_id: 'node_03',
   }
   const generator = createFixtureStoryGenerator({
     openingOutputs: [invalidOpening, VALID_OPENING_FIXTURE],
@@ -195,12 +177,12 @@ test('Opening 结构校验失败会重试，最终只保存一个 node_01 stage'
 
   assert.equal(generator.getCallCount(), 3)
   assert.equal((await harness.repository.getStages(story.story_id)).length, 1)
-  assert.match(generator.getCalls()[2].context.retryReason, /OPENING_ADDITIONAL_FIELD_INVALID/)
+  assert.match(generator.getCalls()[2].context.retryReason, /OPENING_SCHEMA_INVALID/)
 })
 
 test('Opening 正文长度失败时重试原因包含可执行的字符和段落目标', async () => {
   const invalidOpening = clone(VALID_OPENING_FIXTURE)
-  invalidOpening.story_text = `${'你在现场等待，异常仍未解决。'.repeat(7)}
+  invalidOpening.story_text = `${'你在现场等待，异常仍未解决。'.repeat(3)}
 
 ${'你重新检查约定，重要物件仍在手边。'.repeat(7)}
 
@@ -214,7 +196,7 @@ ${'你听见远处传来声音，细节依旧悬而未决。'.repeat(7)}`
 
   const reason = generator.getCalls()[2].context.retryReason
   assert.match(reason, /OPENING_STORY_TEXT_INVALID/)
-  assert.match(reason, /420-500 个汉字/)
+  assert.match(reason, /300-450 个汉字/)
   assert.match(reason, /不计标点、数字和空格/)
   assert.match(reason, /3-5 段/)
   assert.match(reason, /第二人称“你”/)
@@ -232,7 +214,7 @@ test('Opening 连续两次失败不会保存 Outline、stage 或推进后的 ses
 
   await assert.rejects(
     harness.service.createStory(createRequest()),
-    (error) => error.code === 'OPENING_ADDITIONAL_FIELD_INVALID',
+    (error) => error.code === 'OPENING_SCHEMA_INVALID',
   )
   assert.equal(harness.repository.stories.size, 0)
   assert.equal(harness.repository.stages.size, 0)

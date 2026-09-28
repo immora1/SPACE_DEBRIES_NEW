@@ -1,15 +1,12 @@
 ﻿import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion } from 'framer-motion'
 import gsap from 'gsap'
-import useAppStore from '../../store/useAppStore'
 import useI18n from '../../i18n/useI18n'
 import './index.css'
 
 const FLOW_STEPS = [
   { index: '01', code: 'OBSERVE', id: 'm8-compare', label: '识别有效信息' },
   { index: '02', code: 'CLASSIFY', id: 'm8-practice', label: '完成分类练习' },
-  { index: '03', code: 'REPORT', id: 'm8-report', label: '提交观测报告' },
-  { index: '04', code: 'REVIEW', id: 'm8-community', label: '查看社区补充' },
 ]
 
 const PRACTICE_OPTIONS = [
@@ -162,33 +159,9 @@ const OBSERVATION_SET = [
 const PRACTICE_SET = OBSERVATION_SET.slice(0, 15)
 const PRACTICE_IDS = new Set(PRACTICE_SET.map((item) => item.id))
 
-const SAMPLE_COMMENTS = {
-  obs01: [
-    { name: '成都观测者', text: '我会补一条方位角：如果手机指南针可信，最好写成“约 240° 到 55°”。' },
-    { name: '轨道社群志愿者', text: '持续 18 秒且多点同向，确实比普通流星更接近再入碎片特征。' },
-  ],
-  obs03: [
-    { name: '南京天文社', text: '这类长时间事件最好附视频原始文件，截图容易丢失速度信息。' },
-    { name: '数据校对员', text: '请补充云量和遮挡情况，否则亮度判断会有偏差。' },
-  ],
-}
-
-const SAMPLE_COMMENTS_EN = {
-  obs01: [
-    { name: 'Chengdu observer', text: 'Add an azimuth if the phone compass is reliable, for example about 240° to 55°.' },
-    { name: 'Orbit community volunteer', text: 'A duration of 18 seconds with several co-moving lights is more consistent with re-entry debris than a normal meteor.' },
-  ],
-  obs03: [
-    { name: 'Nanjing astronomy group', text: 'Attach the original video for long events because screenshots remove speed information.' },
-    { name: 'Data reviewer', text: 'Please add cloud cover and obstructions because they can distort brightness judgments.' },
-  ],
-}
-
 const FLOW_LABEL_EN = {
   'm8-compare': 'Identify useful evidence',
   'm8-practice': 'Complete classification',
-  'm8-report': 'Submit an observation report',
-  'm8-community': 'Review community context',
 }
 
 const FIELD_EN = {
@@ -241,27 +214,6 @@ function localizeObservation(item, language, index) {
     clue: copy.clue,
     reportHint: copy.hint,
   }
-}
-
-function emptyReport(city) {
-  return {
-    time: '',
-    location: city || '',
-    direction: '',
-    duration: '',
-    motion: '',
-    evidence: '',
-    classification: 'debris',
-    confidence: 'medium',
-    note: '',
-  }
-}
-
-function scoreReport(report) {
-  const filled = REQUIRED_FIELDS.filter(f => report[f.id]?.trim()).length
-  const hasClass = !!report.classification
-  const hasNote = report.note.trim().length >= 16
-  return Math.round(((filled + (hasClass ? 1 : 0) + (hasNote ? 1 : 0)) / 8) * 100)
 }
 
 function getDragDecision(info, threshold = 120) {
@@ -819,17 +771,12 @@ function ClassificationDeck({ items, practice, onAnswer, onRestart }) {
   )
 }
 
-export default function M8({ onComplete }) {
+export default function M8() {
   const { language, pick } = useI18n()
-  const { user, setStoryChapter } = useAppStore()
   const rootRef = useRef(null)
   const heroMarkRef = useRef(null)
   const [lessonStep, setLessonStep] = useState(0)
   const [practice, setPractice] = useState({})
-  const [selectedId, setSelectedId] = useState('obs01')
-  const [report, setReport] = useState(() => emptyReport(user?.city))
-  const [reports, setReports] = useState([])
-  const [activeCommunityId, setActiveCommunityId] = useState('obs01')
   const [activeSection, setActiveSection] = useState('m8-compare')
   const [flowPosition, setFlowPosition] = useState(6)
   const flowNavigationTargetRef = useRef(null)
@@ -842,11 +789,6 @@ export default function M8({ onComplete }) {
   const practiceSet = observationSet.slice(0, 15)
   const requiredFields = REQUIRED_FIELDS.map((field) => localizeField(field, language))
   const flowSteps = FLOW_STEPS.map((step) => ({ ...step, label: language === 'en' ? FLOW_LABEL_EN[step.id] : step.label }))
-  const selected = observationSet.find((item) => item.id === selectedId) || observationSet[0]
-  const selectedIndex = Math.max(0, observationSet.findIndex((item) => item.id === selected.id))
-  const selectedNumber = String(selectedIndex + 1).padStart(2, '0')
-  const activeCommunity = observationSet.find((item) => item.id === activeCommunityId) || selected
-  const reportScore = scoreReport(report)
   const practiceAnsweredCount = Object.keys(practice).filter((id) => PRACTICE_IDS.has(id)).length
   const practiceScore = useMemo(() => {
     const answered = Object.keys(practice).filter((id) => PRACTICE_IDS.has(id))
@@ -855,18 +797,6 @@ export default function M8({ onComplete }) {
     return Math.round((correct / answered.length) * 100)
   }, [practice])
   const practiceDone = practiceAnsweredCount === PRACTICE_SET.length && practiceScore >= 66
-  const canSubmit = Boolean(selected && reportScore >= 75)
-  const canComplete = reports.length > 0 && practiceDone
-  const communityComments = [
-    ...((language === 'en' ? SAMPLE_COMMENTS_EN : SAMPLE_COMMENTS)[activeCommunity.id] || []),
-    ...reports
-      .filter((item) => item.imageId === activeCommunity.id)
-      .map((item) => ({
-        name: item.author,
-        text: `${item.report.time || pick('未填时间', 'TIME NOT PROVIDED')} · ${item.report.location || pick('未填地点', 'LOCATION NOT PROVIDED')} · ${item.report.note}`,
-      })),
-  ]
-
   useEffect(() => {
     const root = rootRef.current
     if (!root) return undefined
@@ -893,7 +823,7 @@ export default function M8({ onComplete }) {
         entries.forEach((entry) => {
           if (!entry.isIntersecting) return
           const targets = entry.target.querySelectorAll(
-            '.m8-section-heading, .m8-report-layout, .m8-required-fields, .m8-standard-tabs, .m8-practice-head, .m8-card-game, .m8-workbench, .m8-community-layout, .m8-complete',
+            '.m8-section-heading, .m8-report-layout, .m8-required-fields, .m8-standard-tabs, .m8-practice-head, .m8-card-game',
           )
           gsap.fromTo(targets,
             { autoAlpha: 0, y: 30 },
@@ -943,7 +873,7 @@ export default function M8({ onComplete }) {
   }, [])
 
   useEffect(() => {
-    const ids = ['m8-compare', 'm8-practice', 'm8-report', 'm8-community']
+    const ids = ['m8-compare', 'm8-practice']
     const sections = ids.map((id) => document.getElementById(id)).filter(Boolean)
     if (!sections.length) return undefined
 
@@ -982,38 +912,6 @@ export default function M8({ onComplete }) {
     }
   }, [])
 
-  function setField(key, value) {
-    setReport((current) => ({ ...current, [key]: value }))
-  }
-
-  function selectObservation(item) {
-    setSelectedId(item.id)
-    setActiveCommunityId(item.id)
-  }
-
-  function submitReport(event) {
-    event.preventDefault()
-    if (!canSubmit) return
-    const next = {
-      id: `${selected.id}-${Date.now()}`,
-      imageId: selected.id,
-      imageTitle: selected.title,
-      author: user?.name || pick('匿名观测者', 'Anonymous observer'),
-      report: { ...report },
-      score: reportScore,
-      createdAt: new Date().toLocaleString(language === 'en' ? 'en-US' : 'zh-CN', { hour12: false }),
-    }
-    setReports((current) => [next, ...current])
-    setActiveCommunityId(selected.id)
-    setReport(emptyReport(user?.city))
-  }
-
-  function handleComplete() {
-    if (!canComplete) return
-    setStoryChapter('m8', pick('用户提交了一份观测报告，并进入社区学习他人的补充细节。', 'The user submitted an observation report and entered the community review to learn from additional context.'))
-    onComplete()
-  }
-
   function goTo(sectionId) {
     if (flowNavigationTimerRef.current) window.clearTimeout(flowNavigationTimerRef.current)
     flowNavigationTargetRef.current = sectionId
@@ -1042,7 +940,7 @@ export default function M8({ onComplete }) {
     <section ref={rootRef} className="m8" data-module-scroll-target>
       <nav
         className="m8-flow"
-        aria-label={pick('观测报告流程', 'Observation report flow')}
+        aria-label={pick('观测教学流程', 'Observation training flow')}
         style={{ '--m8-flow-current': `${flowPosition}%` }}
       >
         <div className="m8-flow-meter">
@@ -1051,7 +949,6 @@ export default function M8({ onComplete }) {
           {flowSteps.map((step, stepIndex) => {
             const done = step.id === 'm8-compare'
               || (step.id === 'm8-practice' && practiceDone)
-              || ((step.id === 'm8-report' || step.id === 'm8-community') && reports.length > 0)
             const nodePosition = 6 + (stepIndex / (flowSteps.length - 1)) * 88
 
             return (
@@ -1169,126 +1066,6 @@ export default function M8({ onComplete }) {
         />
       </section>
 
-      <section id="m8-report" className="m8-band m8-report-workbench m8-animate-section">
-        <div className="m8-section-heading">
-          <span>03 / REPORT WORKBENCH</span>
-          <div><h3>{pick('选择事件，完成结构化记录。', 'Choose an event and create a structured record.')}</h3><p>{pick('质量达到 75% 后即可提交到社区。', 'Submit to the community once report quality reaches 75%.')}</p></div>
-        </div>
-
-        <div className="m8-workbench">
-          <div className="m8-observation-picker">
-            <div className="m8-selected-observation">
-              <div className="m8-selected-media">
-                <img src={selected.img} alt="" />
-              </div>
-            </div>
-          </div>
-
-          <form className="m8-report-form" onSubmit={submitReport}>
-            <div className="m8-report-panel-head">
-              <div>
-                <span>STRUCTURED REPORT</span>
-                <h4>{pick('六项信息记录', 'Six-field observation record')}</h4>
-              </div>
-              <strong>{reportScore}%</strong>
-            </div>
-            <div className="m8-form-grid">
-              {requiredFields.map((field) => (
-                <label key={field.id}>
-                  <span>{field.label}</span>
-                  <input
-                    value={report[field.id]}
-                    onChange={(event) => setField(field.id, event.target.value)}
-                    placeholder={field.hint}
-                  />
-                </label>
-              ))}
-            </div>
-            <div className="m8-form-selects">
-              <label><span>{pick('事件分类', 'EVENT CLASS')}</span>
-                <select value={report.classification} onChange={(event) => setField('classification', event.target.value)}>
-                  <option value="debris">{pick('疑似太空垃圾再入', 'Possible debris re-entry')}</option>
-                  <option value="meteor">{pick('更像流星', 'More likely a meteor')}</option>
-                  <option value="satellite">{pick('更像正常卫星', 'More likely a normal satellite')}</option>
-                  <option value="unknown">{pick('无法判断', 'Uncertain')}</option>
-                </select>
-              </label>
-              <label><span>{pick('判断置信度', 'CONFIDENCE')}</span>
-                <select value={report.confidence} onChange={(event) => setField('confidence', event.target.value)}>
-                  <option value="low">{pick('低置信度', 'Low confidence')}</option>
-                  <option value="medium">{pick('中置信度', 'Medium confidence')}</option>
-                  <option value="high">{pick('高置信度', 'High confidence')}</option>
-                </select>
-              </label>
-            </div>
-            <label className="m8-note-field"><span>{pick('补充判断', 'ADDITIONAL NOTES')}</span>
-              <textarea
-                value={report.note}
-                onChange={(event) => setField('note', event.target.value)}
-                placeholder={pick('说明判断依据、仍然存在的不确定性，以及是否有其他目击者。', 'Explain your evidence, remaining uncertainty, and whether there were other witnesses.')}
-              />
-            </label>
-            <div className="m8-form-footer">
-              <div><span>REPORT QUALITY</span><strong>{canSubmit ? pick('可提交', 'READY') : pick('补全信息', 'INCOMPLETE')}</strong><progress value={reportScore} max="100" /></div>
-              <button type="submit" disabled={!canSubmit}>{pick('提交到社区', 'Submit to community')}</button>
-            </div>
-          </form>
-        </div>
-        <div className="m8-observation-carousel" aria-label={pick('切换观测素材', 'Choose observation media')}>
-          <div className="m8-observation-strip-head">
-            <span>{pick('事件样本', 'EVENT SAMPLES')}</span>
-            <small>{selectedNumber} / {String(observationSet.length).padStart(2, '0')} · {pick('横向滚动选择', 'SCROLL TO SELECT')}</small>
-          </div>
-          <div className="m8-observation-thumbs">
-            {observationSet.map((item, index) => (
-              <button
-                key={item.id}
-                type="button"
-                className={selectedId === item.id ? 'is-active' : ''}
-                onClick={() => selectObservation(item)}
-                aria-label={`${pick('选择事件', 'Select event')} ${index + 1}: ${item.title}`}
-              >
-                <img src={item.img} alt="" loading="lazy" /><span>{String(index + 1).padStart(2, '0')}</span>
-              </button>
-            ))}
-          </div>
-          <p className="m8-observation-hint">{selected.reportHint}</p>
-        </div>
-      </section>
-
-      <section id="m8-community" className="m8-band m8-community m8-animate-section">
-        <div className="m8-section-heading">
-          <span>04 / COMMUNITY REVIEW</span>
-          <div><h3>{pick('让其他观测者补足盲点。', 'Let other observers fill the blind spots.')}</h3><p>{pick('社区反馈用于补充方位、天气、设备与原始文件等上下文。', 'Community feedback adds direction, weather, device, and source-file context.')}</p></div>
-        </div>
-        <div className="m8-community-layout">
-          <div className="m8-community-event">
-            <img src={activeCommunity.img} alt="" />
-            <span>{activeCommunity.type.toUpperCase()}</span>
-            <h4>{activeCommunity.title}</h4>
-            <p>{activeCommunity.clue}</p>
-          </div>
-          <div className="m8-comment-list">
-            {communityComments.map((comment, index) => (
-              <motion.article key={`${comment.name}-${index}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
-                <span>{String(index + 1).padStart(2, '0')}</span>
-                <div><b>{comment.name}</b><p>{comment.text}</p></div>
-              </motion.article>
-            ))}
-            {!communityComments.length && <p className="m8-empty-comments">{pick('提交报告后，讨论会出现在这里。', 'Discussion will appear here after a report is submitted.')}</p>}
-          </div>
-        </div>
-      </section>
-
-      <footer className="m8-complete">
-        <div>
-          <span>TRAINING STATUS</span>
-          <p>{!practiceDone ? pick('完成全部 15 组判断并达到 66% 正确率。', 'Complete all 15 classifications with at least 66% accuracy.') : reports.length === 0 ? pick('分类训练已完成，请提交一份报告。', 'Classification is complete; submit one report.') : pick('观测训练与社区报告均已完成。', 'Observation training and community reporting are complete.')}</p>
-        </div>
-        <button type="button" onClick={handleComplete} disabled={!canComplete}>
-          {canComplete ? pick('完成观测教学', 'Complete observation training') : practiceDone ? pick('等待报告提交', 'Awaiting report') : pick('等待分类训练', 'Awaiting classification')}
-        </button>
-      </footer>
       </div>
     </section>
   )

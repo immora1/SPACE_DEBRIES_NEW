@@ -43,8 +43,8 @@ export const STORY_EXPIRY_MS = 60 * 60 * 1000
 export const STORY_MODEL = 'gpt-5.6-luna'
 export const STORY_REASONING_EFFORT = 'medium'
 export const STORY_VERBOSITY = 'medium'
-export const STORY_SPEC_VERSION = '4.0-five-stage-v1'
-export const TOTAL_ORBITAL_EVENTS = 6
+export const STORY_SPEC_VERSION = '5.1-three-orbital-decisions'
+export const TOTAL_ORBITAL_EVENTS = 3
 export const TOTAL_CLEANUP_PAIRS = 3
 export const STORY_GENERATION_METADATA = Symbol.for(
   'space-debris.story-generation-metadata',
@@ -54,7 +54,6 @@ export const SUPPORTED_STORY_TASKS = Object.freeze([
   TASK_TYPE.OUTLINE,
   TASK_TYPE.OPENING,
   TASK_TYPE.CONTINUE,
-  TASK_TYPE.BRANCH,
   TASK_TYPE.ENDING,
   TASK_TYPE.KNOWLEDGE_REVEAL,
 ])

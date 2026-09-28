@@ -333,7 +333,7 @@ export default function M3({ onComplete }) {
     setFormError(null)
     setFormStep('matching')
     try {
-      const res = await fetch(`/api/satellite?city=${encodeURIComponent(form.city)}`)
+      const res = await fetch(`/api/satellite?city=${encodeURIComponent(form.city)}&name=${encodeURIComponent(form.name)}`)
       const data = await res.json()
       let sat
       if (data.ok) {

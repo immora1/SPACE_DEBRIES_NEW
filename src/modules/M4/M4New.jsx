@@ -17,6 +17,7 @@ import {
 } from './gameData'
 import { commitOrbitDragProgress, shouldStartOrbitMission } from './orbitControl'
 import ReflectionPage from './ReflectionPage'
+import { TOTAL_ORBITAL_EVENTS } from '../../../functions/_story/constants.js'
 
 const EARTH_GLB = '/earth%20globe%203d%20model.glb'
 const SATELLITE_GLB = '/simple_satellite_low_poly_free.glb'
@@ -56,8 +57,8 @@ const ORBIT_RADIUS_Y = 150
 const ORBIT_LEFT_X = ORBIT_CENTER_X - ORBIT_RADIUS_X
 const ORBIT_RIGHT_X = ORBIT_CENTER_X + ORBIT_RADIUS_X
 const ORBIT_FRONT_PATH = `M ${ORBIT_LEFT_X} ${ORBIT_CENTER_Y} A ${ORBIT_RADIUS_X} ${ORBIT_RADIUS_Y} 0 0 0 ${ORBIT_RIGHT_X} ${ORBIT_CENTER_Y}`
-const TOTAL_ROUNDS = 6
-const GAME_MONTHS = [1, 3, 5, 7, 9, 12]
+const TOTAL_ROUNDS = TOTAL_ORBITAL_EVENTS
+const GAME_MONTHS = [1, 6, 12]
 const GAME_PHASE = {
   EVENT: 'event',
   FEEDBACK: 'feedback',
@@ -1712,8 +1713,8 @@ function StartGuide({ opacity, progress, missionEnvironment, onJumpToRecovery })
         </div>
         <h2 className="m4-guide-card-title">{pick('在碎片风暴中生存', 'Survive the debris storm')}</h2>
         <p className="m4-guide-card-copy">{pick(
-          `接管一颗执行${missionEnvironment.missionLabel}的受损卫星，在${missionEnvironment.orbitLabel}完成十二个月任务。每一次判断都会消耗燃料或护甲，也会改变最终结局。`,
-          `Take control of a damaged satellite assigned to ${missionEnvironment.missionLabelEn} and complete twelve months in ${missionEnvironment.orbitLabelEn}. Every decision consumes fuel or armor and changes the final outcome.`,
+          `接管一颗执行${missionEnvironment.missionLabel}的受损卫星，在${missionEnvironment.orbitLabel}经历第 1、6、12 月的三次关键决策：交会规避、载荷保护与末期处置。燃料、护甲和任务成果将持续累积，共同决定结局。`,
+          `Take control of a damaged satellite assigned to ${missionEnvironment.missionLabelEn} in ${missionEnvironment.orbitLabelEn}. Make three key decisions in months 1, 6 and 12: conjunction avoidance, payload protection and retirement. Fuel, armor and mission progress carry forward into the ending.`,
         )}</p>
         <div className="m4-guide-metrics">
           <span className="m4-guide-metric">
@@ -1729,9 +1730,10 @@ function StartGuide({ opacity, progress, missionEnvironment, onJumpToRecovery })
           type="button"
           className="m4-guide-jump-button"
           onClick={onJumpToRecovery}
-          aria-label={pick('直接进入卫星回收页面', 'Go directly to satellite recovery')}
+          disabled
+          aria-label={pick('完成三个任务后解锁回收演示', 'Complete three decisions to unlock recovery')}
         >
-          <span>{pick('进入回收演示', 'Open recovery demo')}</span>
+          <span>{pick('完成三个任务后解锁回收演示', 'Complete three decisions to unlock recovery')}</span>
           <ArrowRight className="m4-guide-jump-icon" size={16} strokeWidth={1.6} aria-hidden="true" />
         </button>
       </aside>
@@ -1947,7 +1949,7 @@ function RecoveryIntroPanel({ expanded, onBackToResult }) {
   )
 }
 
-function RecoveryStepsPanel({ activeStepIndex, onActiveStepChange }) {
+function RecoveryStepsPanel({ activeStepIndex, onActiveStepChange, viewedSteps, canComplete, onComplete }) {
   const { pick } = useI18n()
   const stepsRef = useRef()
 
@@ -2030,7 +2032,7 @@ function RecoveryStepsPanel({ activeStepIndex, onActiveStepChange }) {
           <div className="m4-recovery-step-copy">
             <div className="m4-recovery-step-kicker">
               <span>{pick(step.label, step.labelEn)}</span>
-              <span className="m4-recovery-step-index">{String(index + 1).padStart(2, '0')}</span>
+              <span className="m4-recovery-step-index">{String(index + 1).padStart(2, '0')}{viewedSteps.includes(index) ? ' ✓' : ''}</span>
             </div>
             <h3>{pick(step.title, step.titleEn)}</h3>
             <p>
@@ -2047,6 +2049,11 @@ function RecoveryStepsPanel({ activeStepIndex, onActiveStepChange }) {
           </div>
         </article>
       ))}
+      <button className="m4-game-continue" disabled={!canComplete} onClick={onComplete}>
+        {canComplete
+          ? pick('回收演示完成，解锁后续内容', 'COMPLETE RECOVERY AND UNLOCK NEXT STAGES')
+          : pick(`已查看 ${viewedSteps.length} / 6 步，请看完各步演示`, `${viewedSteps.length} / 6 STEPS VIEWED — WATCH EACH ANIMATION`)}
+      </button>
     </MotionAside>
   )
 }
@@ -2074,7 +2081,7 @@ function GamePanel({
             type="button"
             className="m4-game-recovery-jump"
             onClick={onJumpToRecovery}
-            disabled={loading}
+            disabled={loading || phase !== GAME_PHASE.FEEDBACK || round + 1 < TOTAL_ROUNDS}
             aria-label={pick('直接进入卫星回收页面', 'Go directly to satellite recovery')}
           >
             <span aria-hidden="true">→</span>
@@ -2148,14 +2155,13 @@ function GamePanel({
             <div className="m4-feedback-note" style={{ '--feedback-color': feedback.color }}>
               <p>{feedback.aiLog || feedback.techNote}</p>
             </div>
-            <div className="m4-game-reference">{feedback.techNote}</div>
             <div className="m4-feedback-deltas">
               <DeltaTag label="ARMOR" value={feedback.armorDelta} />
               <DeltaTag label="FUEL" value={feedback.fuelDelta} />
               <DeltaTag label="MISSION" value={feedback.missionDelta} />
             </div>
             <button className="m4-game-continue" onClick={onContinue}>
-              {round + 1 >= TOTAL_ROUNDS ? pick('查看任务结果', 'VIEW MISSION RESULT') : pick('进入下个月', 'CONTINUE TO NEXT MONTH')}
+              {round + 1 >= TOTAL_ROUNDS ? pick('查看任务结果', 'VIEW MISSION RESULT') : pick('进入下一关键任务', 'NEXT KEY DECISION')}
             </button>
           </MotionDiv>
         )}
@@ -4181,7 +4187,6 @@ export default function M4New({ onComplete = () => {} }) {
     storyChapters,
     setGameResult,
     setDebrisGenerated,
-    setScrollLocked,
     setStoryChapter,
   } = useAppStore()
   const publicGameState = useAppStore((state) => state.publicGameState)
@@ -4224,6 +4229,7 @@ export default function M4New({ onComplete = () => {} }) {
   const [localResult, setLocalResult] = useState(null)
   const [recoveryStepsVisible, setRecoveryStepsVisible] = useState(false)
   const [activeRecoveryStepIndex, setActiveRecoveryStepIndex] = useState(0)
+  const [viewedRecoverySteps, setViewedRecoverySteps] = useState([])
   const [materialBoardAnchor, setMaterialBoardAnchor] = useState(null)
   const initialStory = storyChapters?.m3
     || pick(
@@ -4257,7 +4263,8 @@ export default function M4New({ onComplete = () => {} }) {
     : null
   const recoveryComplete = phase === GAME_PHASE.RECOVERY
     && recoveryStepsVisible
-    && activeRecoveryStepIndex >= RECOVERY_STEPS.length - 1
+    && viewedRecoverySteps.length === RECOVERY_STEPS.length
+    && decisions.length >= TOTAL_ROUNDS
 
   useEffect(() => {
     const element = moduleRef.current
@@ -4275,14 +4282,16 @@ export default function M4New({ onComplete = () => {} }) {
   }, [])
 
   useEffect(() => {
-    if (!gameStarted) {
-      setScrollLocked(false)
-      return
-    }
-
-    setScrollLocked(!recoveryComplete)
-    return () => setScrollLocked(false)
-  }, [gameStarted, recoveryComplete, setScrollLocked])
+    if (phase !== GAME_PHASE.RECOVERY || !recoveryStepsVisible || !isModuleInView) return
+    const duration = activeRecoveryStepIndex === RECOVERY_STEPS.length - 1
+      ? BREAKUP_FALL_DURATION * 1000
+      : 3000
+    const timer = window.setTimeout(() => {
+      setViewedRecoverySteps(previous => previous.includes(activeRecoveryStepIndex)
+        ? previous : [...previous, activeRecoveryStepIndex])
+    }, duration)
+    return () => window.clearTimeout(timer)
+  }, [activeRecoveryStepIndex, isModuleInView, phase, recoveryStepsVisible])
 
   useEffect(() => {
     if (!gameStarted) return
@@ -4460,7 +4469,9 @@ export default function M4New({ onComplete = () => {} }) {
       return
     }
 
-    const storyUpdate = storySnapshot.current_stage?.display_content?.story_text || ''
+    const storyUpdate = storySnapshot.current_stage?.node_id === 'node_04'
+      ? storySnapshot.current_stage?.display_content?.story_text || ''
+      : ''
     const metrics = storySnapshot.public_game_state?.technical_metrics
     const resolvedStatus = metrics
       ? {
@@ -4485,11 +4496,11 @@ export default function M4New({ onComplete = () => {} }) {
     setFeedback({
       ...option,
       title: option.outcome === 'correct'
-        ? pick('机动执行完成', 'Maneuver complete')
+        ? pick('方案执行完成', 'Response complete')
         : option.outcome === 'partial'
           ? pick('风险仍未完全解除', 'Risk remains')
-          : pick('轨道状态继续恶化', 'Orbit continues to degrade'),
-      aiLog: storyUpdate || storySnapshot.current_stage?.stage_summary || option.techNote,
+          : pick('任务风险继续累积', 'Mission risk accumulates'),
+      aiLog: option.techNote,
       color: feedbackColor,
       nextDecisions,
       nextStories,
@@ -4523,17 +4534,16 @@ export default function M4New({ onComplete = () => {} }) {
   }, [feedback, handleGameEnd, round])
 
   const unlockNextStageWithoutScroll = useCallback(() => {
-    if (completionUnlocked.current) return
+    if (!recoveryComplete || completionUnlocked.current) return
     completionUnlocked.current = true
     onComplete({ autoScroll: false })
-  }, [onComplete])
+  }, [onComplete, recoveryComplete])
 
   const handleReflectionComplete = useCallback(() => {
     setRecoveryStepsVisible(false)
     setActiveRecoveryStepIndex(0)
     setPhase(GAME_PHASE.RECOVERY)
-    unlockNextStageWithoutScroll()
-  }, [unlockNextStageWithoutScroll])
+  }, [])
 
   const handleRecoveryBackToResult = useCallback(() => {
     setRecoveryStepsVisible(false)
@@ -4542,8 +4552,8 @@ export default function M4New({ onComplete = () => {} }) {
   }, [])
 
   const handleJumpToRecovery = useCallback(() => {
-    if (publicGameState && (publicGameState.orbital_events?.resolved?.length || 0) < TOTAL_ROUNDS) {
-      setDecisionError(pick('请先完成六个轨道事件，故事状态才能进入清理阶段。', 'Resolve all six orbital events before entering cleanup.'))
+    if (decisions.length < TOTAL_ROUNDS) {
+      setDecisionError(pick('请先完成三个轨道任务，再进入回收演示。', 'Complete all three orbital decisions before entering recovery.'))
       return
     }
     const material = materials?.frame || '卫星结构材料'
@@ -4574,15 +4584,13 @@ export default function M4New({ onComplete = () => {} }) {
     setActiveRecoveryStepIndex(0)
     setRecoveryStepsVisible(true)
     setPhase(GAME_PHASE.RECOVERY)
-    unlockNextStageWithoutScroll()
   }, [
     materials?.frame,
     reflection,
     satellite?.name,
-    unlockNextStageWithoutScroll,
     language,
     pick,
-    publicGameState,
+    decisions.length,
   ])
 
   const handleModuleWheel = useCallback((event) => {
@@ -4747,6 +4755,9 @@ export default function M4New({ onComplete = () => {} }) {
                 <RecoveryStepsPanel
                   activeStepIndex={activeRecoveryStepIndex}
                   onActiveStepChange={setActiveRecoveryStepIndex}
+                  viewedSteps={viewedRecoverySteps}
+                  canComplete={recoveryComplete}
+                  onComplete={unlockNextStageWithoutScroll}
                 />
               )}
             </>

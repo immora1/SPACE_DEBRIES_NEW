@@ -36,12 +36,13 @@ test('GPT-5.6 Luna story request uses medium reasoning and JSON Schema output', 
   )
 
   await generate('STORY_OUTLINE', {
-    important_event: {
+    matched_satellite: { name: 'TEST-SAT' },
+    story_user_input: { important_event: {
       people: ['测试者'],
       time: '',
       location: '',
       description: '一次重要经历',
-    },
+    } },
   })
 
   assert.equal(requestBody.model, 'gpt-5.6-luna')

@@ -104,8 +104,8 @@ function OptionalModuleCard({ Component, isVisible, onDecision }) {
               </div>
               <div className="optional-module-description">
                 {pick(
-                  '学会区分太空垃圾再入、流星与卫星，并提交你的目击报告。',
-                  'Learn to distinguish debris re-entry, meteors, and satellites, then submit your sighting report.',
+                  '学会区分太空垃圾再入、流星与卫星，并通过拖拽卡片练习判断。',
+                  'Learn to distinguish debris re-entry, meteors, and satellites, then practice by dragging the cards.',
                 )}
               </div>
             </div>
@@ -162,6 +162,9 @@ export default function App() {
   const unlockedSet = useMemo(() => new Set(unlockedModules), [unlockedModules])
   const completedSet = useMemo(() => new Set(completedModules), [completedModules])
   const allModuleIds = useMemo(() => MODULES.map((module) => module.id), [])
+  const availableModules = useMemo(() => (
+    completedSet.has('m4') ? allModuleIds : allModuleIds.slice(0, 4)
+  ), [allModuleIds, completedSet])
 
   useEffect(() => { window.scrollTo(0, 0) }, [])
 
@@ -227,18 +230,14 @@ export default function App() {
   }, [markModuleComplete, scrollToModuleTarget, unlockModule])
 
   const isModuleNavigable = useCallback((id) => (
-    allModuleIds.includes(id)
-  ), [allModuleIds])
+    availableModules.includes(id)
+  ), [availableModules])
 
   const scrollToModule = useCallback((id) => {
     if (!isModuleNavigable(id)) return
     if (scrollLocked) setScrollLocked(false)
     scrollToModuleTarget(id, 'smart')
   }, [isModuleNavigable, scrollLocked, scrollToModuleTarget, setScrollLocked])
-
-  const availableModules = useMemo(() => (
-    allModuleIds
-  ), [allModuleIds])
 
   const handleM8Decision = useCallback(() => {
     handleComplete('m7', { autoScroll: false })
@@ -252,7 +251,7 @@ export default function App() {
         onStageClick={scrollToModule}
       />
       <AIStoryRail />
-      {MODULES.map(({ id, Component, connector, archDivider, boundaryDivider }) => {
+      {MODULES.filter(({ id }) => availableModules.includes(id)).map(({ id, Component, connector, archDivider, boundaryDivider }) => {
         return (
           <ModuleWrapper
             key={id}

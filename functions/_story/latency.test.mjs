@@ -9,6 +9,7 @@ import { MemoryStoryRepository } from './repository.js'
 import { validateStoryOutline } from './validators.js'
 import { createStoryStream } from './stream-response.js'
 import { readStoryStream } from '../../src/services/story-stream.js'
+import { CURRENT_OPENING_FIXTURE } from './current-fixtures.js'
 import { StoryError } from './constants.js'
 
 test('partial opening extracts only first top-level story_text and handles every escape boundary', () => {
@@ -67,7 +68,7 @@ test('opening uses low reasoning and emits text before stream completion', async
 })
 
 test('opening retry resets preview and timings include generation and persistence', async () => {
-  const fixture = createFixtureStoryGenerator({ openingOutputs: [{ ...VALID_OPENING_FIXTURE, story_text: '你' }, VALID_OPENING_FIXTURE] })
+  const fixture = createFixtureStoryGenerator({ openingOutputs: [{ ...CURRENT_OPENING_FIXTURE, story_text: '你' }, CURRENT_OPENING_FIXTURE] })
   const events = []
   const repository = new MemoryStoryRepository()
   const service = new StoryService({ repository, generateOutput: async (...args) => {

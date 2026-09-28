@@ -9,7 +9,7 @@
     "dev:pages": "npx wrangler pages dev --proxy 5173 --port 8788",
     "dev:server": "node --watch server/index.js",
     "smoke:openai": "node server/openai-smoke.mjs",
-    "story:sync-spec": "node scripts/generate-story-spec-assets.mjs",
+    "story:sync-spec": "node scripts/generate-story-spec-assets.mjs && node scripts/generate-current-story-spec.mjs",
     "clean:dist": "node scripts/clean-dist.mjs",
     "prebuild": "npm run story:sync-spec && npm run clean:dist",
     "build": "vite build",

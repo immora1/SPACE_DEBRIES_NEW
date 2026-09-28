@@ -11,7 +11,6 @@ import {
 import { buildStoryPrompt, getStorySpec } from './spec-assets.js'
 import { SYSTEM_PROMPT } from './prompts/system.js'
 import { partialOpeningText } from './opening-stream.js'
-import { restoreOutlineRules } from './outline-generation.js'
 
 function boundedInteger(value, fallback, minimum, maximum) {
   const parsed = Number.parseInt(value, 10)
@@ -176,7 +175,7 @@ export function createOpenAIStoryGenerator(env, options = {}) {
 
     try {
       const parsed = JSON.parse(message.content)
-      const output = taskType === TASK_TYPE.OUTLINE ? restoreOutlineRules(parsed) : parsed
+      const output = parsed
       Object.defineProperty(output, STORY_GENERATION_METADATA, {
         value: Object.freeze({
           request_id: completion._request_id || null,

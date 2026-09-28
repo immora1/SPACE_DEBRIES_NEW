@@ -2,7 +2,7 @@ import { StoryError } from '../constants.js'
 import { ORBITAL_EVENTS } from './orbital-events.js'
 
 export const ORBITAL_GAME_MODULE_ID = 'M4_ORBITAL_EVENTS'
-export const ORBITAL_STORY_STAGE_COUNT = 6
+export const ORBITAL_STORY_STAGE_COUNT = ORBITAL_EVENTS.length
 
 export function orbitalAnswerControlId(questionId, answerId) {
   return `m4-orbital:${questionId}:${answerId}`

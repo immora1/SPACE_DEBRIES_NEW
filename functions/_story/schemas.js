@@ -4,6 +4,7 @@ import {
   INTERACTIVE_NODE_IDS,
   STORY_NODE_IDS,
   TASK_TYPE,
+  TOTAL_ORBITAL_EVENTS,
 } from './constants.js'
 
 const strictObject = (shape) => z.object(shape).strict()
@@ -231,7 +232,7 @@ export const GameStateSchema = strictObject({
       event_id: z.string(),
       action_id: z.string(),
       outcome: z.enum(['correct', 'partial', 'wrong']),
-    })).max(6),
+    })).max(TOTAL_ORBITAL_EVENTS),
   }),
   cleanup_test: strictObject({
     matches: z.array(strictObject({

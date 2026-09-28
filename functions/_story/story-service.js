@@ -20,7 +20,6 @@ import {
   applyNarrativeOutput,
   applyStateDelta,
   applyOpeningOutput,
-  applyStoryOption,
   cloneState,
   createInitialGameState,
   createRuntimeStoryState,
@@ -37,17 +36,15 @@ import {
   validateStoryEnding,
   validateStoryOpening,
   validateStoryOutline,
-} from './validators.js'
-import { resolveOptionsForNode } from './config/story-options.js'
+} from './current-validators.js'
 import {
-  buildContinueContext,
   buildProductContinueContext,
   buildEndingContext,
   buildKnowledgeContext,
-  findOutlineNode,
+  matchedSatelliteContext,
+  narrativeContext,
   latestContinuityHandoff,
-} from './story-context.js'
-import { selectEnding } from './ending-selector.js'
+} from './current-context.js'
 import { resolveProductAction } from './product-actions.js'
 
 function id() {
@@ -70,7 +67,7 @@ function deepFreeze(value) {
 function canonicalInputFromRequest(request) {
   return CanonicalStoryUserInputSchema.parse({
     important_event: {
-      people: [request.nickname],
+      people: ['你'],
       time: '',
       location: '',
       description: request.important_event,
@@ -83,7 +80,6 @@ function errorPrefix(taskType) {
     [TASK_TYPE.OUTLINE]: 'OUTLINE_',
     [TASK_TYPE.OPENING]: 'OPENING_',
     [TASK_TYPE.CONTINUE]: 'CONTINUE_',
-    [TASK_TYPE.BRANCH]: 'CONTINUE_',
     [TASK_TYPE.ENDING]: 'ENDING_',
     [TASK_TYPE.KNOWLEDGE_REVEAL]: 'KNOWLEDGE_',
   }[taskType]
@@ -133,7 +129,7 @@ function retryReason(error) {
         `${error.code}: 上一次 story_text 为 ${detail.chinese_characters} 个中文字符、${detail.paragraphs} 段；`,
         `必须为 ${expected.min_chinese_characters}-${expected.max_chinese_characters} 个中文字符、`,
         `${expected.min_paragraphs}-${expected.max_paragraphs} 段并使用第二人称“你”。`,
-        '请完整重写 story_text，并写到 420-500 个汉字（只统计汉字，不计标点、数字和空格）；',
+        `请完整重写 story_text，并写到 ${expected.min_chinese_characters}-${expected.max_chinese_characters} 个汉字（只统计汉字，不计标点、数字和空格）；`,
         '其他 JSON 字段仍须完整返回。',
       ].join('')
     }
@@ -151,28 +147,6 @@ function publicIdentityAction(userInput) {
     action_id: 'create_story',
     label: `${userInput.nickname}提交了一件重要的事`,
   }
-}
-
-function choiceAction(request, option) {
-  return {
-    node_id: request.node_id,
-    option_id: option.option_id,
-    client_action_id: request.client_action_id,
-  }
-}
-
-function publicChoiceAction(request, option) {
-  return {
-    module: 'STORY_CHOICE',
-    source_id: request.node_id,
-    action_id: option.option_id,
-    label: option.label,
-  }
-}
-
-function nextNodeId(nodeId) {
-  const number = Number.parseInt(nodeId.slice(-2), 10)
-  return `node_${String(number + 1).padStart(2, '0')}`
 }
 
 function narrativeStage({
@@ -225,46 +199,6 @@ function knowledgeDisplay(output) {
   }
 }
 
-function storyChoiceInteraction({
-  story,
-  request,
-  option,
-  transition,
-  idempotencyKey,
-  now,
-}) {
-  return {
-    interaction_id: id(),
-    story_id: story.story_id,
-    module: 'STORY_CHOICE',
-    source_id: request.node_id,
-    action_id: option.option_id,
-    label: option.label,
-    technical_effect: {
-      state_transition: {
-        before: transition.before,
-        delta: transition.delta,
-        after: transition.after,
-      },
-      add_consequence_ids: option.add_consequence_ids,
-      resolve_consequence_ids: option.resolve_consequence_ids,
-    },
-    narrative_effect: {
-      effect_summary: option.effect_summary,
-      key_outcome: option.key_outcome,
-    },
-    client_action_id: request.client_action_id,
-    idempotency_key: idempotencyKey,
-    state_before: transition.before,
-    state_delta: transition.delta,
-    state_after: transition.after,
-    add_consequence_ids: option.add_consequence_ids,
-    resolve_consequence_ids: option.resolve_consequence_ids,
-    key_outcome: option.key_outcome,
-    created_at_ms: now,
-  }
-}
-
 export class StoryService {
   constructor({ repository, generateOutput, generateStage, clock = () => Date.now() }) {
     this.repository = repository
@@ -295,7 +229,7 @@ export class StoryService {
     throw new StoryError('AI_INVALID_OUTPUT', 'Story output validation failed.', 502)
   }
 
-  async generateStoryOutline(rawInput, generationOptions = {}) {
+  async generateStoryOutline(rawInput, matchedSatellite, generationOptions = {}) {
     const input = parse(
       CanonicalStoryUserInputSchema,
       rawInput,
@@ -303,7 +237,7 @@ export class StoryService {
     )
     const generated = await this.generateValidated(
       TASK_TYPE.OUTLINE,
-      input,
+      { story_user_input: input, matched_satellite: matchedSatelliteContext(matchedSatellite) },
       validateStoryOutline,
       generationOptions,
     )
@@ -318,14 +252,8 @@ export class StoryService {
     validateStoryOutline(outline)
     const generated = await this.generateValidated(
       TASK_TYPE.OPENING,
-      {
-        event_anchor: cloneState(outline.event_anchor),
-        ...cloneState(outline.event_anchor),
-        primary_anomaly: outline.primary_anomaly,
-        current_node: findOutlineNode(outline, 'node_01'),
-        known_to_user: cloneState(runtimeState.known_to_user),
-      },
-      (output) => validateStoryOpening(output, runtimeState),
+      narrativeContext(outline, runtimeState, 'node_01'),
+      (output) => validateStoryOpening(output, runtimeState, outline.causal_chain.B_hidden_mechanism),
       generationOptions,
     )
     return {
@@ -375,12 +303,13 @@ export class StoryService {
       outline,
       attempts: outlineAttempts,
       providerMetadata: outlineProviderMetadata,
-    } = await this.generateStoryOutline(canonicalInput, { signal })
+    } = await this.generateStoryOutline(canonicalInput, request.satellite, { signal })
     const outlineMs = Math.round(performance.now() - outlineStarted)
     signal?.throwIfAborted()
     onEvent({ type: 'phase', phase: 'opening' })
     const openingStarted = performance.now()
-    const initialRuntimeState = this.createRuntimeStoryState(outline.initial_story_state)
+    const initialRuntimeState = this.createRuntimeStoryState({ ...outline.initial_story_state,
+      confirmed_facts: outline.event_anchor.key_facts })
     const {
       opening,
       additions,
@@ -532,15 +461,18 @@ export class StoryService {
     const after = applyStateDelta(before, delta)
     Object.assign(story.story_state, after)
     Object.assign(interaction, { state_before: before, state_delta: delta, state_after: after })
-    if (request.action_type !== ACTION_TYPE.CLEANUP_PAIR_SUBMIT) {
-      story.story_state.key_outcomes.push(interaction.label)
+    if (request.action_type === ACTION_TYPE.ORBITAL_EVENT_RESOLVE) {
+      const consequence = interaction.narrative_effect.consequence
+      story.story_state.key_outcomes.push(consequence)
+      story.story_state.active_consequences = [...new Set([
+        ...story.story_state.active_consequences, consequence,
+      ])]
     }
     const existingStages = await this.repository.getStages(storyId)
     const stages = []
-    const orbitalCount = story.game_state.orbital_events.resolved.length
     const continues = request.action_type === ACTION_TYPE.MATERIALS_COMMIT
       || request.action_type === ACTION_TYPE.MISSION_SELECT
-      || (request.action_type === ACTION_TYPE.ORBITAL_EVENT_RESOLVE && orbitalCount === 1)
+
     const addStage = (taskType, nodeId, generated, displayContent, continuityHandoff = null) => {
       const stage = narrativeStage({
         story, stageIndex: current.current_stage_index + stages.length + 1,
@@ -560,7 +492,7 @@ export class StoryService {
       const context = buildProductContinueContext({ story, interaction,
         previousHandoff: latestContinuityHandoff(existingStages) })
       const generated = await this.generateValidated(TASK_TYPE.CONTINUE, context,
-        output => validateStoryContinue(output, story.story_state))
+        output => validateStoryContinue(output, story.story_state, story.story_outline.causal_chain.B_hidden_mechanism))
       const nodeId = story.current_node_id
       const next = nodeId === 'node_02' ? 'node_03' : 'node_04'
       story.story_state = applyNarrativeOutput(story.story_state, generated.data.additions, next)
@@ -570,17 +502,15 @@ export class StoryService {
     }
     if (request.action_type === ACTION_TYPE.ORBITAL_EVENT_RESOLVE
       && resolution.nextCheckpoint === CHECKPOINT.CLEANUP) {
-      const selected = selectEnding({ reachableEndings: story.story_outline.reachable_endings,
-        storyState: after, activeConsequenceIds: story.story_state.active_consequences })
-      const context = buildEndingContext({ story, selectedEnding: selected.ending,
+      const context = buildEndingContext({ story,
         runtimeState: story.story_state, previousHandoff: latestContinuityHandoff(existingStages) })
       const generated = await this.generateValidated(TASK_TYPE.ENDING, context,
-        output => validateStoryEnding(output, { selectedEndingId: selected.ending.ending_id,
-          hiddenFacts: story.story_state.hidden_facts }))
+        output => validateStoryEnding(output, { endingCandidates: story.story_outline.ending_candidates,
+          hiddenMechanism: story.story_outline.causal_chain.B_hidden_mechanism }))
       story.story_state = applyNarrativeOutput(story.story_state, [], 'node_05')
       story.current_node_id = 'node_05'
-      const stage = addStage(TASK_TYPE.ENDING, 'node_05', generated, generated.data)
-      story.final_story = { selected_ending_id: selected.ending.ending_id, ending_stage_id: stage.stage_id }
+      const stage = addStage(TASK_TYPE.ENDING, 'node_04', generated, generated.data)
+      story.final_story = { selected_ending_id: generated.data.selected_ending_id, ending_stage_id: stage.stage_id }
     }
     if (resolution.nextCheckpoint === CHECKPOINT.COMPLETED) {
       const endingStage = existingStages.find(stage => stage.task_type === TASK_TYPE.ENDING)
@@ -589,7 +519,7 @@ export class StoryService {
       const generated = await this.generateValidated(TASK_TYPE.KNOWLEDGE_REVEAL, context, validateKnowledgeReveal)
       story.story_state = applyNarrativeOutput(story.story_state, [], null)
       story.current_node_id = null
-      const stage = addStage(TASK_TYPE.KNOWLEDGE_REVEAL, 'node_10', generated, knowledgeDisplay(generated.data))
+      const stage = addStage(TASK_TYPE.KNOWLEDGE_REVEAL, 'node_05', generated, knowledgeDisplay(generated.data))
       story.final_story.knowledge_reveal_stage_id = stage.stage_id
       story.status = STORY_STATUS.COMPLETED
       story.completed_at_ms = now
@@ -603,280 +533,6 @@ export class StoryService {
       stages,
     })
     return toPublicStoryDTO(story, await this.repository.getStages(storyId))
-  }
-
-  async advanceStoryOption(storyId, request, now) {
-    const current = await this.repository.getStory(storyId, request.session_id)
-    assertStory(current, 'STORY_NOT_FOUND', 'Story not found.', 404)
-    const requestFingerprint = stableStringify({
-      story_id: storyId,
-      node_id: request.node_id,
-      option_id: request.option_id,
-      client_action_id: request.client_action_id,
-      version: request.version,
-    })
-    const existingGeneration = await this.repository.getGenerationByClientAction(
-      storyId,
-      request.client_action_id,
-    )
-    if (existingGeneration) {
-      assertStory(
-        existingGeneration.request_fingerprint === requestFingerprint,
-        'CLIENT_ACTION_ID_REUSED',
-        'client_action_id was already used for a different story choice.',
-        409,
-      )
-      if (existingGeneration.status === 'succeeded') {
-        return toPublicStoryDTO(current, await this.repository.getStages(storyId))
-      }
-      if (existingGeneration.status === 'pending') {
-        throw new StoryError(
-          'GENERATION_IN_PROGRESS',
-          'This story choice is already being generated.',
-          409,
-        )
-      }
-    }
-    assertStory(
-      current.status === STORY_STATUS.IN_PROGRESS,
-      'STORY_NOT_ACTIVE',
-      'Story is not active.',
-      409,
-    )
-    assertStory(
-      current.prompt_metadata?.spec_version === STORY_SPEC_VERSION,
-      'STORY_VERSION_NOT_CONTINUABLE',
-      'This older story has no validated numeric-state rules and cannot be continued.',
-      409,
-    )
-    assertStory(
-      current.version === request.version,
-      'VERSION_CONFLICT',
-      'The story was updated by another request.',
-      409,
-    )
-    assertStory(
-      current.current_node_id === request.node_id,
-      'NODE_CONFLICT',
-      `The current story node is ${current.current_node_id}.`,
-      409,
-    )
-
-    const options = resolveOptionsForNode(current, current.current_node_id)
-    const option = options.find((item) => item.option_id === request.option_id)
-    assertStory(option, 'OPTION_NOT_FOUND', 'The option is not valid for the current node.', 400)
-    const action = choiceAction(request, option)
-    const transition = applyStoryOption(current.story_state, option, action)
-    const idempotencyKey = [
-      storyId,
-      request.node_id,
-      request.option_id,
-      request.client_action_id,
-    ].join(':')
-    const generationRecord = {
-      generation_id: id(),
-      idempotency_key: idempotencyKey,
-      story_id: storyId,
-      node_id: request.node_id,
-      option_id: request.option_id,
-      client_action_id: request.client_action_id,
-      request_fingerprint: requestFingerprint,
-      expected_version: request.version,
-      status: 'pending',
-      state_before: transition.before,
-      option_snapshot: option,
-      result_version: null,
-      error_code: null,
-      created_at_ms: now,
-      updated_at_ms: now,
-    }
-    const pending = await this.repository.beginGeneration(generationRecord)
-    if (pending.state === 'succeeded') {
-      const saved = await this.repository.getStory(storyId, request.session_id)
-      return toPublicStoryDTO(saved, await this.repository.getStages(storyId))
-    }
-    if (pending.state === 'pending') {
-      throw new StoryError(
-        'GENERATION_IN_PROGRESS',
-        'This story choice is already being generated.',
-        409,
-      )
-    }
-    const generation = pending.generation
-
-    try {
-      const existingStages = await this.repository.getStages(storyId)
-      const previousHandoff = latestContinuityHandoff(existingStages)
-      const currentNode = findOutlineNode(current.story_outline, current.current_node_id)
-      const continueContext = buildContinueContext({
-        story: current,
-        option,
-        transition,
-        previousHandoff,
-      })
-      const continueGenerated = await this.generateValidated(
-        currentNode.task_type,
-        continueContext,
-        (output) => validateStoryContinue(output, transition.state),
-      )
-      const upcomingNodeId = nextNodeId(current.current_node_id)
-      let runtimeState = applyNarrativeOutput(
-        transition.state,
-        continueGenerated.data.additions,
-        upcomingNodeId,
-      )
-      const publicAction = publicChoiceAction(request, option)
-      const stages = [
-        narrativeStage({
-          story: current,
-          stageIndex: current.current_stage_index + 1,
-          taskType: currentNode.task_type,
-          nodeId: currentNode.node_id,
-          inputAction: publicAction,
-          displayContent: {
-            story_text: continueGenerated.data.output.story_text,
-            choices: [],
-          },
-          knownToUserAdditions: continueGenerated.data.output.known_to_user_additions,
-          continuityHandoff: continueGenerated.data.output.continuity_handoff,
-          modelMetadata: {
-            spec_version: STORY_SPEC_VERSION,
-            attempts: continueGenerated.attempts,
-            provider: cloneState(continueGenerated.providerMetadata),
-          },
-          summary: `${currentNode.node_id} 已按后端确认的数值变化完成。`,
-          stateBefore: current.story_state,
-          stateAfter: runtimeState,
-          createdAt: now,
-        }),
-      ]
-      const story = cloneState(current)
-      story.story_state = runtimeState
-      story.current_node_id = upcomingNodeId
-
-      if (currentNode.node_id === 'node_08') {
-        const selected = selectEnding({
-          reachableEndings: story.story_outline.reachable_endings,
-          storyState: storyMetrics(runtimeState),
-          activeConsequenceIds: runtimeState.active_consequences,
-        })
-        const endingContext = buildEndingContext({
-          story,
-          selectedEnding: selected.ending,
-          runtimeState,
-          previousHandoff: continueGenerated.data.output.continuity_handoff,
-        })
-        const endingGenerated = await this.generateValidated(
-          TASK_TYPE.ENDING,
-          endingContext,
-          (output) => validateStoryEnding(output, {
-            selectedEndingId: selected.ending.ending_id,
-            hiddenFacts: runtimeState.hidden_facts,
-          }),
-        )
-        const persistedEndingOutput = await this.repository.saveValidatedEnding(
-          generation.generation_id,
-          {
-            storyId,
-            expectedVersion: current.version,
-            nodeId: current.current_node_id,
-            output: endingGenerated.data,
-            now: this.clock(),
-          },
-        )
-        const endingState = applyNarrativeOutput(runtimeState, [], 'node_10')
-        const endingStage = narrativeStage({
-          story,
-          stageIndex: current.current_stage_index + 2,
-          taskType: TASK_TYPE.ENDING,
-          nodeId: 'node_09',
-          inputAction: publicAction,
-          displayContent: cloneState(persistedEndingOutput),
-          modelMetadata: {
-            spec_version: STORY_SPEC_VERSION,
-            attempts: endingGenerated.attempts,
-            provider: cloneState(endingGenerated.providerMetadata),
-            ending_evaluation_trace: selected.trace,
-          },
-          summary: `后端规则选择 ${selected.ending.ending_id}，模型仅完成结局叙事。`,
-          stateBefore: runtimeState,
-          stateAfter: endingState,
-          createdAt: now + 1,
-        })
-        stages.push(endingStage)
-        story.story_state = endingState
-        story.current_node_id = 'node_10'
-        const knowledgeContext = buildKnowledgeContext({
-          story,
-          endingOutput: persistedEndingOutput,
-          stages: [...existingStages, ...stages],
-        })
-        const knowledgeGenerated = await this.generateValidated(
-          TASK_TYPE.KNOWLEDGE_REVEAL,
-          knowledgeContext,
-          validateKnowledgeReveal,
-        )
-        const completedState = applyNarrativeOutput(endingState, [], null)
-        const knowledgeStage = narrativeStage({
-          story,
-          stageIndex: current.current_stage_index + 3,
-          taskType: TASK_TYPE.KNOWLEDGE_REVEAL,
-          nodeId: 'node_10',
-          inputAction: publicAction,
-          displayContent: knowledgeDisplay(knowledgeGenerated.data),
-          modelMetadata: {
-            spec_version: STORY_SPEC_VERSION,
-            attempts: knowledgeGenerated.attempts,
-            provider: cloneState(knowledgeGenerated.providerMetadata),
-          },
-          summary: 'node_10 知识揭示已完成，数值状态未被读取或修改。',
-          stateBefore: endingState,
-          stateAfter: completedState,
-          createdAt: now + 2,
-        })
-        stages.push(knowledgeStage)
-        story.story_state = completedState
-        story.current_node_id = null
-        story.status = STORY_STATUS.COMPLETED
-        story.completed_at_ms = now
-        story.expires_at_ms = null
-        story.final_story = {
-          selected_ending_id: selected.ending.ending_id,
-          ending_stage_id: endingStage.stage_id,
-          knowledge_reveal_stage_id: knowledgeStage.stage_id,
-        }
-      } else {
-        story.expires_at_ms = now + STORY_EXPIRY_MS
-      }
-
-      story.current_stage_index = stages.at(-1).stage_index
-      story.version = current.version + 1
-      story.last_generation_id = generation.generation_id
-      story.last_activity_at_ms = now
-      const interaction = storyChoiceInteraction({
-        story,
-        request,
-        option,
-        transition,
-        idempotencyKey,
-        now,
-      })
-      await this.repository.commitAdvance({
-        story,
-        expectedVersion: current.version,
-        interaction,
-        stages,
-        generation,
-      })
-      return toPublicStoryDTO(story, await this.repository.getStages(storyId))
-    } catch (error) {
-      await this.repository.markGenerationFailed(
-        generation.generation_id,
-        error?.code || 'STORY_GENERATION_FAILED',
-        this.clock(),
-      )
-      throw error
-    }
   }
 
   async advanceStory(storyId, rawRequest) {

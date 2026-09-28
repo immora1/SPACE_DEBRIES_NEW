@@ -41,14 +41,16 @@ test('M4 retains a safe satellite-derived fallback for legacy stories without mi
   assert.equal(environment.inclinationDeg, 98.7)
 })
 
-test('mission orbit profile changes the order of M4 environment events', () => {
+test('all orbit profiles keep the three decisions in causal order with retirement last', () => {
   const leoEvents = pickEvents(0, [], 6, publicMission('weather_monitoring'))
   const geoEvents = pickEvents(0, [], 6, publicMission('communications_relay'))
 
-  assert.notDeepEqual(
+  assert.deepEqual(
     geoEvents.map((event) => event.id),
     leoEvents.map((event) => event.id),
   )
-  assert.equal(geoEvents[0].id, 'solar_flare')
+  assert.equal(geoEvents.length, 3)
+  assert.equal(geoEvents.at(-1).id, 'end_of_life')
+  assert.equal(geoEvents[0].id, 'debris_close')
   assert.equal(leoEvents[0].id, 'debris_close')
 })

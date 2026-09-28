@@ -1,4 +1,5 @@
 import { StoryError, TASK_TYPE } from './constants.js'
+import { CURRENT_OUTLINE_FIXTURE, CURRENT_OPENING_FIXTURE } from './current-fixtures.js'
 import {
   VALID_OPENING_FIXTURE,
   VALID_OUTLINE_FIXTURE,
@@ -78,8 +79,8 @@ const DEFAULT_KNOWLEDGE_OUTPUT = {
 
 export function createFixtureStoryGenerator(options = {}) {
   const queues = {
-    [TASK_TYPE.OUTLINE]: (options.outlineOutputs || [VALID_OUTLINE_FIXTURE]).map(clone),
-    [TASK_TYPE.OPENING]: (options.openingOutputs || [VALID_OPENING_FIXTURE]).map(clone),
+    [TASK_TYPE.OUTLINE]: (options.outlineOutputs || [CURRENT_OUTLINE_FIXTURE]).map(clone),
+    [TASK_TYPE.OPENING]: (options.openingOutputs || [CURRENT_OPENING_FIXTURE]).map(clone),
     [TASK_TYPE.CONTINUE]: options.continueOutputs?.map(clone) || null,
     [TASK_TYPE.BRANCH]: options.continueOutputs?.map(clone) || null,
     [TASK_TYPE.ENDING]: options.endingOutputs?.map(clone) || null,
@@ -106,10 +107,22 @@ export function createFixtureStoryGenerator(options = {}) {
       value = clone(queue.length > 1 ? queue.shift() : queue[0])
     } else if (taskType === TASK_TYPE.CONTINUE || taskType === TASK_TYPE.BRANCH) {
       value = clone(DEFAULT_CONTINUE_OUTPUT)
+      Object.assign(value, { task_type: TASK_TYPE.CONTINUE, node_id: input.current_node.node_id,
+        next_stage: input.current_node.node_id === 'node_02' ? 'STORY_CONTINUE' : 'GAME',
+        next_node_id: input.current_node.node_id === 'node_02' ? 'node_03' : null })
     } else if (taskType === TASK_TYPE.ENDING) {
-      value = defaultEndingOutput(input.selected_ending.ending_id)
+      const candidate = input.ending_candidates[input.game_summary.overall_result === 'success' ? 0 : 2]
+      value = defaultEndingOutput(candidate.ending_id)
+      Object.assign(value, { node_id: 'node_04', next_node_id: 'node_05',
+        selected_ending_type: candidate.ending_type,
+        next_node_context: { satellite_event_A: '卫星恢复观测。', human_effect_C: '天气提示恢复更新。',
+          event_impact: '准备时间缩短，点灯完成。' } })
     } else if (taskType === TASK_TYPE.KNOWLEDGE_REVEAL) {
       value = clone(DEFAULT_KNOWLEDGE_OUTPUT)
+      value.node_id = 'node_05'
+      delete value.material_insights
+      delete value.mission_insights
+      delete value.cleanup_insights
     } else {
       throw new StoryError(
         'STORY_TASK_NOT_IMPLEMENTED',

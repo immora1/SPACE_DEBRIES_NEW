@@ -20,6 +20,11 @@ import {
   cloneState,
 } from './state-reducer.js'
 
+export function evaluateOrbitalResult({ armor, fuel, missionProgress }) {
+  const score = armor * 0.42 + fuel * 0.28 + missionProgress * 0.3
+  return score >= 55 && armor > 0 && fuel > 0 ? 'success' : 'failure'
+}
+
 function validateCheckpoint(story, checkpoint) {
   assertStory(
     story.current_checkpoint === checkpoint,
