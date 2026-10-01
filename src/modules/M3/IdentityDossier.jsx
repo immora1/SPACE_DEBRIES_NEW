@@ -38,8 +38,8 @@ const IDENTITY_FIELDS = [
     labelEn: 'One event that matters to you',
     hint: '可以是一个时刻、一个人或一段经历',
     hintEn: 'A moment, a person, or an experience',
-    placeholder: '写下它……',
-    placeholderEn: 'Write it here...',
+    placeholder: '这个周末，我要去机场接三年没见的姐姐。她很快就要去国外工作，我想在她离开前，把一直没说出口的话告诉她。',
+    placeholderEn: 'This weekend, I’m picking up my older sister at the airport. I haven’t seen her in three years. She’ll soon be leaving to work abroad, and before she goes, I want to tell her what I’ve never managed to say.',
     multiline: true,
   },
 ]
