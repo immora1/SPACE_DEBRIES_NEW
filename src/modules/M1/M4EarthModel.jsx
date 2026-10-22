@@ -1,4 +1,4 @@
-import { Component, Suspense, useMemo } from 'react'
+import { Component, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { Html, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import useI18n from '../../i18n/useI18n'
@@ -12,15 +12,16 @@ function cloneMaterial(material) {
   return cloned
 }
 
-function EarthStatus({ radius, failed = false, onRetry }) {
+function EarthStatus({ radius, status, onRetry }) {
   const { pick } = useI18n()
+  const failed = status === 'failed'
   return (
     <group>
-      <mesh>
+      <mesh visible={status !== 'ready'}>
         <sphereGeometry args={[radius, 32, 24]} />
         <meshStandardMaterial color="#53658a" wireframe />
       </mesh>
-      <Html center>
+      <Html center style={{ display: status === 'ready' ? 'none' : 'block' }}>
         <div style={{ color: '#fff', background: '#10182ee6', padding: '10px 16px', whiteSpace: 'nowrap', fontSize: 13 }} role="status">
           {failed ? pick('模型加载失败', 'Model failed to load') : pick('正在加载地球模型…', 'Loading Earth…')}
           {failed && <button type="button" onClick={onRetry} style={{ marginLeft: 12, pointerEvents: 'auto' }}>{pick('重试', 'Retry')}</button>}
@@ -33,27 +34,36 @@ function EarthStatus({ radius, failed = false, onRetry }) {
 class EarthBoundary extends Component {
   state = { failed: false }
   static getDerivedStateFromError() { return { failed: true } }
+  componentDidCatch() { this.props.onError() }
   render() {
-    if (this.state.failed) return <EarthStatus radius={this.props.radius} failed onRetry={() => {
-      useGLTF.clear(EARTH_GLB)
-      this.setState({ failed: false })
-    }} />
-    return this.props.children
+    return this.state.failed ? null : this.props.children
   }
 }
 
 export default function M4EarthModel({ radius = 1 }) {
+  const [status, setStatus] = useState('loading')
+  const [attempt, setAttempt] = useState(0)
+  const onLoad = useCallback(() => setStatus('ready'), [])
+  const onError = useCallback(() => setStatus('failed'), [])
   return (
-    <EarthBoundary radius={radius}>
-      <Suspense fallback={<EarthStatus radius={radius} />}>
-        <LoadedEarth radius={radius} />
-      </Suspense>
-    </EarthBoundary>
+    <>
+      <EarthStatus radius={radius} status={status} onRetry={() => {
+        useGLTF.clear(EARTH_GLB)
+        setStatus('loading')
+        setAttempt((current) => current + 1)
+      }} />
+      <EarthBoundary key={attempt} onError={onError}>
+        <Suspense fallback={null}>
+          <LoadedEarth radius={radius} onLoad={onLoad} />
+        </Suspense>
+      </EarthBoundary>
+    </>
   )
 }
 
-function LoadedEarth({ radius }) {
+function LoadedEarth({ radius, onLoad }) {
   const { scene } = useGLTF(EARTH_GLB)
+  useEffect(onLoad, [onLoad])
 
   const normalizedScene = useMemo(() => {
     const clone = scene.clone(true)
