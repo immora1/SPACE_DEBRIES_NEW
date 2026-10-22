@@ -19,7 +19,7 @@ const GUIDE_STEPS = [
   {
     type: 'debris',
     action: '向下拖拽',
-    image: '/m8-game/reentry-fragments.png',
+    image: '/m8-game/reentry-fragments.webp',
     title: '太空垃圾',
     clue: '多个亮点同向、速度较慢、持续碎裂。',
     reportHint: '向下拖入太空垃圾背包。',
@@ -28,7 +28,7 @@ const GUIDE_STEPS = [
   {
     type: 'meteor',
     action: '向左拖拽',
-    image: '/m8-game/meteor-split.png',
+    image: '/m8-game/meteor-split.webp',
     title: '流星',
     clue: '单条亮线，时间很短，可能突然爆闪。',
     reportHint: '向左拖拽完成判断。',
@@ -37,7 +37,7 @@ const GUIDE_STEPS = [
   {
     type: 'satellite',
     action: '向右拖拽',
-    image: '/m8-game/satellite-pass.png',
+    image: '/m8-game/satellite-pass.webp',
     title: '卫星残骸',
     clue: '主体仍可辨认，沿轨道方向稳定移动。',
     reportHint: '向右拖拽完成判断。',
@@ -123,7 +123,7 @@ const STANDARD_CARDS = [
   {
     id: 'meteor',
     code: 'FIREBALL',
-    image: '/m8-game/meteor-fireball.png',
+    image: '/m8-game/meteor-fireball.webp',
     title: '流星',
     signal: '通常极快，1–3 秒内划过；可能有短拖尾，偶尔爆闪。',
     warning: '如果持续几十秒并分裂成多点同向飞行，就要谨慎排除再入碎片。',
@@ -139,21 +139,21 @@ const STANDARD_CARDS = [
 ]
 
 const OBSERVATION_SET = [
-  { id: 'obs01', img: '/m8-game/reentry-fragments.png', type: 'debris', title: '多点同向亮迹', clue: '持续 18 秒，多个亮点同向移动，末段继续碎裂。', reportHint: '重点记录碎裂数量和飞行方向。' },
-  { id: 'obs02', img: '/m8-game/meteor-fireball.png', type: 'meteor', title: '短促斜向亮线', clue: '持续约 2 秒，单条亮线快速划过后消失。', reportHint: '重点记录持续时间和轨迹形态。' },
-  { id: 'obs03', img: '/m8-game/satellite-pass.png', type: 'satellite', title: '稳定主体过境', clue: '单个主体沿轨道方向移动，无烟迹、无持续碎裂。', reportHint: '记录烟迹、碎裂和亮度变化。' },
-  { id: 'obs04', img: '/m8-game/reentry-stage.png', type: 'debris', title: '多亮点长时段', clue: '3 个主亮点伴随细小闪光，持续约 25 秒。', reportHint: '记录是否有多个同步亮点。' },
-  { id: 'obs05', img: '/m8-game/meteor-split.png', type: 'meteor', title: '垂直短亮迹', clue: '极快下落，持续不足 1 秒，没有持续碎裂。', reportHint: '记录是否有后续亮点。' },
-  { id: 'obs06', img: '/m8-game/satellite-pass.png', type: 'satellite', title: '主体反光过境', clue: '主体清晰，亮度变化很小，运动路径平滑。', reportHint: '记录主体形状和运动路径。' },
-  { id: 'obs07', img: '/m8-game/reentry-target.png', type: 'debris', title: '低速弧线亮点', clue: '多个小点沿同一弧线移动，速度慢于普通流星。', reportHint: '写清多点之间的相对位置。' },
-  { id: 'obs08', img: '/m8-game/meteor-fireball.png', type: 'meteor', title: '末端爆闪亮迹', clue: '短时间内一闪而过，末端突然变亮后消失。', reportHint: '记录爆闪前后的持续时间。' },
-  { id: 'obs09', img: '/m8-game/satellite-pass.png', type: 'satellite', title: '轨道边缘亮点', clue: '主体沿地球边缘稳定移动，没有散落光点。', reportHint: '记录路径稳定性和亮度变化。' },
+  { id: 'obs01', img: '/m8-game/reentry-fragments.webp', type: 'debris', title: '多点同向亮迹', clue: '持续 18 秒，多个亮点同向移动，末段继续碎裂。', reportHint: '重点记录碎裂数量和飞行方向。' },
+  { id: 'obs02', img: '/m8-game/meteor-fireball.webp', type: 'meteor', title: '短促斜向亮线', clue: '持续约 2 秒，单条亮线快速划过后消失。', reportHint: '重点记录持续时间和轨迹形态。' },
+  { id: 'obs03', img: '/m8-game/satellite-pass.webp', type: 'satellite', title: '稳定主体过境', clue: '单个主体沿轨道方向移动，无烟迹、无持续碎裂。', reportHint: '记录烟迹、碎裂和亮度变化。' },
+  { id: 'obs04', img: '/m8-game/reentry-stage.webp', type: 'debris', title: '多亮点长时段', clue: '3 个主亮点伴随细小闪光，持续约 25 秒。', reportHint: '记录是否有多个同步亮点。' },
+  { id: 'obs05', img: '/m8-game/meteor-split.webp', type: 'meteor', title: '垂直短亮迹', clue: '极快下落，持续不足 1 秒，没有持续碎裂。', reportHint: '记录是否有后续亮点。' },
+  { id: 'obs06', img: '/m8-game/satellite-pass.webp', type: 'satellite', title: '主体反光过境', clue: '主体清晰，亮度变化很小，运动路径平滑。', reportHint: '记录主体形状和运动路径。' },
+  { id: 'obs07', img: '/m8-game/reentry-target.webp', type: 'debris', title: '低速弧线亮点', clue: '多个小点沿同一弧线移动，速度慢于普通流星。', reportHint: '写清多点之间的相对位置。' },
+  { id: 'obs08', img: '/m8-game/meteor-fireball.webp', type: 'meteor', title: '末端爆闪亮迹', clue: '短时间内一闪而过，末端突然变亮后消失。', reportHint: '记录爆闪前后的持续时间。' },
+  { id: 'obs09', img: '/m8-game/satellite-pass.webp', type: 'satellite', title: '轨道边缘亮点', clue: '主体沿地球边缘稳定移动，没有散落光点。', reportHint: '记录路径稳定性和亮度变化。' },
   { id: 'obs10', img: '/再入烧蚀.png', type: 'debris', title: '长尾分段轨迹', clue: '橙色亮迹持续十余秒，前后分成多段。', reportHint: '记录颜色、持续时间和分段节奏。' },
-  { id: 'obs11', img: '/m8-game/meteor-split.png', type: 'meteor', title: '单线高速划过', clue: '只有一条极细亮线，没有多点同步移动。', reportHint: '记录是否只有单线轨迹。' },
-  { id: 'obs12', img: '/m8-game/satellite-pass.png', type: 'satellite', title: '地平线上方过境', clue: '亮点沿平滑轨道稳定移动，没有烟迹。', reportHint: '补充出现和消失方位会更可靠。' },
-  { id: 'obs13', img: '/m8-game/reentry-fragments.png', type: 'debris', title: '多点拖尾事件', clue: '多个亮点在同一方向拉开，拖尾持续存在。', reportHint: '记录颜色、持续时间和碎裂节奏。' },
-  { id: 'obs14', img: '/m8-game/meteor-fireball.png', type: 'meteor', title: '掠过式亮线', clue: '短促、明亮、单一轨迹，没有稳定后续亮点。', reportHint: '持续时间是主要判断依据。' },
-  { id: 'obs15', img: '/m8-game/satellite-pass.png', type: 'satellite', title: '稳定主体疑似', clue: '可见主体结构，运动平滑，不出现烟迹或碎裂。', reportHint: '记录主体结构和排除依据。' },
+  { id: 'obs11', img: '/m8-game/meteor-split.webp', type: 'meteor', title: '单线高速划过', clue: '只有一条极细亮线，没有多点同步移动。', reportHint: '记录是否只有单线轨迹。' },
+  { id: 'obs12', img: '/m8-game/satellite-pass.webp', type: 'satellite', title: '地平线上方过境', clue: '亮点沿平滑轨道稳定移动，没有烟迹。', reportHint: '补充出现和消失方位会更可靠。' },
+  { id: 'obs13', img: '/m8-game/reentry-fragments.webp', type: 'debris', title: '多点拖尾事件', clue: '多个亮点在同一方向拉开，拖尾持续存在。', reportHint: '记录颜色、持续时间和碎裂节奏。' },
+  { id: 'obs14', img: '/m8-game/meteor-fireball.webp', type: 'meteor', title: '掠过式亮线', clue: '短促、明亮、单一轨迹，没有稳定后续亮点。', reportHint: '持续时间是主要判断依据。' },
+  { id: 'obs15', img: '/m8-game/satellite-pass.webp', type: 'satellite', title: '稳定主体疑似', clue: '可见主体结构，运动平滑，不出现烟迹或碎裂。', reportHint: '记录主体结构和排除依据。' },
 ]
 
 const PRACTICE_SET = OBSERVATION_SET.slice(0, 15)

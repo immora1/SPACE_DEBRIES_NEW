@@ -8,7 +8,7 @@ import './index.css'
 const METHODS = [
   {
     id: 'laser',
-    image: '/cleanup/1.jpg',
+    image: '/cleanup/1.webp',
     label: '激光烧蚀',
     labelEn: 'LASER ABLATION',
     title: '激光改变轨道',
@@ -26,7 +26,7 @@ const METHODS = [
   },
   {
     id: 'arm',
-    image: '/cleanup/2.jpg',
+    image: '/cleanup/2.webp',
     label: '直接捕获',
     labelEn: 'DIRECT CAPTURE',
     title: '机械臂抓取',
@@ -44,7 +44,7 @@ const METHODS = [
   },
   {
     id: 'net',
-    image: '/cleanup/3.jpg',
+    image: '/cleanup/3.webp',
     label: '包围捕获',
     labelEn: 'NET CAPTURE',
     title: '柔性网捕获',
@@ -62,7 +62,7 @@ const METHODS = [
   },
   {
     id: 'harpoon',
-    image: '/cleanup/4.jpg',
+    image: '/cleanup/4.webp',
     label: '快速连接',
     labelEn: 'HARPOON CAPTURE',
     title: '鱼叉固定',
@@ -80,7 +80,7 @@ const METHODS = [
   },
   {
     id: 'tether',
-    image: '/cleanup/5.jpg',
+    image: '/cleanup/5.webp',
     label: '降低轨道',
     labelEn: 'ELECTRODYNAMIC TETHER',
     title: '电动力绳索降轨',
@@ -98,7 +98,7 @@ const METHODS = [
   },
   {
     id: 'sail',
-    image: '/cleanup/6.jpg',
+    image: '/cleanup/6.webp',
     label: '增加阻力',
     labelEn: 'DRAG SAIL',
     title: '阻力帆降轨',
