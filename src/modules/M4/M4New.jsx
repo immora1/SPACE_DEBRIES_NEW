@@ -1950,7 +1950,7 @@ function RecoveryIntroPanel({ expanded, onBackToResult }) {
   )
 }
 
-function RecoveryStepsPanel({ activeStepIndex, onActiveStepChange, viewedSteps, canComplete, onComplete }) {
+function RecoveryStepsPanel({ activeStepIndex, onActiveStepChange, viewedSteps, onComplete }) {
   const { pick } = useI18n()
   const stepsRef = useRef()
 
@@ -2050,10 +2050,8 @@ function RecoveryStepsPanel({ activeStepIndex, onActiveStepChange, viewedSteps, 
           </div>
         </article>
       ))}
-      <button className="m4-game-continue" disabled={!canComplete} onClick={onComplete}>
-        {canComplete
-          ? pick('回收演示完成，解锁后续内容', 'COMPLETE RECOVERY AND UNLOCK NEXT STAGES')
-          : pick(`已查看 ${viewedSteps.length} / 6 步，请看完各步演示`, `${viewedSteps.length} / 6 STEPS VIEWED — WATCH EACH ANIMATION`)}
+      <button className="m4-game-continue" onClick={onComplete}>
+        {pick('下一章', 'NEXT CHAPTER')}
       </button>
     </MotionAside>
   )
@@ -4221,7 +4219,6 @@ function OrbitalGame({ onComplete = () => {} }) {
   const proxy = useRef({ scale: MIN_EARTH_SCALE, orbitOpacity: 1, x: 0 })
   const satelliteFocusRef = useRef(new THREE.Vector3())
   const started = useRef(false)
-  const completionUnlocked = useRef(false)
   const storyRestoreApplied = useRef(false)
   const progressRef = useRef(0)
   const moduleRef = useRef(null)
@@ -4285,9 +4282,8 @@ function OrbitalGame({ onComplete = () => {} }) {
                 ? RECOVERY_ANIMATION_STEP.BREAKUP
                 : RECOVERY_ANIMATION_STEP.SYSTEM_SHUTDOWN
     : null
-  const recoveryComplete = phase === GAME_PHASE.RECOVERY
+  const canContinueRecovery = phase === GAME_PHASE.RECOVERY
     && recoveryStepsVisible
-    && viewedRecoverySteps.length === RECOVERY_STEPS.length
     && decisions.length >= TOTAL_ROUNDS
 
   useEffect(() => {
@@ -4557,11 +4553,10 @@ function OrbitalGame({ onComplete = () => {} }) {
     setPhase(GAME_PHASE.EVENT)
   }, [feedback, handleGameEnd, round])
 
-  const unlockNextStageWithoutScroll = useCallback(() => {
-    if (!recoveryComplete || completionUnlocked.current) return
-    completionUnlocked.current = true
-    onComplete({ autoScroll: false })
-  }, [onComplete, recoveryComplete])
+  const handleNextChapter = useCallback(() => {
+    if (!canContinueRecovery) return
+    onComplete()
+  }, [onComplete, canContinueRecovery])
 
   const handleReflectionComplete = useCallback(() => {
     setRecoveryStepsVisible(false)
@@ -4780,8 +4775,7 @@ function OrbitalGame({ onComplete = () => {} }) {
                   activeStepIndex={activeRecoveryStepIndex}
                   onActiveStepChange={setActiveRecoveryStepIndex}
                   viewedSteps={viewedRecoverySteps}
-                  canComplete={recoveryComplete}
-                  onComplete={unlockNextStageWithoutScroll}
+                  onComplete={handleNextChapter}
                 />
               )}
             </>
