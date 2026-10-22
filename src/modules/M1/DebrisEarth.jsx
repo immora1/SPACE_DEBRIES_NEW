@@ -384,23 +384,27 @@ function EarthScene({ showAnnotations, reducedMotion, language }) {
 export default function DebrisEarth({ showAnnotations = false, active = true }) {
   const { language } = useI18n()
   const [inView, setInView] = useState(false)
+  const [hasRendered, setHasRendered] = useState(false)
   const wrapRef = useRef(null)
   const reducedMotion = useReducedMotionPreference()
 
   useEffect(() => {
-    const observer = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting), {
+    const observer = new IntersectionObserver(([entry]) => {
+      setInView(entry.isIntersecting)
+      if (entry.isIntersecting && active) setHasRendered(true)
+    }, {
       rootMargin: '120px',
     })
 
     if (wrapRef.current) observer.observe(wrapRef.current)
     return () => observer.disconnect()
-  }, [])
+  }, [active])
 
   return (
     <div ref={wrapRef} className="m1-earth-stage" data-m1-no-reveal>
-      {inView && active && (
+      {hasRendered && (
         <Canvas
-          frameloop="always"
+          frameloop={inView && active ? 'always' : 'never'}
           camera={{ position: [0, 0.3, 8.5], fov: 52 }}
           dpr={[1, 1.5]}
           gl={{ antialias: true, alpha: true }}

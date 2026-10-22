@@ -166,19 +166,23 @@ function Scene({ hovIdxRef, progressRef }) {
 
 export default function DebrisEarthCountries({ hovIdxRef, progressRef, active = true }) {
   const [inView, setInView] = useState(false)
+  const [hasRendered, setHasRendered] = useState(false)
   const wrapRef = useRef()
 
   useEffect(() => {
-    const io = new IntersectionObserver(([e]) => setInView(e.isIntersecting), { rootMargin: '120px' })
+    const io = new IntersectionObserver(([entry]) => {
+      setInView(entry.isIntersecting)
+      if (entry.isIntersecting && active) setHasRendered(true)
+    }, { rootMargin: '120px' })
     if (wrapRef.current) io.observe(wrapRef.current)
     return () => io.disconnect()
-  }, [])
+  }, [active])
 
   return (
     <div ref={wrapRef} data-m1-no-reveal style={{ width: '100%', height: '100%' }}>
-      {inView && active && (
+      {hasRendered && (
         <Canvas
-          frameloop="always"
+          frameloop={inView && active ? 'always' : 'never'}
           camera={{ position: [2.5, 0.3, 8.5], fov: 52 }}
           dpr={[1, 1.5]}
           gl={{ antialias: true, alpha: true }}
