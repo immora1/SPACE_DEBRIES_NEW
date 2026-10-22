@@ -1222,7 +1222,7 @@ function SceneCountries({ hovIdxRef }) {
               data-m1-reveal-delay={0.52 + i * 0.1}
               ref={el => { rowRefs.current[i] = el }}
               style={{
-                position: 'relative', minHeight: 112, padding: '14px 14px 12px', cursor: 'pointer',
+                position: 'relative', minHeight: 112, padding: '14px 14px 12px', cursor: 'pointer', pointerEvents: 'auto',
                 borderRight: i % 2 === 0 ? '1px solid rgba(107,127,255,0.07)' : 'none',
                 borderBottom: i < 2 ? '1px solid rgba(107,127,255,0.07)' : 'none',
                 transition: 'background 0.22s ease, box-shadow 0.22s ease',
@@ -1821,6 +1821,7 @@ export default function M1() {
   const countriesProgressRef = useRef(0)
   const hovIdxRef            = useRef(-1)
   const [scaleVisible, setScaleVisible] = useState(false)
+  const [earthLayers, setEarthLayers] = useState({ side: true, countries: false })
   const scaleRef = useRef()
 
   useM1WordReveal(containerRef)
@@ -1873,6 +1874,8 @@ export default function M1() {
       const raw = (scrolled - FADE_START * vh) / (FADE_DUR * vh)
       const p   = Math.max(0, Math.min(1, raw))
       countriesProgressRef.current = p
+      setEarthLayers((previous) => previous.side === (p < 1) && previous.countries === (p > 0)
+        ? previous : { side: p < 1, countries: p > 0 })
       if (sideEarthWrapRef.current)
         sideEarthWrapRef.current.style.opacity    = String(1 - p)
       if (countryEarthWrapRef.current)
@@ -1901,18 +1904,18 @@ export default function M1() {
         }}>
           {/* 侧视地球 (Hero + Scale)：进入 Countries 时淡出 */}
           <div ref={sideEarthWrapRef} style={{ position: 'absolute', inset: 0 }}>
-            <DebrisEarth showAnnotations={scaleVisible} />
+            <DebrisEarth active={earthLayers.side} showAnnotations={scaleVisible} />
           </div>
           {/* 俯视地球 (Countries)：进入 Countries 时淡入，相机 45°→90° 弧线 */}
           <div ref={countryEarthWrapRef} style={{ position: 'absolute', inset: 0 }}>
-            <DebrisEarthCountries hovIdxRef={hovIdxRef} progressRef={countriesProgressRef} />
+            <DebrisEarthCountries active={earthLayers.countries} hovIdxRef={hovIdxRef} progressRef={countriesProgressRef} />
           </div>
         </div>
 
         {/* Hero 文字 — 第一个 100vh */}
         <div style={{
           position: 'absolute', top: 0, left: 0, right: 0, height: '100vh',
-          zIndex: 3, overflow: 'hidden',
+          zIndex: 3, overflow: 'hidden', pointerEvents: 'none',
         }}>
           <SceneHero normX={normX} normY={normY} />
         </div>
@@ -1920,7 +1923,7 @@ export default function M1() {
         {/* Scale 文字 — 第二个 100vh */}
         <div ref={scaleRef} style={{
           position: 'absolute', top: '100vh', left: 0, right: 0, height: '100vh',
-          zIndex: 3, overflow: 'hidden',
+          zIndex: 3, overflow: 'hidden', pointerEvents: 'none',
         }}>
           <SceneScale />
         </div>
@@ -1928,7 +1931,7 @@ export default function M1() {
         {/* Countries 文字 — 200vh，填满 400vh 容器末尾，内部 sticky 让内容固定 100vh */}
         <div ref={countriesTextRef} style={{
           position: 'absolute', top: '200vh', left: 0, right: 0, height: '200vh',
-          zIndex: 3,
+          zIndex: 3, pointerEvents: 'none',
         }}>
           <div style={{ position: 'sticky', top: 0, height: '100vh', overflow: 'hidden' }}>
             <SceneCountries hovIdxRef={hovIdxRef} />

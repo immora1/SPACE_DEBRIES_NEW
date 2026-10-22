@@ -19,7 +19,7 @@ import { commitOrbitDragProgress, shouldStartOrbitMission } from './orbitControl
 import ReflectionPage from './ReflectionPage'
 import { TOTAL_ORBITAL_EVENTS } from '../../../functions/_story/constants.js'
 
-const EARTH_GLB = '/earth%20globe%203d%20model.glb'
+const EARTH_GLB = '/earth-optimized.glb'
 const SATELLITE_GLB = '/simple_satellite_low_poly_free.glb'
 useGLTF.preload(SATELLITE_GLB)
 const EARTH_SCALE = 1

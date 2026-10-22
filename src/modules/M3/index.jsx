@@ -187,8 +187,6 @@ export default function M3({ onComplete }) {
   const setSatellite    = useAppStore((s) => s.setSatellite)
   const setMission       = useAppStore((s) => s.setMission)
   const setStoryChapter  = useAppStore((s) => s.setStoryChapter)
-  const scrollLocked     = useAppStore((s) => s.scrollLocked)
-  const setScrollLocked  = useAppStore((s) => s.setScrollLocked)
   const setMaterialPart  = useAppStore((s) => s.setMaterialPart)
 
   const restoredMissionId = publicGameState?.mission?.action_id || null
@@ -282,29 +280,6 @@ export default function M3({ onComplete }) {
   // 折线分隔 DOM ref
   const notchRef     = useRef(null)
 
-  // formStepRef 让滚动 RAF 闭包能读到最新 formStep（避免 stale closure）
-  const formStepRef      = useRef(formStep)
-  const scrollLockedRef  = useRef(false)
-
-  useEffect(() => {
-    if (!scrollLocked) scrollLockedRef.current = false
-  }, [scrollLocked])
-
-  useEffect(() => {
-    formStepRef.current = formStep
-
-    if (formStep === 'result') {
-      if (scrollLockedRef.current) {
-        scrollLockedRef.current = false
-        setScrollLocked(false)
-      }
-      return undefined
-    }
-
-    const frameId = requestAnimationFrame(() => scrollUpdateRef.current?.())
-    return () => cancelAnimationFrame(frameId)
-  }, [formStep, setScrollLocked])
-
   useEffect(() => {
     const element = moduleRootRef.current
     if (!element || !('IntersectionObserver' in window)) {
@@ -317,15 +292,12 @@ export default function M3({ onComplete }) {
       moduleInViewRef.current = entry.isIntersecting
       if (entry.isIntersecting) {
         scrollUpdateRef.current?.()
-      } else if (scrollLockedRef.current) {
-        scrollLockedRef.current = false
-        setScrollLocked(false)
       }
     }, { rootMargin: '180px 0px' })
 
     observer.observe(element)
     return () => observer.disconnect()
-  }, [setScrollLocked])
+  }, [])
 
   async function handleFormSubmit() {
     const ready = form.name.trim() && form.city.trim() && form.importantEvent.trim()
@@ -414,31 +386,6 @@ export default function M3({ onComplete }) {
         })
         const next = dists.indexOf(Math.min(...dists))
         setCurrentStep((prev) => (prev !== next ? next : prev))
-
-        // ── 表单门控：身份章节抵达视口起点时固定，生成结果后立即释放 ──
-        if (rects[1]) {
-          const formRect = rects[1]
-          const formGateReached = formRect.top <= window.innerHeight * 0.08
-            && formRect.bottom >= window.innerHeight * 0.72
-          const formIncomplete = formStepRef.current !== 'result'
-          const shouldLock = formIncomplete && (scrollLockedRef.current || formGateReached)
-
-          if (shouldLock && Math.abs(formRect.top) > 2) {
-            window.scrollTo({
-              top: Math.max(0, window.scrollY + formRect.top),
-              behavior: 'auto',
-            })
-          }
-
-          if (shouldLock !== scrollLockedRef.current) {
-            scrollLockedRef.current = shouldLock
-            setScrollLocked(shouldLock)
-          }
-        } else if (scrollLockedRef.current) {
-          scrollLockedRef.current = false
-          setScrollLocked(false)
-        }
-
       })
     }
     scrollUpdateRef.current = update
@@ -448,9 +395,8 @@ export default function M3({ onComplete }) {
       window.removeEventListener('scroll', update)
       if (scrollUpdateRef.current === update) scrollUpdateRef.current = null
       if (frameId) cancelAnimationFrame(frameId)
-      setScrollLocked(false)
     }
-  }, [setScrollLocked])
+  }, [])
 
   const safeMatls  = materials ?? {}
   const matAllDone = Object.values(safeMatls).filter(Boolean).length === 4

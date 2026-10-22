@@ -154,8 +154,6 @@ function OptionalModuleCard({ Component, isVisible, onDecision }) {
 export default function App() {
   const unlockedModules = useAppStore((s) => s.unlockedModules)
   const completedModules = useAppStore((s) => s.completedModules)
-  const scrollLocked = useAppStore((s) => s.scrollLocked)
-  const setScrollLocked = useAppStore((s) => s.setScrollLocked)
   const unlockModule = useAppStore((s) => s.unlockModule)
   const markModuleComplete = useAppStore((s) => s.markModuleComplete)
 
@@ -174,23 +172,6 @@ export default function App() {
     })
   }, [])
 
-  useEffect(() => {
-    document.body.style.overflow = scrollLocked ? 'hidden' : ''
-    document.documentElement.style.overflow = scrollLocked ? 'hidden' : ''
-
-    const preventScroll = (event) => event.preventDefault()
-    if (scrollLocked) {
-      window.addEventListener('wheel', preventScroll, { passive: false })
-      window.addEventListener('touchmove', preventScroll, { passive: false })
-    }
-
-    return () => {
-      window.removeEventListener('wheel', preventScroll)
-      window.removeEventListener('touchmove', preventScroll)
-      document.body.style.overflow = ''
-      document.documentElement.style.overflow = ''
-    }
-  }, [scrollLocked])
 
   useEffect(() => {
     MODULES.forEach((module, idx) => {
@@ -235,9 +216,8 @@ export default function App() {
 
   const scrollToModule = useCallback((id) => {
     if (!isModuleNavigable(id)) return
-    if (scrollLocked) setScrollLocked(false)
     scrollToModuleTarget(id, 'smart')
-  }, [isModuleNavigable, scrollLocked, scrollToModuleTarget, setScrollLocked])
+  }, [isModuleNavigable, scrollToModuleTarget])
 
   const handleM8Decision = useCallback(() => {
     handleComplete('m7', { autoScroll: false })

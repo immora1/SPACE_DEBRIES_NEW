@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Html, Line } from '@react-three/drei'
 import * as THREE from 'three'
@@ -254,6 +254,31 @@ function MinimalAnnotation({ annotation, index, reducedMotion, labelDivRefs, lab
   )
 }
 
+function DebrisInstances() {
+  const meshRef = useRef(null)
+  useLayoutEffect(() => {
+    const transform = new THREE.Object3D()
+    const color = new THREE.Color()
+    DEBRIS.forEach((debris, index) => {
+      transform.position.set(...debris.pos)
+      transform.rotation.set(...debris.rot)
+      transform.scale.setScalar(debris.scale)
+      transform.updateMatrix()
+      meshRef.current.setMatrixAt(index, transform.matrix)
+      meshRef.current.setColorAt(index, color.set(debris.color))
+    })
+    meshRef.current.instanceMatrix.needsUpdate = true
+    meshRef.current.instanceColor.needsUpdate = true
+    meshRef.current.computeBoundingSphere()
+  }, [])
+  return (
+    <instancedMesh ref={meshRef} args={[null, null, DEBRIS_COUNT]}>
+      <dodecahedronGeometry args={[1, 0]} />
+      <meshBasicMaterial />
+    </instancedMesh>
+  )
+}
+
 function EarthScene({ showAnnotations, reducedMotion, language }) {
   const earthRef = useRef(null)
   const debrisRef = useRef(null)
@@ -334,12 +359,7 @@ function EarthScene({ showAnnotations, reducedMotion, language }) {
       </mesh>
 
       <group ref={debrisRef}>
-        {DEBRIS.map((debris, index) => (
-          <mesh key={index} position={debris.pos} rotation={debris.rot} scale={debris.scale}>
-            <dodecahedronGeometry args={[1, 0]} />
-            <meshBasicMaterial color={debris.color} />
-          </mesh>
-        ))}
+        <DebrisInstances />
 
         {showAnnotations && ANNOTATIONS.map((annotation, index) => (
           <MinimalAnnotation
@@ -361,7 +381,7 @@ function EarthScene({ showAnnotations, reducedMotion, language }) {
   )
 }
 
-export default function DebrisEarth({ showAnnotations = false }) {
+export default function DebrisEarth({ showAnnotations = false, active = true }) {
   const { language } = useI18n()
   const [inView, setInView] = useState(false)
   const wrapRef = useRef(null)
@@ -378,7 +398,7 @@ export default function DebrisEarth({ showAnnotations = false }) {
 
   return (
     <div ref={wrapRef} className="m1-earth-stage">
-      {inView && (
+      {inView && active && (
         <Canvas
           frameloop="always"
           camera={{ position: [0, 0.3, 8.5], fov: 52 }}

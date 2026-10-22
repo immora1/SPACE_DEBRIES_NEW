@@ -35,7 +35,6 @@ const initialState = {
   currentModule: 'm1',
   unlockedModules: ['m1'],
   completedModules: [],
-  scrollLocked: false,
 }
 
 const persistKeys = [
@@ -156,7 +155,6 @@ const useAppStore = create(
       setPreTest: (preTest) => set({ preTest }),
       setPostTest: (postTest) => set({ postTest }),
       setCurrentModule: (currentModule) => set({ currentModule }),
-      setScrollLocked: (scrollLocked) => set({ scrollLocked }),
 
       unlockModule: (id) => set((state) => ({
         unlockedModules: state.unlockedModules.includes(id)

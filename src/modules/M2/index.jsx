@@ -1021,14 +1021,19 @@ export default function M2({ onComplete }) {
   }, [clickedIds, loadingId, launchYear, satellite, user, storyOutline, setDamageLevel, setClickedHistoryEvents])
 
   const [globeInView, setGlobeInView] = useState(false)
+  const [globeMounted, setGlobeMounted] = useState(false)
   const globeWrapRef = useRef(null)
 
   useEffect(() => {
     if (!('IntersectionObserver' in window)) {
       setGlobeInView(true)
+      setGlobeMounted(true)
       return undefined
     }
-    const io = new IntersectionObserver(([entry]) => setGlobeInView(entry.isIntersecting), { rootMargin: '120px' })
+    const io = new IntersectionObserver(([entry]) => {
+      setGlobeInView(entry.isIntersecting)
+      if (entry.isIntersecting) setGlobeMounted(true)
+    }, { rootMargin: '120px' })
     if (globeWrapRef.current) io.observe(globeWrapRef.current)
     return () => io.disconnect()
   }, [])
@@ -1117,10 +1122,10 @@ export default function M2({ onComplete }) {
 
         <div ref={guideVisualRef} className="m2-visual">
           <div className="m2-canvas" onPointerLeave={() => onFallLeave()}>
-          {globeInView && (
+          {globeMounted && (
             <Canvas
               orthographic
-              frameloop="always"
+              frameloop={globeInView ? 'always' : 'never'}
               camera={{ position: [0, 0, 100] }}
               dpr={[1, 1.5]}
               gl={{ antialias: true, alpha: true }}

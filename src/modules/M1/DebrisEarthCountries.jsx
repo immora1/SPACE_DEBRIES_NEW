@@ -164,7 +164,7 @@ function Scene({ hovIdxRef, progressRef }) {
   )
 }
 
-export default function DebrisEarthCountries({ hovIdxRef, progressRef }) {
+export default function DebrisEarthCountries({ hovIdxRef, progressRef, active = true }) {
   const [inView, setInView] = useState(false)
   const wrapRef = useRef()
 
@@ -176,7 +176,7 @@ export default function DebrisEarthCountries({ hovIdxRef, progressRef }) {
 
   return (
     <div ref={wrapRef} style={{ width: '100%', height: '100%' }}>
-      {inView && (
+      {inView && active && (
         <Canvas
           frameloop="always"
           camera={{ position: [2.5, 0.3, 8.5], fov: 52 }}
