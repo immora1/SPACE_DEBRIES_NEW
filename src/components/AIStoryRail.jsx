@@ -14,8 +14,8 @@ export default function AIStoryRail() {
   const storySessionReady = useAppStore((state) => state.storySessionReady)
   const pending = useAppStore((state) => state.storyBackgroundPending)
   const error = useAppStore((state) => state.storyBackgroundError)
-  const entries = useMemo(() => publicStoryTimelineToEvents(storyTimeline, language)
-    .filter((entry) => entry.content?.trim()), [storyTimeline, language])
+  const entries = useMemo(() => storySessionReady ? publicStoryTimelineToEvents(storyTimeline, language)
+    .filter((entry) => entry.content?.trim()) : [], [storyTimeline, language, storySessionReady])
   const seen = useRef(new Set())
   const restoring = useRef(Boolean(storyId))
   const [waiting, setWaiting] = useState([])
@@ -95,7 +95,7 @@ export default function AIStoryRail() {
     event.currentTarget.style.setProperty('--story-tilt-y', '0deg')
   }
 
-  if (!storySessionReady && !storyId) return null
+  if (!storySessionReady) return null
 
   return (
     <div className="ai-story-hud" aria-label={pick('你的平行时空故事', 'Your parallel story')}>

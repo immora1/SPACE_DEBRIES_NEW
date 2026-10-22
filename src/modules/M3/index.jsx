@@ -5,7 +5,11 @@ import {
   createStorySession,
   submitMaterialStoryAction,
   submitMissionStoryAction,
+  canResumeStory,
+  resumeBackgroundStory,
+  resetStoryExperience,
 } from '../../services/ai'
+import { hasIdentity } from '../../services/story-entry'
 import OrbitGlobe from './OrbitGlobe'
 import OrbitClassification from './OrbitClassification'
 import IdentityDossier from './IdentityDossier'
@@ -176,13 +180,18 @@ export default function M3({ onComplete }) {
   const introFont = language === 'zh'
     ? '"PingFang SC", "Microsoft YaHei", sans-serif'
     : '"Lexend", sans-serif'
-  const satellite       = useAppStore((s) => s.satellite)
+  const savedSatellite  = useAppStore((s) => s.satellite)
+  const savedUser       = useAppStore((s) => s.user)
+  const storySessionReady = useAppStore((s) => s.storySessionReady)
+  const identityReady = storySessionReady && hasIdentity(savedUser, savedSatellite)
+  const satellite = identityReady ? savedSatellite : null
   const materials       = useAppStore((s) => s.materials)
   const damageLevel     = useAppStore((s) => s.damageLevel)
   const clickedHistoryEvents = useAppStore((s) => s.clickedHistoryEvents)
   const storyId         = useAppStore((s) => s.storyId)
   const storyCheckpoint = useAppStore((s) => s.storyCheckpoint)
-  const publicGameState = useAppStore((s) => s.publicGameState)
+  const storedGameState = useAppStore((s) => s.publicGameState)
+  const publicGameState = identityReady ? storedGameState : null
   const setUser         = useAppStore((s) => s.setUser)
   const setSatellite    = useAppStore((s) => s.setSatellite)
   const setMission       = useAppStore((s) => s.setMission)
@@ -207,6 +216,7 @@ export default function M3({ onComplete }) {
   const [formStep,       setFormStep]      = useState(publicGameState && satellite ? 'result' : 'form')
   const [form,           setForm]          = useState({ name: '', city: '', importantEvent: '' })
   const [formError,      setFormError]     = useState(null)
+  const [resuming, setResuming] = useState(false)
 
   const onCompleteRef = useRef(onComplete)
   const storyRestoreAppliedRef = useRef(false)
@@ -219,9 +229,9 @@ export default function M3({ onComplete }) {
   useEffect(() => {
     if (
       !storyRestoreAppliedRef.current
-      && storyId
+      && identityReady
       && satellite
-      && formStep !== 'generating'
+      && formStep !== 'matching'
     ) {
       storyRestoreAppliedRef.current = true
       setFormStep('result')
@@ -250,6 +260,7 @@ export default function M3({ onComplete }) {
     satellite,
     storyCheckpoint,
     storyId,
+    identityReady,
   ])
 
   useEffect(() => {
@@ -345,6 +356,33 @@ export default function M3({ onComplete }) {
     }
   }
 
+  async function handleResume() {
+    setResuming(true)
+    setFormError(null)
+    try {
+      await resumeBackgroundStory()
+      if (!useAppStore.getState().storySessionReady) {
+        setFormError(pick('上次进度已失效，请填写信息开始新的故事。', 'The previous session is unavailable. Enter your details to start again.'))
+      }
+    } catch {
+      setFormError(pick('暂时无法恢复上次进度，可以重试或填写信息开始新的故事。', 'Could not resume. Retry or enter your details to start a new story.'))
+    } finally {
+      setResuming(false)
+    }
+  }
+
+  function handleIdentityReset() {
+    resetStoryExperience()
+    storyRestoreAppliedRef.current = false
+    setForm({ name: '', city: '', importantEvent: '' })
+    setFormError(null)
+    setFormStep('form')
+    setMissionLocal(null)
+    setAiState('idle')
+    setMatAiState('idle')
+    setStory('')
+  }
+
   useEffect(() => {
     let frameId = 0
     function update() {
@@ -407,6 +445,10 @@ export default function M3({ onComplete }) {
   } : null
 
   async function handleMatFeedback() {
+    if (!identityReady) {
+      chapterRef1.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      return
+    }
     if (!matAllDone || matAiState !== 'idle') return
     setMatAiState('loading')
     try {
@@ -424,6 +466,11 @@ export default function M3({ onComplete }) {
   }
 
   async function handleMissionSelect(missionId) {
+    if (!identityReady || matAiState !== 'done') {
+      const target = identityReady ? chapterRef2 : chapterRef1
+      target.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      return
+    }
     if (aiState === 'loading' || aiState === 'done') return
     setAiState('loading')
     try {
@@ -587,7 +634,15 @@ export default function M3({ onComplete }) {
           {/* ═══════════════════════════════════════════════
               {pick('章节 1 · 用户信息 & 卫星匹配', 'CHAPTER 1 · IDENTITY & SATELLITE MATCH')}
           ═══════════════════════════════════════════════ */}
-          <div ref={chapterRef1} style={chapterWrap(1)}>
+          <div ref={chapterRef1} data-m3-stage="identity" style={chapterWrap(1)}>
+            {!identityReady && canResumeStory() && (
+              <p style={{ fontSize: 14, lineHeight: 1.8, marginBottom: 20 }}>
+                {pick('检测到上次保存的记录。你可以重新填写信息，或主动继续上次进度。', 'A saved session is available. Enter new details or choose to resume it.')}
+                {' '}<button type="button" disabled={resuming} onClick={handleResume} style={{ textDecoration: 'underline' }}>
+                  {resuming ? pick('正在恢复…', 'Resuming…') : pick('继续上次进度', 'Resume previous session')}
+                </button>
+              </p>
+            )}
             <IdentityDossier
               form={form}
               formStep={formStep}
@@ -595,17 +650,15 @@ export default function M3({ onComplete }) {
               satellite={satellite}
               onChange={(field, value) => setForm((previous) => ({ ...previous, [field]: value }))}
               onSubmit={handleFormSubmit}
-              onReset={() => {
-                setFormError(null)
-                setFormStep('form')
-              }}
+              onReset={handleIdentityReset}
             />
           </div>
 
           {/* ═══════════════════════════════════════════════
               {pick('章节 2 · 材料选择 · MATERIAL SELECTION', 'CHAPTER 2 · MATERIAL SELECTION')}
           ═══════════════════════════════════════════════ */}
-          <div ref={chapterRef2} style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '80px 28px' }}>
+          <div ref={chapterRef2} data-m3-stage="materials" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '80px 28px' }}>
+            {!identityReady && <p>{pick('请先填写个人信息并匹配卫星，再提交材料分析。', 'Complete your identity and satellite match before submitting materials.')}</p>}
             <MaterialSelectionLab
               materials={safeMatls}
               allDone={matAllDone}
@@ -620,7 +673,8 @@ export default function M3({ onComplete }) {
           {/* ═══════════════════════════════════════════════
               {pick('章节 3 · 任务指派', 'CHAPTER 3 · MISSION ASSIGNMENT')}
           ═══════════════════════════════════════════════ */}
-          <div ref={chapterRef3} style={chapterWrap(3)}>
+          <div ref={chapterRef3} data-m3-stage="mission" style={chapterWrap(3)}>
+            {matAiState !== 'done' && <p>{pick('请先完成四项材料选择，并点击“生成材料分析”，再指派任务。', 'Select all four materials and click “Analyze materials” before assigning a mission.')}</p>}
             <MissionSelectionDeck
               missions={MISSIONS}
               selectedMissionId={mission}

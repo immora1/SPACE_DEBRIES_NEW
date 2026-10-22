@@ -3,6 +3,7 @@ import { createAIOutputEvent } from './aiTimeline.js'
 import { readStoryStream } from './story-stream.js'
 import { createStoryQueue } from './background-story.js'
 import { initialStoryProgress, advanceStoryProgress, storyActionAcknowledged } from './story-progress.js'
+import { hasIdentity } from './story-entry.js'
 
 let aiEventSequence = 0
 const STORY_SESSION_STORAGE_KEY = 'space-debris-story-session'
@@ -48,14 +49,42 @@ const backgroundStory = createStoryQueue({
 export function retryBackgroundStory() { backgroundStory.retry() }
 
 let restorePromise
+export function canResumeStory() {
+  const state = useAppStore.getState()
+  const pendingCreate = backgroundStory.snapshot().jobs.find((job) => job.type === 'create')
+  return hasIdentity(state.user, state.satellite) && Boolean(
+    pendingCreate || (state.storyId && getStoredStorySession()?.storyId === state.storyId),
+  )
+}
+
 export function resumeBackgroundStory() {
-  if (backgroundStory.snapshot().jobs.length) {
+  const jobs = backgroundStory.snapshot().jobs
+  if (jobs.length) {
+    const pendingCreate = jobs.find((job) => job.type === 'create')?.request
+    const state = useAppStore.getState()
+    if (pendingCreate) {
+      const user = { name: pendingCreate.nickname, city: pendingCreate.city, importantEvent: pendingCreate.important_event }
+      if (!hasIdentity(user, pendingCreate.satellite)) return Promise.resolve(null)
+      state.setUser(user)
+      state.setSatellite(pendingCreate.satellite)
+      if (!state.storyLocalProgress) state.setStoryLocalProgress(initialStoryProgress({
+        satellite: pendingCreate.satellite, damageLevel: pendingCreate.game_context?.damage_level || 0,
+      }))
+    } else if (!canResumeStory()) return Promise.resolve(null)
     useAppStore.setState({ storySessionReady: true })
     backgroundStory.retry()
     return Promise.resolve()
   }
-  restorePromise ||= restoreStorySession()
+  if (!canResumeStory()) return Promise.resolve(null)
+  restorePromise ||= restoreStorySession().finally(() => { restorePromise = null })
   return restorePromise
+}
+
+export function resetStoryExperience() {
+  backgroundStory.reset()
+  clearStoredStorySession()
+  restorePromise = null
+  useAppStore.getState().resetIdentity()
 }
 
 export const STORY_ACTION = Object.freeze({
@@ -158,10 +187,14 @@ export async function createStorySession({
   damageLevel = 0,
   historyEventIds = [],
 }) {
+  if (!hasIdentity({ name, city, importantEvent }, satellite)) {
+    throw new StoryAPIError('IDENTITY_REQUIRED', '请完整填写个人信息后再匹配卫星。', 409)
+  }
   const sessionId = globalThis.crypto.randomUUID()
-  backgroundStory.reset()
-  clearStoredStorySession()
+  resetStoryExperience()
   const state = useAppStore.getState()
+  state.setUser({ name, city, importantEvent })
+  state.setSatellite(satellite)
   state.beginStorySession()
   const progress = initialStoryProgress({ satellite, damageLevel })
   state.setStoryLocalProgress(progress)
@@ -199,6 +232,8 @@ export async function restoreStorySession() {
       { method: 'GET' },
     )
     if (getStoredStorySession()?.sessionId !== credentials.sessionId) return null
+    // With no queued choices, the server is authoritative after a refresh.
+    useAppStore.setState({ storyLocalProgress: null })
     return finishStoryRequest(story)
   } catch (error) {
     if (getStoredStorySession()?.sessionId !== credentials.sessionId) return null
@@ -214,6 +249,9 @@ export async function restoreStorySession() {
 
 async function submitStoryAction(action) {
   const state = useAppStore.getState()
+  if (!state.storySessionReady || !hasIdentity(state.user, state.satellite)) {
+    throw new StoryAPIError('IDENTITY_REQUIRED', '请先填写个人信息，或主动继续上次进度。', 409)
+  }
   const progress = state.storyLocalProgress || (state.publicGameState && {
     gameState: state.publicGameState, checkpoint: state.storyCheckpoint,
   })

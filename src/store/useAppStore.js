@@ -152,6 +152,22 @@ const useAppStore = create(
         storyLocalProgress: null,
         storySessionReady: false,
       }),
+      resetIdentity: () => {
+        get().clearStorySession()
+        set((state) => ({
+          user: { ...initialState.user },
+          satellite: null,
+          materials: { ...initialState.materials },
+          mission: null,
+          gameResult: null,
+          debrisGenerated: [],
+          storyOutline: null,
+          storyChapters: { opening: '' },
+          aiTimeline: [],
+          unlockedModules: state.unlockedModules.filter((id) => ['m1', 'm2', 'm3'].includes(id)),
+          completedModules: state.completedModules.filter((id) => ['m1', 'm2'].includes(id)),
+        }))
+      },
       setPreTest: (preTest) => set({ preTest }),
       setPostTest: (postTest) => set({ postTest }),
       setCurrentModule: (currentModule) => set({ currentModule }),

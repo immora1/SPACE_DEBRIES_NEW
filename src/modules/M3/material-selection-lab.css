@@ -1,4 +1,6 @@
 .m3-material-lab {
+  position: relative;
+  z-index: 11;
   width: min(calc(100% + 180px), 820px);
   font-family: 'PingFang SC', 'Noto Sans SC', sans-serif;
 }

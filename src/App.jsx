@@ -4,7 +4,6 @@ import ModuleWrapper from './components/ModuleWrapper'
 import StageNav from './components/StageNav'
 import AIStoryRail from './components/AIStoryRail'
 import useI18n from './i18n/useI18n'
-import { resumeBackgroundStory } from './services/ai'
 
 const M1 = lazy(() => import('./modules/M1'))
 const M2 = lazy(() => import('./modules/M2'))
@@ -165,13 +164,6 @@ export default function App() {
   ), [allModuleIds, completedSet])
 
   useEffect(() => { window.scrollTo(0, 0) }, [])
-
-  useEffect(() => {
-    resumeBackgroundStory().catch((error) => {
-      console.warn('[story] restore failed:', error.code || error.message)
-    })
-  }, [])
-
 
   useEffect(() => {
     MODULES.forEach((module, idx) => {

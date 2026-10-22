@@ -116,6 +116,37 @@ test('background sessions survive refresh and ignore obsolete restore responses'
         assert.equal(window.sessionStorage.getItem(SESSION_KEY), credentials)
       })
     }
+
+    await suite.test('explicit restore reconciles a stale local checkpoint before allowing game entry', async () => {
+      store.getState().setStorySnapshot(story('saved-story'))
+      store.setState({ storySessionReady: false, storyLocalProgress: {
+        checkpoint: 'orbital_events', gameState: { mission: { mission_id: 'weather_monitoring' } },
+      } })
+      window.sessionStorage.setItem(SESSION_KEY, JSON.stringify({ storyId: 'saved-story', sessionId: 'saved-session' }))
+      globalThis.fetch = async () => Response.json({ ok: true, story: story('saved-story') })
+      assert.equal(api.canResumeStory(), true)
+      assert.equal(store.getState().storySessionReady, false)
+      await api.resumeBackgroundStory()
+      assert.equal(store.getState().storySessionReady, true)
+      assert.equal(store.getState().storyCheckpoint, 'materials')
+      assert.equal(store.getState().storyLocalProgress, null)
+    })
+
+    await suite.test('reset clears identity, selections, credentials and pending work; empty identity cannot create', async () => {
+      store.setState({ materials: { frame: 'titanium' }, mission: { id: 'old-mission' }, gameResult: { won: true } })
+      api.resetStoryExperience()
+      assert.equal(store.getState().satellite, null)
+      assert.equal(store.getState().user.name, '')
+      assert.equal(store.getState().materials.frame, null)
+      assert.equal(store.getState().mission, null)
+      assert.equal(store.getState().gameResult, null)
+      assert.equal(store.getState().storySessionReady, false)
+      assert.equal(store.getState().storyBackgroundPending, 0)
+      assert.equal(window.sessionStorage.getItem(SESSION_KEY), null)
+      assert.equal(api.canResumeStory(), false)
+      await assert.rejects(api.createStorySession({ name: '', city: '泉州', importantEvent: '接姐姐', satellite: { name: 'SAT' } }), { code: 'IDENTITY_REQUIRED' })
+      await assert.rejects(api.submitMissionStoryAction('weather_monitoring'), { code: 'IDENTITY_REQUIRED' })
+    })
   } finally {
     globalThis.window = previousWindow
     globalThis.localStorage = previousStorage

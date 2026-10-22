@@ -8,6 +8,7 @@ import * as THREE from 'three'
 import useAppStore from '../../store/useAppStore'
 import useI18n from '../../i18n/useI18n'
 import { submitOrbitalEventStoryAction } from '../../services/ai'
+import { missingGamePreparation } from '../../services/story-entry'
 import {
   evaluateResult,
   localizeThreatEvent,
@@ -4177,7 +4178,30 @@ function EarthOrbitControls({ proxy, recoveryStep, satelliteFocusRef }) {
   )
 }
 
-export default function M4New({ onComplete = () => {} }) {
+export default function M4New(props) {
+  const state = useAppStore()
+  const { pick } = useI18n()
+  const missing = missingGamePreparation(state)
+  if (!missing) return <OrbitalGame {...props} />
+
+  const messages = {
+    identity: ['请先填写个人信息并匹配卫星，或主动继续上次进度。', 'Enter your details and match a satellite, or choose to resume your previous session.'],
+    materials: ['请选择四项卫星材料，并点击“生成材料分析”。完成后再选择任务。', 'Choose all four satellite materials and click “Analyze materials”, then assign a mission.'],
+    mission: ['材料分析已完成，请为卫星指派任务后再开始游戏。', 'Materials are ready. Assign a satellite mission before starting the game.'],
+  }
+  return (
+    <section data-m4-preparation={missing} style={{ minHeight: '100svh', display: 'grid', placeContent: 'center', padding: '100px 32px', color: '#eef6ff', background: '#050713' }}>
+      <p style={{ fontSize: 12, letterSpacing: '0.12em', color: '#8ca8d3' }}>M4 · ORBITAL SURVIVAL</p>
+      <h2 style={{ fontSize: 32, margin: '20px 0' }}>{pick('完成准备，再开始轨道任务', 'Prepare your satellite before launch')}</h2>
+      <p style={{ lineHeight: 1.8, maxWidth: 620 }}>{pick(...messages[missing])}</p>
+      <button type="button" style={{ marginTop: 28, padding: '14px 24px', color: '#0b1528', background: '#eef3ff', borderRadius: 24, justifySelf: 'start' }} onClick={() => {
+        document.querySelector(`[data-m3-stage="${missing}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }}>{pick('返回完成准备', 'Return to preparation')} →</button>
+    </section>
+  )
+}
+
+function OrbitalGame({ onComplete = () => {} }) {
   const { language, pick } = useI18n()
   const {
     satellite,
