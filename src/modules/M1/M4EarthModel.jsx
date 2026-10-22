@@ -1,5 +1,6 @@
 import { Component, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
-import { Html, useGLTF } from '@react-three/drei'
+import { useGLTF } from '@react-three/drei'
+import { useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import useI18n from '../../i18n/useI18n'
 
@@ -14,20 +15,35 @@ function cloneMaterial(material) {
 
 function EarthStatus({ radius, status, onRetry }) {
   const { pick } = useI18n()
-  const failed = status === 'failed'
+  const gl = useThree((state) => state.gl)
+  // Keep this small status overlay outside Drei's separate React root. Its
+  // cleanup can otherwise race Canvas/Suspense cleanup on a slow connection.
+  useEffect(() => {
+    if (status === 'ready') return undefined
+    const notice = document.createElement('div')
+    notice.setAttribute('role', 'status')
+    notice.setAttribute('data-m1-no-reveal', '')
+    notice.style.cssText = 'position:absolute;left:50%;top:65%;transform:translateX(-50%);z-index:10;color:#fff;background:#10182ee6;padding:10px 16px;white-space:nowrap;font-size:13px;pointer-events:auto'
+    notice.textContent = status === 'failed'
+      ? pick('模型加载失败', 'Model failed to load')
+      : pick('正在加载地球模型…', 'Loading Earth…')
+    if (status === 'failed') {
+      const retry = document.createElement('button')
+      retry.type = 'button'
+      retry.textContent = pick('重试', 'Retry')
+      retry.style.marginLeft = '12px'
+      retry.addEventListener('click', onRetry)
+      notice.appendChild(retry)
+    }
+    gl.domElement.parentElement?.appendChild(notice)
+    return () => notice.remove()
+  }, [gl, status, pick, onRetry])
+
   return (
-    <group>
-      <mesh visible={status !== 'ready'}>
-        <sphereGeometry args={[radius, 32, 24]} />
-        <meshStandardMaterial color="#53658a" wireframe />
-      </mesh>
-      <Html center style={{ display: status === 'ready' ? 'none' : 'block' }}>
-        <div style={{ color: '#fff', background: '#10182ee6', padding: '10px 16px', whiteSpace: 'nowrap', fontSize: 13 }} role="status">
-          {failed ? pick('模型加载失败', 'Model failed to load') : pick('正在加载地球模型…', 'Loading Earth…')}
-          {failed && <button type="button" onClick={onRetry} style={{ marginLeft: 12, pointerEvents: 'auto' }}>{pick('重试', 'Retry')}</button>}
-        </div>
-      </Html>
-    </group>
+    <mesh visible={status !== 'ready'}>
+      <sphereGeometry args={[radius, 32, 24]} />
+      <meshStandardMaterial color="#53658a" wireframe />
+    </mesh>
   )
 }
 
