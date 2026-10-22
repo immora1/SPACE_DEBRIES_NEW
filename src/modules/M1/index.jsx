@@ -16,6 +16,7 @@ gsap.registerPlugin(SplitText)
 
 const M1_REVEAL_EXCLUSIONS = [
   '[data-m1-no-reveal]',
+  '.m1-reveal-word', '.m1-reveal-char',
   '[aria-hidden="true"]',
   'script', 'style', 'svg', 'canvas', 'input', 'textarea', 'select', 'option',
 ].join(',')

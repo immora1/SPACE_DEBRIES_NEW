@@ -175,7 +175,7 @@ export default function DebrisEarthCountries({ hovIdxRef, progressRef, active = 
   }, [])
 
   return (
-    <div ref={wrapRef} style={{ width: '100%', height: '100%' }}>
+    <div ref={wrapRef} data-m1-no-reveal style={{ width: '100%', height: '100%' }}>
       {inView && active && (
         <Canvas
           frameloop="always"

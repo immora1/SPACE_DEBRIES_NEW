@@ -397,7 +397,7 @@ export default function DebrisEarth({ showAnnotations = false, active = true }) 
   }, [])
 
   return (
-    <div ref={wrapRef} className="m1-earth-stage">
+    <div ref={wrapRef} className="m1-earth-stage" data-m1-no-reveal>
       {inView && active && (
         <Canvas
           frameloop="always"
